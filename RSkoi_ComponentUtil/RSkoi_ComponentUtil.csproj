@@ -30,11 +30,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Folder Include="Core\" />
-    <Folder Include="Scene\" />
-  </ItemGroup>
-  
-  <ItemGroup>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\[ScrewThisNoise] Koikatsu BetterRepack RX18\CharaStudio_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>

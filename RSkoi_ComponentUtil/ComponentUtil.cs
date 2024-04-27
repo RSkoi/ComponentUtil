@@ -23,10 +23,12 @@ namespace RSkoi_ComponentUtil
 
         internal static ComponentUtil _instance;
 
+        #region bepinex config
         internal static ConfigEntry<float> UiScale { get; private set; }
         internal static ConfigEntry<KeyboardShortcut> ToggleUI { get; private set; }
+        #endregion bepinex config
 
-        public static ManualLogSource logger;
+        internal static ManualLogSource logger;
 
         private void Awake()
         {
@@ -54,8 +56,8 @@ namespace RSkoi_ComponentUtil
             UiScale = Config.Bind(
                 "Config",
                 "UI scale",
-                1.0f,
-                new ConfigDescription("Scales the UI to given factor. Reopen ComponentUtil window to see the change.",
+                0.7f,
+                new ConfigDescription("Scales the UI to given factor. Reopen ComponentUtil window for the change to apply.",
                 null,
                 new ConfigurationManagerAttributes { Order = 1 }));
 
@@ -65,7 +67,7 @@ namespace RSkoi_ComponentUtil
                 new KeyboardShortcut(KeyCode.M, KeyCode.RightControl),
                 new ConfigDescription("Toggle the UI of ComponentUtil.",
                 null,
-                new ConfigurationManagerAttributes { Order = 3 }));
+                new ConfigurationManagerAttributes { Order = 2 }));
         }
 
         private void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)
