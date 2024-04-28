@@ -13,9 +13,10 @@ namespace RSkoi_ComponentUtil
         #region currently selected
         private static GameObject _selectedGO;
         private static Component _selectedComponent;
+        private static Studio.ObjectCtrlInfo _selectedObject;
         #endregion currently selected
 
-        private static List<Type> _supportedTypes =
+        private static readonly List<Type> _supportedTypes =
         [
             typeof(float),
             typeof(double),
@@ -34,13 +35,32 @@ namespace RSkoi_ComponentUtil
         ];
 
         /// <summary>
+        /// resets the UI and cached selected objects
+        /// </summary>
+        public void Reset()
+        {
+            _selectedGO = null;
+            _selectedComponent = null;
+            _selectedObject = null;
+
+            ClearEntryList(ComponentUtilUI._transformListEntries);
+            ClearEntryList(ComponentUtilUI._componentListEntries);
+            ClearEntryList(ComponentUtilUI._componentPropertyListEntries);
+            ClearEntryList(ComponentUtilUI._componentFieldListEntries);
+        }
+
+        /// <summary>
         /// entry point for the core functionality
         /// flattens transform hierarchy, lists all components, lists all properties
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>
-        public void Entry(GameObject input)
+        public void Entry(Studio.ObjectCtrlInfo input)
         {
-            FlattenTransformHierarchy(input);
+            if (input == null)
+                return;
+
+            _selectedObject = input;
+            FlattenTransformHierarchy(input.guideObject.transformTarget.gameObject);
             GetAllComponents(_selectedGO);
             GetAllFieldsAndProperties(_selectedComponent);
         }
@@ -52,12 +72,15 @@ namespace RSkoi_ComponentUtil
         /// <param name="input">selected item/object to traverse</param>
         public void FlattenTransformHierarchy(GameObject input)
         {
+            if (input == null)
+                return;
+
             ClearEntryList(ComponentUtilUI._transformListEntries);
 
             Transform[] list = input.GetComponentsInChildren<Transform>();
             foreach (Transform t in list)
             {
-                GameObject go = GameObject.Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._transformListContainer);
+                GameObject go = Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._transformListContainer);
                 go.transform.Find("EntryLabel").GetComponent<Text>().text = t.name;
                 go.GetComponent<Button>().onClick.AddListener(() => ChangeSelectedGO(t.gameObject));
 
@@ -73,14 +96,17 @@ namespace RSkoi_ComponentUtil
         /// <param name="input">selected object to find all components in</param>
         public void GetAllComponents(GameObject input)
         {
-            UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
+            if (input == null)
+                return;
 
             ClearEntryList(ComponentUtilUI._componentListEntries);
+
+            UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
 
             Component[] list = input.GetComponents(typeof(Component));
             foreach (Component c in list)
             {
-                GameObject go = GameObject.Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._componentListContainer);
+                GameObject go = Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._componentListContainer);
                 go.transform.Find("EntryLabel").GetComponent<Text>().text = c.GetType().Name;
                 go.GetComponent<Button>().onClick.AddListener(() => ChangeSelectedComponent(c));
 
@@ -92,18 +118,22 @@ namespace RSkoi_ComponentUtil
         /// <summary>
         /// get all fields of currently selected component, map to list entries of different types
         /// </summary>
-        /// <param name="input">selected component</param>
+        /// <param name="input">selected component to list the properties and fields of</param>
         public void GetAllFieldsAndProperties(Component input)
         {
-            UpdateUISelectedText(ComponentUtilUI._componentPropertyListSelectedComponentText, input.gameObject.name + "." + input.GetType().Name);
+            if (input == null)
+                return;
 
             ClearEntryList(ComponentUtilUI._componentPropertyListEntries);
             ClearEntryList(ComponentUtilUI._componentFieldListEntries);
+
+            UpdateUISelectedText(ComponentUtilUI._componentPropertyListSelectedComponentText, input.gameObject.name + "." + input.GetType().Name);
+
             foreach (PropertyInfo p in input
                 .GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
-                // reference type are annoying
+                // reference types are annoying
                 // this includes strings
                 if (!p.PropertyType.IsValueType)
                     continue;
@@ -122,7 +152,7 @@ namespace RSkoi_ComponentUtil
                 .GetType()
                 .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
             {
-                // reference type are annoying
+                // reference types are annoying
                 // this includes strings
                 if (!f.FieldType.IsValueType)
                     continue;
@@ -187,10 +217,10 @@ namespace RSkoi_ComponentUtil
             if (!type.IsEnum && !_supportedTypes.Contains(type))
                 return null;
 
-            // properties without set method will be not interactable
+            // properties without set method will be non-interactable
             bool setMethodIsPublic = !isProperty || (p.GetSetMethod() != null);
 
-            GameObject entry = GameObject.Instantiate(
+            GameObject entry = Instantiate(
                     MapPropertyOrFieldToEntryPrefab(type),
                     ComponentUtilUI._componentPropertyListContainer);
             entry.transform.Find("EntryLabel").GetComponent<Text>().text
@@ -292,8 +322,8 @@ namespace RSkoi_ComponentUtil
         }
         #endregion private helpers
 
-        #region private getters
-        private object GetValueFieldOrProperty(Component input, PropertyInfo p, FieldInfo f)
+        #region internal getters
+        internal object GetValueFieldOrProperty(Component input, PropertyInfo p, FieldInfo f)
         {
             bool isProperty = p != null;
             bool isField = f != null;
@@ -305,56 +335,63 @@ namespace RSkoi_ComponentUtil
             // this should never be the case
             return null;
         }
-        #endregion private getters
+        #endregion internal getters
 
-        #region private setters
-        private void SetPropertyValue(PropertyInfo p, string value, Component input)
+        #region internal setters
+        // TODO: this whole region is horrible and will become unwieldy with more supported types
+
+        internal void SetPropertyValue(PropertyInfo p, string value, Component input, bool track = true)
         {
             try
             {
+                if (track)
+                    _instance.AddToTracker(_selectedObject, input.gameObject, input, p.Name, p.GetValue(input, null),
+                        PropertyTrackerData.Options.IsProperty);
+
                 p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
             }
-            catch (Exception e)
-            {
-                logger.LogError(e);
-            }
+            catch (Exception e) { logger.LogError(e); }
         }
 
-        private void SetPropertyValueInt(PropertyInfo p, int value, Component input)
+        internal void SetPropertyValueInt(PropertyInfo p, int value, Component input, bool track = true)
         {
             try
             {
+                if (track)
+                    _instance.AddToTracker(_selectedObject, input.gameObject, input, p.Name, (int)p.GetValue(input, null),
+                        PropertyTrackerData.Options.IsProperty | PropertyTrackerData.Options.IsInt);
+                    
                 p.SetValue(input, value, null);
             }
-            catch (Exception e)
-            {
-                logger.LogError(e);
-            }
+            catch (Exception e) { logger.LogError(e); }
         }
 
-        private void SetFieldValue(FieldInfo f, string value, Component input)
+        internal void SetFieldValue(FieldInfo f, string value, Component input, bool track = true)
         {
             try
             {
+                if (track)
+                    _instance.AddToTracker(_selectedObject, input.gameObject, input, f.Name, f.GetValue(input),
+                        PropertyTrackerData.Options.None);
+                
                 f.SetValue(input, Convert.ChangeType(value, f.FieldType));
             }
-            catch (Exception e)
-            {
-                logger.LogError(e);
-            }
+            catch (Exception e) { logger.LogError(e); }
         }
 
-        private void SetFieldValueInt(FieldInfo f, int value, Component input)
+        internal void SetFieldValueInt(FieldInfo f, int value, Component input, bool track = true)
         {
             try
             {
+                if (track)
+                    _instance.AddToTracker( _selectedObject, input.gameObject, input, f.Name, (int)f.GetValue(input),
+                        PropertyTrackerData.Options.IsInt);
+                
                 f.SetValue(input, value);
+                
             }
-            catch (Exception e)
-            {
-                logger.LogError(e);
-            }
+            catch (Exception e) { logger.LogError(e); }
         }
-        #endregion private setters
+        #endregion internal setters
     }
 }

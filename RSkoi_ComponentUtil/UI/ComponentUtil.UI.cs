@@ -52,6 +52,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Text _componentPropertyListSelectedComponentText;
         #endregion selected text
 
+        // this will be overwritten in InstantiateUI()
         private static float _baseCanvasReferenceResolutionY = 600f;
 
         public static void Init()
@@ -69,7 +70,7 @@ namespace RSkoi_ComponentUtil.UI
                 ShowWindow();
                 var selected = KKAPI.Studio.StudioAPI.GetSelectedObjects();
                 if (selected.Any())
-                    ComponentUtil._instance.Entry(selected.First().guideObject.transformTarget.gameObject);
+                    ComponentUtil._instance.Entry(selected.First());
             }
         }
 
