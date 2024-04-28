@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using MessagePack;
@@ -16,6 +17,8 @@ namespace RSkoi_ComponentUtil.Scene
 {
     internal class ComponentUtilSceneBehaviour : SceneCustomFunctionController
     {
+        private static readonly float WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 1f;
+
         #region override
         protected override void OnSceneLoad(SceneOperationKind operation, ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
@@ -36,68 +39,77 @@ namespace RSkoi_ComponentUtil.Scene
 
                 PrintSavedDict(deserializedTrackerDataDict);
 
-                // this is beyond horrid
-                foreach (var entry in deserializedTrackerDataDict)
-                {
-                    ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
-                    Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                StartCoroutine(OnSceneLoadRoutine(deserializedTrackerDataDict, loadedItems));
+            }
+        }
 
-                    foreach (var propEntry in entry.Value)
+        private IEnumerator OnSceneLoadRoutine(
+            SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict,
+            ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
+        {
+            yield return new WaitForSeconds(WAIT_TIME_AFTER_LOADING_SCENE_SECONDS);
+
+            // this is beyond horrid
+            foreach (var entry in deserializedTrackerDataDict)
+            {
+                ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
+                Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+
+                foreach (var propEntry in entry.Value)
+                {
+                    // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
+                    Transform loadedItemEditTransform = (propEntry.parentPath == "")
+                        ? loadedItemTransformTarget : loadedItemTransformTarget.Find(propEntry.parentPath);
+                    if (loadedItemEditTransform == null)
                     {
-                        // TODO: multiple transforms with the same name? use propEntry.sublingIndex?
-                        Transform loadedItemEditTransform = (propEntry.parentPath == "")
-                            ? loadedItemTransformTarget : loadedItemTransformTarget.Find(propEntry.parentPath);
-                        if (loadedItemEditTransform == null)
+                        logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
+                        continue;
+                    }
+
+                    Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    Type componentType = component.GetType();
+
+                    foreach (var propEdit in propEntry.properties)
+                    {
+                        bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                        bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+
+                        PropertyInfo p = isProperty ? componentType.GetProperty(propEdit.propertyName) : null;
+                        FieldInfo f = !isProperty ? componentType.GetField(propEdit.propertyName) : null;
+
+                        object value = _instance.GetValueFieldOrProperty(component, p, f);
+                        if (value == null)
                         {
-                            logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
+                            logger.LogWarning($"Could not find {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
+                                $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
                             continue;
                         }
-                            
-                        Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
-                        Type componentType = component.GetType();
 
-                        foreach (var propEdit in propEntry.properties)
-                        {
-                            bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.Options.IsInt);
-                            bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.Options.IsProperty);
+                        if (isInt)
+                            value = (int)value;
+                        // a default value was saved -> can be discarded
+                        if (value.ToString() == propEdit.propertyValue)
+                            continue;
 
-                            PropertyInfo p = isProperty ? componentType.GetProperty(propEdit.propertyName) : null;
-                            FieldInfo f = !isProperty ? componentType.GetField(propEdit.propertyName) : null;
+                        _instance.AddPropertyToTracker(
+                            loadedItem,
+                            loadedItemEditTransform.gameObject,
+                            component,
+                            propEdit.propertyName,
+                            value,
+                            propEdit.propertyFlags);
 
-                            object value = _instance.GetValueFieldOrProperty(component, p, f);
-                            if (value == null)
-                            {
-                                logger.LogError($"Could not find {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
-                                    $".{componentType.Name} with name {propEdit.propertyName}");
-                                continue;
-                            }
-
+                        // no
+                        if (isProperty)
                             if (isInt)
-                                value = (int)value;
-                            // a default value was saved -> can be discarded
-                            if (value.ToString() == propEdit.propertyValue)
-                                continue;
-
-                            _instance.AddToTracker(
-                                loadedItem,
-                                loadedItemEditTransform.gameObject,
-                                component,
-                                propEdit.propertyName,
-                                value,
-                                propEdit.propertyFlags);
-
-                            // no
-                            if (isProperty)
-                                if (isInt)
-                                    _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), component, false);
-                                else
-                                    _instance.SetPropertyValue(p, propEdit.propertyValue, component, false);
+                                _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), component, false);
                             else
-                                if (isInt)
-                                    _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component, false);
-                                else
-                                    _instance.SetFieldValue(f, propEdit.propertyValue, component, false);
-                        }
+                                _instance.SetPropertyValue(p, propEdit.propertyValue, component, false);
+                        else
+                            if (isInt)
+                            _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component, false);
+                        else
+                            _instance.SetFieldValue(f, propEdit.propertyValue, component, false);
                     }
                 }
             }
@@ -108,19 +120,19 @@ namespace RSkoi_ComponentUtil.Scene
             PluginData data = new();
 
             SortedDictionary<int, List<TrackerDataSO>> savedDict = [];
-            foreach (var entry in Tracker)
+            foreach (var entry in _tracker)
             {
                 int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
                 List<TrackerDataPropertySO> properties = [];
                 foreach (var propEntry in entry.Value)
                 {
                     object value = null;
-                    if (HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.Options.IsProperty))
+                    if (HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty))
                         entry.Key.Component.GetPropertyValue(propEntry.Key, out value);
                     else
                         entry.Key.Component.GetFieldValue(propEntry.Key, out value);
 
-                    if (HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.Options.IsInt))
+                    if (HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt))
                         value = (int)value;
 
                     TrackerDataPropertySO prop = new(propEntry.Key, value.ToString(), propEntry.Value.OptionFlags);
@@ -142,7 +154,7 @@ namespace RSkoi_ComponentUtil.Scene
             }
             data.data.Add(name, MessagePackSerializer.Serialize(savedDict));
 
-            //PrintSavedDict(savedDict);
+            PrintSavedDict(savedDict);
 
             SetExtendedData(data);
         }
@@ -161,7 +173,7 @@ namespace RSkoi_ComponentUtil.Scene
         #endregion override
 
         #region private helpers
-        private bool HasPropertyFlag(PropertyTrackerData.Options input, PropertyTrackerData.Options flagToCheck)
+        private bool HasPropertyFlag(PropertyTrackerData.PropertyTrackerDataOptions input, PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
         {
             if ((input & flagToCheck) == flagToCheck)
                 return true;

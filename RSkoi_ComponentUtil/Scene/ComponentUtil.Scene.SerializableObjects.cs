@@ -10,14 +10,14 @@ namespace RSkoi_ComponentUtil.Scene
         internal class TrackerDataPropertySO(
             string propertyName,
             string propertyValue,
-            ComponentUtil.PropertyTrackerData.Options propertyFlags = ComponentUtil.PropertyTrackerData.Options.None)
+            ComponentUtil.PropertyTrackerData.PropertyTrackerDataOptions propertyFlags = ComponentUtil.PropertyTrackerData.PropertyTrackerDataOptions.None)
         {
             [Key("propertyName")]
             public string propertyName = propertyName;
             [Key("propertyValue")]
             public string propertyValue = propertyValue;
             [Key("propertyFlags")]
-            public ComponentUtil.PropertyTrackerData.Options propertyFlags = propertyFlags;
+            public ComponentUtil.PropertyTrackerData.PropertyTrackerDataOptions propertyFlags = propertyFlags;
 
             public override string ToString()
             {

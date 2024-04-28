@@ -16,7 +16,11 @@ namespace RSkoi_ComponentUtil
         private static Studio.ObjectCtrlInfo _selectedObject;
         #endregion currently selected
 
-        private static readonly List<Type> _supportedTypes =
+        /// <summary>
+        /// the types ComponentUtil supports
+        /// </summary>
+
+        public static readonly List<Type> _supportedTypes =
         [
             typeof(float),
             typeof(double),
@@ -43,10 +47,7 @@ namespace RSkoi_ComponentUtil
             _selectedComponent = null;
             _selectedObject = null;
 
-            ClearEntryList(ComponentUtilUI._transformListEntries);
-            ClearEntryList(ComponentUtilUI._componentListEntries);
-            ClearEntryList(ComponentUtilUI._componentPropertyListEntries);
-            ClearEntryList(ComponentUtilUI._componentFieldListEntries);
+            ComponentUtilUI.ClearAllEntryLists();
         }
 
         /// <summary>
@@ -75,22 +76,24 @@ namespace RSkoi_ComponentUtil
             if (input == null)
                 return;
 
-            ClearEntryList(ComponentUtilUI._transformListEntries);
+            ComponentUtilUI.ClearEntryListData(ComponentUtilUI._transformListEntries);
 
             Transform[] list = input.GetComponentsInChildren<Transform>();
             foreach (Transform t in list)
             {
                 GameObject go = Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._transformListContainer);
-                go.transform.Find("EntryLabel").GetComponent<Text>().text = t.name;
-                go.GetComponent<Button>().onClick.AddListener(() => ChangeSelectedGO(t.gameObject));
+                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.PreConfigureNewGenericUIListEntry(go);
+                uiEntry.EntryName.text = t.name;
+                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedGO(t.gameObject));
+                uiEntry.UiTarget = t;
 
-                ComponentUtilUI._transformListEntries.Add(go, t);
+                ComponentUtilUI._transformListEntries.Add(t, uiEntry);
             }
             _selectedGO = list[0].gameObject;
         }
 
         /// <summary>
-        /// get all components on currently selected transform, map to list entries
+        /// gets all components on currently selected transform, maps to list entries
         /// selects first list entry
         /// </summary>
         /// <param name="input">selected object to find all components in</param>
@@ -99,24 +102,26 @@ namespace RSkoi_ComponentUtil
             if (input == null)
                 return;
 
-            ClearEntryList(ComponentUtilUI._componentListEntries);
+            ComponentUtilUI.ClearEntryListData(ComponentUtilUI._componentListEntries);
 
-            UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
+            ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
 
             Component[] list = input.GetComponents(typeof(Component));
             foreach (Component c in list)
             {
                 GameObject go = Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._componentListContainer);
-                go.transform.Find("EntryLabel").GetComponent<Text>().text = c.GetType().Name;
-                go.GetComponent<Button>().onClick.AddListener(() => ChangeSelectedComponent(c));
+                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.PreConfigureNewGenericUIListEntry(go);
+                uiEntry.EntryName.text = c.GetType().Name;
+                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedComponent(c));
+                uiEntry.UiTarget = c;
 
-                ComponentUtilUI._componentListEntries.Add(go, c);
+                ComponentUtilUI._componentListEntries.Add(c, uiEntry);
             }
             _selectedComponent = list[0];
         }
 
         /// <summary>
-        /// get all fields of currently selected component, map to list entries of different types
+        /// gets all fields of currently selected component, maps to list entries of different types
         /// </summary>
         /// <param name="input">selected component to list the properties and fields of</param>
         public void GetAllFieldsAndProperties(Component input)
@@ -124,10 +129,12 @@ namespace RSkoi_ComponentUtil
             if (input == null)
                 return;
 
-            ClearEntryList(ComponentUtilUI._componentPropertyListEntries);
-            ClearEntryList(ComponentUtilUI._componentFieldListEntries);
+            ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._componentPropertyListEntries);
+            ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._componentFieldListEntries);
 
-            UpdateUISelectedText(ComponentUtilUI._componentPropertyListSelectedComponentText, input.gameObject.name + "." + input.GetType().Name);
+            ComponentUtilUI.UpdateUISelectedText(
+                ComponentUtilUI._componentPropertyListSelectedComponentText,
+                input.gameObject.name + "." + input.GetType().Name);
 
             foreach (PropertyInfo p in input
                 .GetType()
@@ -138,14 +145,11 @@ namespace RSkoi_ComponentUtil
                 if (!p.PropertyType.IsValueType)
                     continue;
 
-                // some getters are not public?
+                // ignore properties with private getters
                 if (p.GetGetMethod() == null)
                     continue;
 
-                GameObject entry = ConfigureComponentEntry(input, p, null);
-                if (entry == null)
-                    continue;
-                ComponentUtilUI._componentPropertyListEntries.Add(entry, p);
+                ConfigureComponentEntry(input, p, null);
             }
 
             foreach (FieldInfo f in input
@@ -157,14 +161,239 @@ namespace RSkoi_ComponentUtil
                 if (!f.FieldType.IsValueType)
                     continue;
 
-                GameObject entry = ConfigureComponentEntry(input, null, f);
-                if (entry == null)
-                    continue;
-                ComponentUtilUI._componentFieldListEntries.Add(entry, f);
+                ConfigureComponentEntry(input, null, f);
             }
+
+            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         #region private
+        private void ConfigureComponentEntry(Component input, PropertyInfo p, FieldInfo f)
+        {
+            bool isProperty = p != null;
+            bool isField = f != null;
+            // this should never be the case
+            if ((!isProperty && !isField) || (isProperty && isField))
+            {
+                logger.LogError("ConfigureComponentEntry: use either PropertyInfo or FieldInfo");
+                return;
+            }
+            
+            Type type = isProperty ? p.PropertyType : f.FieldType;
+            if (!type.IsEnum && !_supportedTypes.Contains(type))
+                return;
+
+            // properties without set method will be non-interactable
+            bool setMethodIsPublic = !isProperty || (p.GetSetMethod() != null);
+            string propName = isProperty ? p.Name : f.Name;
+
+            GameObject entryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(type);
+            GameObject entry = Instantiate(entryPrefab, ComponentUtilUI._componentPropertyListContainer);
+            ComponentUtilUI.PropertyUIEntry uiEntry = ComponentUtilUI.PreConfigureNewUiEntry(entry, entryPrefab);
+            uiEntry.PropertyName.text = isProperty ? $"[Property] {propName}" : $"[Field] {propName}";
+
+            object value = GetValueFieldOrProperty(input, p, f);
+            if (value == null)
+                return;
+
+            if (type.IsEnum)
+                ConfigDropdown(entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+            else if (type.Equals(typeof(bool)))
+                ConfigToggle(entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+            else if (type.Equals(typeof(Vector2)) || type.Equals(typeof(Vector3)) || type.Equals(typeof(Vector4)))
+            {
+                // TODO: how to handle Vectors?
+                Destroy(entry);
+                return;
+            }
+            else if (type.Equals(typeof(Quaternion)))
+            {
+                // TODO: how to handle Quaternions? probably same way as Vector4
+                Destroy(entry);
+                return;
+            }
+            else if (type.Equals(typeof(Color)))
+            {
+                // TODO: color picker for UnityEngine.Color type
+                Destroy(entry);
+                return;
+            }
+            else // default is decimal input field
+                ConfigInput(entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+
+            if (isProperty)
+                ComponentUtilUI._componentPropertyListEntries.Add(entry, uiEntry);
+            else
+                ComponentUtilUI._componentFieldListEntries.Add(entry, uiEntry);
+
+            PropertyKey key = new(_selectedObject, input.gameObject, input);
+            // make bg green if value is edited
+            IterateAndCheck(key, uiEntry, propName, value);
+
+            ConfigReset(key, uiEntry, input, p, f, propName, setMethodIsPublic, isProperty);
+        }
+
+        private void ConfigDropdown(
+            GameObject entry,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            Component input,
+            PropertyInfo p,
+            FieldInfo f,
+            Type type,
+            bool setMethodIsPublic,
+            bool isProperty,
+            object value)
+        {
+            Dropdown dropdownField = entry.GetComponentInChildren<Dropdown>();
+
+            // configure options
+            List<Dropdown.OptionData> options = [];
+            int selectedOption = 0;
+            int i = 0;
+            foreach (var enumValue in Enum.GetValues(type))
+            {
+                Dropdown.OptionData option = new() { text = enumValue.ToString() };
+                options.Add(option);
+
+                // option that's currently selected
+                if (enumValue.Equals(value))
+                    selectedOption = i;
+
+                i++;
+            }
+            dropdownField.ClearOptions();
+            dropdownField.AddOptions(options);
+            dropdownField.interactable = setMethodIsPublic;
+
+            // select current option
+            dropdownField.value = selectedOption;
+
+            // configure value change event
+            if (isProperty)
+                dropdownField.onValueChanged.AddListener(value => SetPropertyValueInt(p, value, input));
+            else
+                dropdownField.onValueChanged.AddListener(value => SetFieldValueInt(f, value, input));
+            dropdownField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
+
+            uiEntry.UiComponentSetValueDelegate = (value) =>
+            {
+                dropdownField.value = (int)value;
+                return dropdownField.value;
+            };
+            uiEntry.UiComponentTarget = dropdownField;
+        }
+
+        private void ConfigToggle(
+            GameObject entry,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            Component input,
+            PropertyInfo p,
+            FieldInfo f,
+            Type type,
+            bool setMethodIsPublic,
+            bool isProperty,
+            object value)
+        {
+            Toggle toggleField = entry.GetComponentInChildren<Toggle>();
+            toggleField.isOn = (bool)value;
+            toggleField.interactable = setMethodIsPublic;
+
+            if (isProperty)
+                toggleField.onValueChanged.AddListener(value => SetPropertyValue(p, value.ToString(), input));
+            else
+                toggleField.onValueChanged.AddListener(value => SetFieldValue(f, value.ToString(), input));
+            toggleField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
+
+            uiEntry.UiComponentSetValueDelegate = (value) =>
+            {
+                toggleField.isOn = (bool)value;
+                return toggleField.isOn;
+            };
+            uiEntry.UiComponentTarget = toggleField;
+        }
+
+        private void ConfigInput(
+            GameObject entry,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            Component input,
+            PropertyInfo p,
+            FieldInfo f,
+            Type type,
+            bool setMethodIsPublic,
+            bool isProperty,
+            object value)
+        {
+            InputField inputField = entry.GetComponentInChildren<InputField>();
+            inputField.text = value.ToString();
+            // trying to cram an integer into (e.g.) a short could lead to problems
+            inputField.contentType =
+                TypeIsFloatingPoint(type) ? InputField.ContentType.DecimalNumber : InputField.ContentType.IntegerNumber;
+            inputField.interactable = setMethodIsPublic;
+
+            if (isProperty)
+                inputField.onValueChanged.AddListener(value => SetPropertyValue(p, value, input));
+            else
+                inputField.onValueChanged.AddListener(value => SetFieldValue(f, value, input));
+            inputField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
+
+            uiEntry.UiComponentSetValueDelegate = (value) =>
+            {
+                inputField.text = value.ToString();
+                return inputField.text;
+            };
+            uiEntry.UiComponentTarget = inputField;
+        }
+
+        private void ConfigReset(
+            PropertyKey key,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            Component input,
+            PropertyInfo p,
+            FieldInfo f,
+            string propName,
+            bool setMethodIsPublic,
+            bool isProperty)
+        {
+            // reset button
+            uiEntry.ResetButton.interactable = setMethodIsPublic;
+            uiEntry.ResetButton.onClick.AddListener(() =>
+            {
+                // TODO: remove _tracker[key] => KeyNotFoundException
+                logger.LogInfo($"++++++ {_tracker[key].Count} {PropertyIsTracked(key, propName)}");
+                if (PropertyIsTracked(key, propName))
+                {
+                    object defaultValue = GetTrackedDefaultValue(key, propName);
+                    if (isProperty)
+                        p.SetValue(input, defaultValue, null);
+                    else
+                        f.SetValue(input, defaultValue);
+
+                    bool removed = RemovePropertyFromTracker(key, propName);
+                    uiEntry.SetUiComponentTargetValue(defaultValue);
+                    uiEntry.ResetBgColor();
+
+                    logger.LogInfo($"------------------------ removed? {removed}");
+                    ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
+                }
+            });
+        }
+
+        private void IterateAndCheck(
+            PropertyKey key,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            string propName,
+            object value)
+        {
+            if (PropertyIsTracked(key, propName))
+            {
+                object defaultValue = GetTrackedDefaultValue(key, propName);
+                if (defaultValue.ToString() != value.ToString())
+                {
+                    uiEntry.SetBgColorEdited();
+                }
+            }
+        }
+
         private void ChangeSelectedGO(GameObject target)
         {
             _selectedGO = target;
@@ -176,138 +405,6 @@ namespace RSkoi_ComponentUtil
         {
             _selectedComponent = target;
             GetAllFieldsAndProperties(_selectedComponent);
-        }
-
-        private void UpdateUISelectedText(Text uiText, string selectedName, char separator = ':')
-        {
-            int splitIndex = uiText.text.IndexOf(separator);
-            string newText = uiText.text.Substring(0, splitIndex + 1);
-            newText += " <b>" + selectedName + "</b>";
-            uiText.text = newText;
-        }
-
-        private void ClearEntryList<T>(Dictionary<GameObject, T> list)
-        {
-            // destroying UI objects is really bad for performance
-            // TODO: implement pooling, remember to remove onClick listeners
-            foreach (var t in list)
-                Destroy(t.Key);
-            list.Clear();
-        }
-
-        private GameObject MapPropertyOrFieldToEntryPrefab(Type t)
-        {
-            if (t.IsEnum)
-                return ComponentUtilUI._componentPropertyEnumEntryPrefab;
-            else if (t.Equals(typeof(bool)))
-                return ComponentUtilUI._componentPropertyBoolEntryPrefab;
-
-            return ComponentUtilUI._componentPropertyDecimalEntryPrefab;
-        }
-
-        private GameObject ConfigureComponentEntry(Component input, PropertyInfo p, FieldInfo f)
-        {
-            bool isProperty = p != null;
-            bool isField = f != null;
-            // this should never be the case
-            if (!isProperty && !isField)
-                return null;
-
-            Type type = isProperty ? p.PropertyType : f.FieldType;
-            if (!type.IsEnum && !_supportedTypes.Contains(type))
-                return null;
-
-            // properties without set method will be non-interactable
-            bool setMethodIsPublic = !isProperty || (p.GetSetMethod() != null);
-
-            GameObject entry = Instantiate(
-                    MapPropertyOrFieldToEntryPrefab(type),
-                    ComponentUtilUI._componentPropertyListContainer);
-            entry.transform.Find("EntryLabel").GetComponent<Text>().text
-                = isProperty ? $"[Property] {p.Name}" : $"[Field] {f.Name}";
-
-            object value = GetValueFieldOrProperty(input, p, f);
-            if (value == null)
-                return null;
-
-            if (type.IsEnum)
-            {
-                Dropdown dropdownField = entry.GetComponentInChildren<Dropdown>();
-
-                // configure options
-                List<Dropdown.OptionData> options = [];
-                int selectedOption = 0;
-                int i = 0;
-                foreach (var enumValue in Enum.GetValues(type))
-                {
-                    Dropdown.OptionData option = new() { text = enumValue.ToString() };
-                    options.Add(option);
-                    
-                    // option that's currently selected
-                    if (enumValue.Equals(value))
-                        selectedOption = i;
-
-                    i++;
-                }
-                dropdownField.ClearOptions();
-                dropdownField.AddOptions(options);
-                dropdownField.interactable = setMethodIsPublic;
-
-                // select current option
-                dropdownField.value = selectedOption;
-
-                // configure value change event
-                if (isProperty)
-                    dropdownField.onValueChanged.AddListener(value => SetPropertyValueInt(p, value, input));
-                else
-                    dropdownField.onValueChanged.AddListener(value => SetFieldValueInt(f, value, input));
-            }
-            else if (type.Equals(typeof(bool)))
-            {
-                Toggle toggleField = entry.GetComponentInChildren<Toggle>();
-                toggleField.isOn = (bool)value;
-                toggleField.interactable = setMethodIsPublic;
-
-                if (isProperty)
-                    toggleField.onValueChanged.AddListener(value => SetPropertyValue(p, value.ToString(), input));
-                else
-                    toggleField.onValueChanged.AddListener(value => SetFieldValue(f, value.ToString(), input));
-            }
-            else if (type.Equals(typeof(Vector2)) || type.Equals(typeof(Vector3)) || type.Equals(typeof(Vector4)))
-            {
-                // TODO: how to handle Vectors?
-                Destroy(entry);
-                return null;
-            }
-            else if (type.Equals(typeof(Quaternion)))
-            {
-                // TODO: how to handle Quaternions? probably same way as Vector4
-                Destroy(entry);
-                return null;
-            }
-            else if (type.Equals(typeof(Color)))
-            {
-                // TODO: color picker for UnityEngine.Color type
-                Destroy(entry);
-                return null;
-            }
-            else
-            {
-                // default is decimal input field
-                InputField inputField = entry.GetComponentInChildren<InputField>();
-                inputField.text = value.ToString();
-                // trying to cram an integer into (e.g.) a short could lead to problems
-                inputField.contentType =
-                    TypeIsFloatingPoint(type) ? InputField.ContentType.DecimalNumber : InputField.ContentType.IntegerNumber;
-                inputField.interactable = setMethodIsPublic;
-
-                if (isProperty)
-                    inputField.onValueChanged.AddListener(value => SetPropertyValue(p, value, input));
-                else
-                    inputField.onValueChanged.AddListener(value => SetFieldValue(f, value, input));
-            }
-
-            return entry;
         }
         #endregion private
 
@@ -345,12 +442,14 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddToTracker(_selectedObject, input.gameObject, input, p.Name, p.GetValue(input, null),
-                        PropertyTrackerData.Options.IsProperty);
+                    _instance.AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, p.GetValue(input, null),
+                        PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
 
                 p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
             }
             catch (Exception e) { logger.LogError(e); }
+
+            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         internal void SetPropertyValueInt(PropertyInfo p, int value, Component input, bool track = true)
@@ -358,12 +457,14 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddToTracker(_selectedObject, input.gameObject, input, p.Name, (int)p.GetValue(input, null),
-                        PropertyTrackerData.Options.IsProperty | PropertyTrackerData.Options.IsInt);
+                    _instance.AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, (int)p.GetValue(input, null),
+                        PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                     
                 p.SetValue(input, value, null);
             }
             catch (Exception e) { logger.LogError(e); }
+
+            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         internal void SetFieldValue(FieldInfo f, string value, Component input, bool track = true)
@@ -371,12 +472,14 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddToTracker(_selectedObject, input.gameObject, input, f.Name, f.GetValue(input),
-                        PropertyTrackerData.Options.None);
+                    _instance.AddPropertyToTracker(_selectedObject, input.gameObject, input, f.Name, f.GetValue(input),
+                        PropertyTrackerData.PropertyTrackerDataOptions.None);
                 
                 f.SetValue(input, Convert.ChangeType(value, f.FieldType));
             }
             catch (Exception e) { logger.LogError(e); }
+
+            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         internal void SetFieldValueInt(FieldInfo f, int value, Component input, bool track = true)
@@ -384,13 +487,14 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddToTracker( _selectedObject, input.gameObject, input, f.Name, (int)f.GetValue(input),
-                        PropertyTrackerData.Options.IsInt);
+                    _instance.AddPropertyToTracker( _selectedObject, input.gameObject, input, f.Name, (int)f.GetValue(input),
+                        PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                 
                 f.SetValue(input, value);
-                
             }
             catch (Exception e) { logger.LogError(e); }
+
+            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
         #endregion internal setters
     }

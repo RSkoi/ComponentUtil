@@ -9,23 +9,32 @@ namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        private static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _tracker = [];
-        internal static Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> Tracker { get => _tracker; }
+        internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _tracker = [];
 
-        internal bool AddToTracker(
+        internal void ClearTracker()
+        {
+            _tracker.Clear();
+        }
+
+        internal bool AddPropertyToTracker(
             ObjectCtrlInfo objCtrlInfo,
             GameObject go,
             Component component,
             string propertyName,
             object defaultValue,
-            Options optionFlags = Options.None)
+            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
             PropertyKey key = new(objCtrlInfo, go, component);
+            return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
+        }
 
-            PropertyTrackerData data = new(propertyName, optionFlags)
-            {
-                DefaultValue = defaultValue,
-            };
+        internal bool AddPropertyToTracker(
+            PropertyKey key,
+            string propertyName,
+            object defaultValue,
+            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
+        {
+            PropertyTrackerData data = new(propertyName, optionFlags, defaultValue);
 
             if (_tracker.ContainsKey(key))
                 if (_tracker[key].ContainsKey(propertyName))
@@ -33,30 +42,96 @@ namespace RSkoi_ComponentUtil
                 else
                     _tracker[key].Add(propertyName, data); // at least one other property is tracked
             else
-                _tracker.Add(key, new() {{ propertyName, data }}); // new property
+                _tracker.Add(key, new() { { propertyName, data } }); // new property
 
             return true;
         }
 
-        internal void ClearTracker()
-        {
-            _tracker.Clear();
-        }
-
-        internal object GetTrackedDefaultValue(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string propertyName)
+        internal bool RemovePropertyFromTracker(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string propertyName)
         {
             PropertyKey key = new(objCtrlInfo, go, component);
+            return RemovePropertyFromTracker(key, propertyName);
+        }
 
+        internal bool RemovePropertyFromTracker(PropertyKey key, string propertyName)
+        {
+            if (!PropertyIsTracked(key, propertyName))
+            {
+                //logger.LogInfo("------ 1");
+                return false;
+            }
+            _tracker[key].Remove(propertyName);
+            //logger.LogInfo($"------ 2 {_tracker[key].Count} {_tracker[key].ContainsKey(propertyName)} {PropertyIsTracked(key, propertyName)}");
+            if (_tracker[key].Count == 0)
+            {
+                _tracker.Remove(key);
+                //logger.LogInfo($"------ 3 {_tracker.Count} {_tracker.ContainsKey(key)} {TransformObjectAndComponentIsTracked(key)}");
+            }
+            return true;
+        }
+
+        internal bool PropertyIsTracked(
+            ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string propertyName)
+        {
+            PropertyKey key = new(objCtrlInfo, go, component);
+            return PropertyIsTracked(key, propertyName);
+        }
+
+        internal bool PropertyIsTracked(PropertyKey key, string propertyName)
+        {
+            if (!_tracker.ContainsKey(key))
+                return false;
+            if (!_tracker[key].ContainsKey(propertyName))
+                return false;
+            return true;
+        }
+
+        internal bool TransformObjectAndComponentIsTracked(
+            ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
+        {
+            PropertyKey key = new(objCtrlInfo, go, component);
+            return TransformObjectAndComponentIsTracked(key);
+        }
+
+        internal bool TransformObjectAndComponentIsTracked(PropertyKey key)
+        {
+            if (!_tracker.ContainsKey(key))
+                return false;
+            return true;
+        }
+
+        internal object GetTrackedDefaultValue(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string propertyName)
+        {
+            PropertyKey key = new(objCtrlInfo, go, component);
+            return GetTrackedDefaultValue(key, propertyName);
+        }
+
+        internal object GetTrackedDefaultValue(PropertyKey key, string propertyName)
+        {
             if (_tracker.ContainsKey(key))
                 return _tracker[key][propertyName].DefaultValue;
             return null;
         }
 
-        #region public helpers
-        public void PrintTracker()
+        internal object GetTrackedDefaultValue(PropertyKey key, string propertyName, out object defaultValue)
+        {
+            defaultValue = GetTrackedDefaultValue(key, propertyName);
+            return defaultValue;
+        }
+
+        #region private helpers
+        private void PrintTracker()
         {
             int i = 0;
-            foreach (var entry in Tracker)
+            foreach (var entry in _tracker)
             {
                 logger.LogInfo($"++++++++ Entry {i}:");
                 logger.LogInfo(entry.Key.Component.gameObject);
@@ -69,17 +144,18 @@ namespace RSkoi_ComponentUtil
                 i++;
             }
         }
-        #endregion public helpers
+        #endregion private helpers
 
-        #region property classes
-        internal class PropertyTrackerData(string propertyName, Options optionFlags) : IEquatable<PropertyTrackerData>
+        #region internal property classes
+        internal class PropertyTrackerData(string propertyName, PropertyTrackerDataOptions optionFlags, object defaultValue)
+            //: IEquatable<PropertyTrackerData>
         {
-            public string PropertyName { get; } = propertyName;
-            public Options OptionFlags { get; } = optionFlags;
+            public string PropertyName = propertyName;
+            public PropertyTrackerDataOptions OptionFlags = optionFlags;
             // the default/original value of the property
-            public object DefaultValue { get; set; }
+            public object DefaultValue = defaultValue;
 
-            public override int GetHashCode()
+            /*public override int GetHashCode()
             {
                 return PropertyName.GetHashCode();
             }
@@ -92,7 +168,7 @@ namespace RSkoi_ComponentUtil
             public bool Equals(PropertyTrackerData other)
             {
                 return other != null && PropertyName == other.PropertyName;
-            }
+            }*/
 
             public override string ToString()
             {
@@ -100,7 +176,7 @@ namespace RSkoi_ComponentUtil
             }
 
             [Flags]
-            internal enum Options // these are flags, use power of two for values
+            public enum PropertyTrackerDataOptions // these are flags, use power of two for values
             {
                 None = 0,
                 // whether tracked item is a property (true) or a field (false)
@@ -110,15 +186,16 @@ namespace RSkoi_ComponentUtil
             }
         }
 
-        internal class PropertyKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component) : IEquatable<PropertyKey>
+        internal class PropertyKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
+            : IEquatable<PropertyKey>
         {
             // the overarching item / ObjectCtrl (root)
-            public ObjectCtrlInfo ObjCtrlInfo { get; } = objCtrlInfo;
+            public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
             // the GameObject the component resides in
             // you can also get this with Component.gameObject
-            public GameObject Go { get; } = go;
+            public GameObject Go = go;
             // the component the property resides in
-            public Component Component { get; } = component;
+            public Component Component = component;
 
             public override int GetHashCode()
             {
@@ -152,6 +229,6 @@ namespace RSkoi_ComponentUtil
                 return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component} ]";
             }
         }
-        #endregion property classes
+        #endregion internal property classes
     }
 }
