@@ -11,6 +11,7 @@ namespace RSkoi_ComponentUtil
     {
         internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _tracker = [];
 
+        #region internal
         internal void ClearTracker()
         {
             _tracker.Clear();
@@ -60,17 +61,12 @@ namespace RSkoi_ComponentUtil
         internal bool RemovePropertyFromTracker(PropertyKey key, string propertyName)
         {
             if (!PropertyIsTracked(key, propertyName))
-            {
-                //logger.LogInfo("------ 1");
                 return false;
-            }
+
             _tracker[key].Remove(propertyName);
-            //logger.LogInfo($"------ 2 {_tracker[key].Count} {_tracker[key].ContainsKey(propertyName)} {PropertyIsTracked(key, propertyName)}");
             if (_tracker[key].Count == 0)
-            {
                 _tracker.Remove(key);
-                //logger.LogInfo($"------ 3 {_tracker.Count} {_tracker.ContainsKey(key)} {TransformObjectAndComponentIsTracked(key)}");
-            }
+
             return true;
         }
 
@@ -126,6 +122,7 @@ namespace RSkoi_ComponentUtil
             defaultValue = GetTrackedDefaultValue(key, propertyName);
             return defaultValue;
         }
+        #endregion internal
 
         #region private helpers
         private void PrintTracker()
@@ -134,12 +131,9 @@ namespace RSkoi_ComponentUtil
             foreach (var entry in _tracker)
             {
                 logger.LogInfo($"++++++++ Entry {i}:");
-                logger.LogInfo(entry.Key.Component.gameObject);
                 logger.LogInfo(entry.Key.ToString());
                 foreach (var propEntry in entry.Value)
-                {
-                    logger.LogInfo(propEntry.Value.ToString());
-                }
+                    logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
                 logger.LogInfo("++++++++");
                 i++;
             }
@@ -148,27 +142,11 @@ namespace RSkoi_ComponentUtil
 
         #region internal property classes
         internal class PropertyTrackerData(string propertyName, PropertyTrackerDataOptions optionFlags, object defaultValue)
-            //: IEquatable<PropertyTrackerData>
         {
             public string PropertyName = propertyName;
             public PropertyTrackerDataOptions OptionFlags = optionFlags;
             // the default/original value of the property
             public object DefaultValue = defaultValue;
-
-            /*public override int GetHashCode()
-            {
-                return PropertyName.GetHashCode();
-            }
-
-            public override bool Equals(object obj)
-            {
-                return Equals(obj as PropertyTrackerData);
-            }
-
-            public bool Equals(PropertyTrackerData other)
-            {
-                return other != null && PropertyName == other.PropertyName;
-            }*/
 
             public override string ToString()
             {

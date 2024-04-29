@@ -269,15 +269,23 @@ namespace RSkoi_ComponentUtil
             dropdownField.value = selectedOption;
 
             // configure value change event
-            if (isProperty)
-                dropdownField.onValueChanged.AddListener(value => SetPropertyValueInt(p, value, input));
-            else
-                dropdownField.onValueChanged.AddListener(value => SetFieldValueInt(f, value, input));
-            dropdownField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
-
-            uiEntry.UiComponentSetValueDelegate = (value) =>
+            void registerMyEvents()
             {
+                if (isProperty)
+                    dropdownField.onValueChanged.AddListener(value => SetPropertyValueInt(p, value, input));
+                else
+                    dropdownField.onValueChanged.AddListener(value => SetFieldValueInt(f, value, input));
+                dropdownField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
+            }
+            registerMyEvents();
+
+            uiEntry.UiComponentSetValueDelegateForReset = (value) =>
+            {
+                // suspending all (non-persistent) listeners because inputField.text
+                // will trigger onValueChanged, which would add to tracker via setter
+                dropdownField.onValueChanged.RemoveAllListeners();
                 dropdownField.value = (int)value;
+                registerMyEvents();
                 return dropdownField.value;
             };
             uiEntry.UiComponentTarget = dropdownField;
@@ -298,15 +306,23 @@ namespace RSkoi_ComponentUtil
             toggleField.isOn = (bool)value;
             toggleField.interactable = setMethodIsPublic;
 
-            if (isProperty)
-                toggleField.onValueChanged.AddListener(value => SetPropertyValue(p, value.ToString(), input));
-            else
-                toggleField.onValueChanged.AddListener(value => SetFieldValue(f, value.ToString(), input));
-            toggleField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
-
-            uiEntry.UiComponentSetValueDelegate = (value) =>
+            void registerMyEvents()
             {
+                if (isProperty)
+                    toggleField.onValueChanged.AddListener(value => SetPropertyValue(p, value.ToString(), input));
+                else
+                    toggleField.onValueChanged.AddListener(value => SetFieldValue(f, value.ToString(), input));
+                toggleField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
+            }
+            registerMyEvents();
+
+            uiEntry.UiComponentSetValueDelegateForReset = (value) =>
+            {
+                // suspending all (non-persistent) listeners because inputField.text
+                // will trigger onValueChanged, which would add to tracker via setter
+                toggleField.onValueChanged.RemoveAllListeners();
                 toggleField.isOn = (bool)value;
+                registerMyEvents();
                 return toggleField.isOn;
             };
             uiEntry.UiComponentTarget = toggleField;
@@ -330,15 +346,23 @@ namespace RSkoi_ComponentUtil
                 TypeIsFloatingPoint(type) ? InputField.ContentType.DecimalNumber : InputField.ContentType.IntegerNumber;
             inputField.interactable = setMethodIsPublic;
 
-            if (isProperty)
-                inputField.onValueChanged.AddListener(value => SetPropertyValue(p, value, input));
-            else
-                inputField.onValueChanged.AddListener(value => SetFieldValue(f, value, input));
-            inputField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
-
-            uiEntry.UiComponentSetValueDelegate = (value) =>
+            void registerMyEvents()
             {
+                if (isProperty)
+                    inputField.onValueChanged.AddListener(value => SetPropertyValue(p, value, input));
+                else
+                    inputField.onValueChanged.AddListener(value => SetFieldValue(f, value, input));
+                inputField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
+            }
+            registerMyEvents();
+
+            uiEntry.UiComponentSetValueDelegateForReset = (value) =>
+            {
+                // suspending all (non-persistent) listeners because inputField.text
+                // will trigger onValueChanged, which would add to tracker via setter
+                inputField.onValueChanged.RemoveAllListeners();
                 inputField.text = value.ToString();
+                registerMyEvents();
                 return inputField.text;
             };
             uiEntry.UiComponentTarget = inputField;
@@ -354,27 +378,23 @@ namespace RSkoi_ComponentUtil
             bool setMethodIsPublic,
             bool isProperty)
         {
-            // reset button
             uiEntry.ResetButton.interactable = setMethodIsPublic;
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
-                // TODO: remove _tracker[key] => KeyNotFoundException
-                logger.LogInfo($"++++++ {_tracker[key].Count} {PropertyIsTracked(key, propName)}");
-                if (PropertyIsTracked(key, propName))
-                {
-                    object defaultValue = GetTrackedDefaultValue(key, propName);
-                    if (isProperty)
-                        p.SetValue(input, defaultValue, null);
-                    else
-                        f.SetValue(input, defaultValue);
+                if (!PropertyIsTracked(key, propName))
+                    return;
 
-                    bool removed = RemovePropertyFromTracker(key, propName);
-                    uiEntry.SetUiComponentTargetValue(defaultValue);
-                    uiEntry.ResetBgColor();
+                object defaultValue = GetTrackedDefaultValue(key, propName);
+                if (isProperty)
+                    p.SetValue(input, defaultValue, null);
+                else
+                    f.SetValue(input, defaultValue);
 
-                    logger.LogInfo($"------------------------ removed? {removed}");
-                    ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
-                }
+                bool removed = RemovePropertyFromTracker(key, propName);
+                uiEntry.SetUiComponentTargetValue(defaultValue);
+                uiEntry.ResetBgColor();
+
+                ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
             });
         }
 
@@ -388,9 +408,7 @@ namespace RSkoi_ComponentUtil
             {
                 object defaultValue = GetTrackedDefaultValue(key, propName);
                 if (defaultValue.ToString() != value.ToString())
-                {
                     uiEntry.SetBgColorEdited();
-                }
             }
         }
 
@@ -442,7 +460,7 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, p.GetValue(input, null),
+                    AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, p.GetValue(input, null),
                         PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
 
                 p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
@@ -457,7 +475,7 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, (int)p.GetValue(input, null),
+                    AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, (int)p.GetValue(input, null),
                         PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                     
                 p.SetValue(input, value, null);
@@ -472,7 +490,7 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddPropertyToTracker(_selectedObject, input.gameObject, input, f.Name, f.GetValue(input),
+                    AddPropertyToTracker(_selectedObject, input.gameObject, input, f.Name, f.GetValue(input),
                         PropertyTrackerData.PropertyTrackerDataOptions.None);
                 
                 f.SetValue(input, Convert.ChangeType(value, f.FieldType));
@@ -487,7 +505,7 @@ namespace RSkoi_ComponentUtil
             try
             {
                 if (track)
-                    _instance.AddPropertyToTracker( _selectedObject, input.gameObject, input, f.Name, (int)f.GetValue(input),
+                    AddPropertyToTracker( _selectedObject, input.gameObject, input, f.Name, (int)f.GetValue(input),
                         PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                 
                 f.SetValue(input, value);

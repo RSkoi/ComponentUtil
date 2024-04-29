@@ -91,6 +91,8 @@ namespace RSkoi_ComponentUtil.Scene
                         if (value.ToString() == propEdit.propertyValue)
                             continue;
 
+                        // adding to tracker must not be done by Setter methods such as SetPropertyValue
+                        // because SetPropertyValue on loading scene we need to track loadedItem, not _selectedObject
                         _instance.AddPropertyToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,

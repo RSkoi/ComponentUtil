@@ -303,7 +303,7 @@ namespace RSkoi_ComponentUtil.UI
             GameObject instantiatedUiGo,
             GameObject usedPrefab,
             object uiComponentTarget,
-            Func<object, object> uiComponentSetValueDelegate)
+            Func<object, object> uiComponentSetValueDelegateForReset)
         {
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
@@ -314,7 +314,7 @@ namespace RSkoi_ComponentUtil.UI
             // currently not actively read by anything
             public object UiComponentTarget = uiComponentTarget;
             // this delegate is used by the reset button
-            public Func<object, object> UiComponentSetValueDelegate = uiComponentSetValueDelegate;
+            public Func<object, object> UiComponentSetValueDelegateForReset = uiComponentSetValueDelegateForReset;
 
             public void SetBgColorEdited()
             {
@@ -330,7 +330,7 @@ namespace RSkoi_ComponentUtil.UI
 
             public void SetUiComponentTargetValue(object value)
             {
-                UiComponentSetValueDelegate?.Invoke(value);
+                UiComponentSetValueDelegateForReset?.Invoke(value);
             }
         }
         #endregion internal UI container classes
