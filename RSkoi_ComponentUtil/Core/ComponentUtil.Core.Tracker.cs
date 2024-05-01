@@ -172,6 +172,7 @@ namespace RSkoi_ComponentUtil
             public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
             // the GameObject the component resides in
             // you can also get this with Component.gameObject
+            // transform is Go.transform
             public GameObject Go = go;
             // the component the property resides in
             public Component Component = component;

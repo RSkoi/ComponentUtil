@@ -85,8 +85,9 @@ namespace RSkoi_ComponentUtil.UI
         {
             _canvasContainer.gameObject.SetActive(true);
             float uiScale = ComponentUtil.UiScale.Value;
-            // aiiee float division, what could go wrong
-            _canvasScaler.referenceResolution = new(_canvasScaler.referenceResolution.x, _baseCanvasReferenceResolutionY / uiScale);
+            _canvasScaler.referenceResolution = new(
+                _canvasScaler.referenceResolution.x,
+                _baseCanvasReferenceResolutionY / uiScale); // aiiee float division, what could go wrong
         }
 
         /// <summary>
@@ -102,15 +103,14 @@ namespace RSkoi_ComponentUtil.UI
         {
             foreach (var key in ComponentUtil._tracker.Keys)
             {
-                Transform t = key.ObjCtrlInfo.guideObject.transformTarget;
+                Transform t = key.Go.transform;
                 Component c = key.Component;
 
                 // TODO: very slow iteration until entries are found, improve with hashing of UiTarget/t/c?
-
                 foreach (var entry in TransformListEntries)
                 {
                     if (entry.UiGO.activeSelf
-                        && entry.BgImage?.color != ENTRY_BG_COLOR_EDITED
+                        && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
                         && (Transform)entry.UiTarget == t)
                     {
                         entry.SetBgColorEdited(null);
@@ -121,7 +121,7 @@ namespace RSkoi_ComponentUtil.UI
                 foreach (var entry in ComponentListEntries)
                 {
                     if (entry.UiGO.activeSelf
-                        && entry.BgImage?.color != ENTRY_BG_COLOR_EDITED
+                        && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
                         && (Component)entry.UiTarget == c)
                     {
                         entry.SetBgColorEdited(null);

@@ -447,8 +447,11 @@ namespace RSkoi_ComponentUtil
         {
             _selectedGO = target;
             _selectedTransformUIEntry = uiEntry;
+
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
         private void ChangeSelectedComponent(Component target, ComponentUtilUI.GenericUIListEntry uiEntry)
@@ -459,6 +462,8 @@ namespace RSkoi_ComponentUtil
             uiEntry.ResetBgAndChildren();
 
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion private
 
