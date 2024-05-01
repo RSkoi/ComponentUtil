@@ -92,7 +92,7 @@ namespace RSkoi_ComponentUtil.Scene
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
-                        // on loading scene we need to track loadedItem, not _selectedObject
+                        // on loading scene as we need to track loadedItem, not _selectedObject
                         _instance.AddPropertyToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,
