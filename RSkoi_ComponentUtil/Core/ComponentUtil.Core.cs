@@ -14,13 +14,15 @@ namespace RSkoi_ComponentUtil
         private static GameObject _selectedGO;
         private static Component _selectedComponent;
         private static Studio.ObjectCtrlInfo _selectedObject;
+
+        private static ComponentUtilUI.GenericUIListEntry _selectedTransformUIEntry;
+        private static ComponentUtilUI.GenericUIListEntry _selectedComponentUiEntry;
         #endregion currently selected
 
         /// <summary>
         /// the types ComponentUtil supports
         /// </summary>
-
-        public static readonly List<Type> _supportedTypes =
+        public static readonly HashSet<Type> supportedTypes =
         [
             typeof(float),
             typeof(double),
@@ -47,7 +49,7 @@ namespace RSkoi_ComponentUtil
             _selectedComponent = null;
             _selectedObject = null;
 
-            ComponentUtilUI.ClearAllEntryLists();
+            ComponentUtilUI.ClearAllEntryPools();
         }
 
         /// <summary>
@@ -62,34 +64,42 @@ namespace RSkoi_ComponentUtil
 
             _selectedObject = input;
             FlattenTransformHierarchy(input.guideObject.transformTarget.gameObject);
-            GetAllComponents(_selectedGO);
-            GetAllFieldsAndProperties(_selectedComponent);
+            GetAllComponents(_selectedGO, _selectedTransformUIEntry);
+            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
+        #region internal
         /// <summary>
         /// flatten transform hierarchy of input to list entries
         /// selects first list entry
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>
-        public void FlattenTransformHierarchy(GameObject input)
+        internal void FlattenTransformHierarchy(GameObject input)
         {
             if (input == null)
                 return;
 
-            ComponentUtilUI.ClearEntryListData(ComponentUtilUI._transformListEntries);
-
             Transform[] list = input.GetComponentsInChildren<Transform>();
-            foreach (Transform t in list)
+            ComponentUtilUI.PrepareTransformPool(list.Length);
+            for (int poolIndex = 0; poolIndex < list.Length; poolIndex++)
             {
-                GameObject go = Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._transformListContainer);
-                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.PreConfigureNewGenericUIListEntry(go);
-                uiEntry.EntryName.text = t.name;
-                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedGO(t.gameObject));
-                uiEntry.UiTarget = t;
+                Transform t = list[poolIndex];
 
-                ComponentUtilUI._transformListEntries.Add(t, uiEntry);
+                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.TransformListEntries[poolIndex];
+                uiEntry.EntryName.text = t.name;
+                // remove all (non-persistent) listeners
+                uiEntry.SelfButton.onClick.RemoveAllListeners();
+                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedGO(t.gameObject, uiEntry));
+                // transform ui entries have no parent entry
+                uiEntry.ParentUiEntry = null;
+                uiEntry.UiTarget = t;
+                uiEntry.ResetBgAndChildren();
+                uiEntry.UiGO.SetActive(true);
             }
             _selectedGO = list[0].gameObject;
+            _selectedTransformUIEntry = ComponentUtilUI.TransformListEntries[0];
         }
 
         /// <summary>
@@ -97,38 +107,46 @@ namespace RSkoi_ComponentUtil
         /// selects first list entry
         /// </summary>
         /// <param name="input">selected object to find all components in</param>
-        public void GetAllComponents(GameObject input)
+        /// <param name="inputUi">selected transform ui entry</param>
+        internal void GetAllComponents(GameObject input, ComponentUtilUI.GenericUIListEntry inputUi)
         {
-            if (input == null)
+            if (input == null || inputUi == null)
                 return;
-
-            ComponentUtilUI.ClearEntryListData(ComponentUtilUI._componentListEntries);
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
 
             Component[] list = input.GetComponents(typeof(Component));
-            foreach (Component c in list)
+            ComponentUtilUI.PrepareComponentPool(list.Length);
+            for (int poolIndex = 0; poolIndex < list.Length; poolIndex++)
             {
-                GameObject go = Instantiate(ComponentUtilUI._genericListEntryPrefab, ComponentUtilUI._componentListContainer);
-                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.PreConfigureNewGenericUIListEntry(go);
-                uiEntry.EntryName.text = c.GetType().Name;
-                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedComponent(c));
-                uiEntry.UiTarget = c;
+                Component c = list[poolIndex];
 
-                ComponentUtilUI._componentListEntries.Add(c, uiEntry);
+                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.ComponentListEntries[poolIndex];
+                uiEntry.EntryName.text = c.GetType().Name;
+                // remove all (non-persistent) listeners
+                uiEntry.SelfButton.onClick.RemoveAllListeners();
+                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedComponent(c, uiEntry));
+                uiEntry.ParentUiEntry = inputUi;
+                uiEntry.UiTarget = c;
+                uiEntry.ResetBgAndChildren();
+                uiEntry.UiGO.SetActive(true);
             }
             _selectedComponent = list[0];
+            _selectedComponentUiEntry = ComponentUtilUI.ComponentListEntries[0];
         }
 
         /// <summary>
         /// gets all fields of currently selected component, maps to list entries of different types
         /// </summary>
         /// <param name="input">selected component to list the properties and fields of</param>
-        public void GetAllFieldsAndProperties(Component input)
+        /// <param name="inputUi">selected component ui entry</param>
+        internal void GetAllFieldsAndProperties(Component input, ComponentUtilUI.GenericUIListEntry inputUi)
         {
-            if (input == null)
+            if (input == null || inputUi == null)
                 return;
 
+            // destroying UI objects is really bad for performance
+            // TODO: implement pooling for property/field elements, remember to remove onClick listeners
             ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._componentPropertyListEntries);
             ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._componentFieldListEntries);
 
@@ -149,7 +167,7 @@ namespace RSkoi_ComponentUtil
                 if (p.GetGetMethod() == null)
                     continue;
 
-                ConfigureComponentEntry(input, p, null);
+                ConfigureComponentEntry(_selectedComponentUiEntry, input, p, null);
             }
 
             foreach (FieldInfo f in input
@@ -161,26 +179,25 @@ namespace RSkoi_ComponentUtil
                 if (!f.FieldType.IsValueType)
                     continue;
 
-                ConfigureComponentEntry(input, null, f);
+                ConfigureComponentEntry(_selectedComponentUiEntry, input, null, f);
             }
-
-            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
+        #endregion internal
 
         #region private
-        private void ConfigureComponentEntry(Component input, PropertyInfo p, FieldInfo f)
+        private void ConfigureComponentEntry(ComponentUtilUI.GenericUIListEntry parentUiEntry, Component input, PropertyInfo p, FieldInfo f)
         {
             bool isProperty = p != null;
             bool isField = f != null;
             // this should never be the case
             if ((!isProperty && !isField) || (isProperty && isField))
             {
-                logger.LogError("ConfigureComponentEntry: use either PropertyInfo or FieldInfo");
+                logger.LogError("ConfigureComponentEntry: use either PropertyInfo OR FieldInfo");
                 return;
             }
             
             Type type = isProperty ? p.PropertyType : f.FieldType;
-            if (!type.IsEnum && !_supportedTypes.Contains(type))
+            if (!type.IsEnum && !supportedTypes.Contains(type))
                 return;
 
             // properties without set method will be non-interactable
@@ -194,12 +211,17 @@ namespace RSkoi_ComponentUtil
 
             object value = GetValueFieldOrProperty(input, p, f);
             if (value == null)
+            {
+                logger.LogWarning($"Could not find property or field on {input.transform.name}" +
+                    $".{input.name} with name {propName}, destroying entry and returning");
+                Destroy(entry);
                 return;
+            }
 
             if (type.IsEnum)
-                ConfigDropdown(entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+                ConfigDropdown(parentUiEntry, entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
             else if (type.Equals(typeof(bool)))
-                ConfigToggle(entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+                ConfigToggle(parentUiEntry, entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
             else if (type.Equals(typeof(Vector2)) || type.Equals(typeof(Vector3)) || type.Equals(typeof(Vector4)))
             {
                 // TODO: how to handle Vectors?
@@ -219,21 +241,24 @@ namespace RSkoi_ComponentUtil
                 return;
             }
             else // default is decimal input field
-                ConfigInput(entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+                ConfigInput(parentUiEntry, entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value);
+
+            uiEntry.ResetBgAndChildren();
 
             if (isProperty)
-                ComponentUtilUI._componentPropertyListEntries.Add(entry, uiEntry);
+                ComponentUtilUI._componentPropertyListEntries.Add(uiEntry);
             else
-                ComponentUtilUI._componentFieldListEntries.Add(entry, uiEntry);
+                ComponentUtilUI._componentFieldListEntries.Add(uiEntry);
 
             PropertyKey key = new(_selectedObject, input.gameObject, input);
             // make bg green if value is edited
-            IterateAndCheck(key, uiEntry, propName, value);
+            CheckTrackedAndMarkAsEdited(key, uiEntry, propName, value);
 
             ConfigReset(key, uiEntry, input, p, f, propName, setMethodIsPublic, isProperty);
         }
 
         private void ConfigDropdown(
+            ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             Component input,
@@ -288,10 +313,11 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return dropdownField.value;
             };
-            uiEntry.UiComponentTarget = dropdownField;
+            uiEntry.ParentUiEntry = parentUiEntry;
         }
 
         private void ConfigToggle(
+            ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             Component input,
@@ -325,10 +351,11 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return toggleField.isOn;
             };
-            uiEntry.UiComponentTarget = toggleField;
+            uiEntry.ParentUiEntry = parentUiEntry;
         }
 
         private void ConfigInput(
+            ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             Component input,
@@ -365,7 +392,7 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return inputField.text;
             };
-            uiEntry.UiComponentTarget = inputField;
+            uiEntry.ParentUiEntry = parentUiEntry;
         }
 
         private void ConfigReset(
@@ -390,39 +417,48 @@ namespace RSkoi_ComponentUtil
                 else
                     f.SetValue(input, defaultValue);
 
-                bool removed = RemovePropertyFromTracker(key, propName);
+                RemovePropertyFromTracker(key, propName);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
-                uiEntry.ResetBgColor();
-
-                ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
+                uiEntry.SetBgColorDefault();
             });
         }
 
-        private void IterateAndCheck(
+        private void CheckTrackedAndMarkAsEdited(
             PropertyKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             string propName,
             object value)
         {
-            if (PropertyIsTracked(key, propName))
+            if (!PropertyIsTracked(key, propName))
+                return;
+            
+            object defaultValue = GetTrackedDefaultValue(key, propName);
+            if (defaultValue == null)
             {
-                object defaultValue = GetTrackedDefaultValue(key, propName);
-                if (defaultValue.ToString() != value.ToString())
-                    uiEntry.SetBgColorEdited();
+                logger.LogError($"CheckTrackedAndMarkAsEdited: no defaultValue for property {propName} found or value is null");
+                return;
             }
+
+            if (defaultValue.ToString() != value.ToString())
+                uiEntry.SetBgColorEdited();
         }
 
-        private void ChangeSelectedGO(GameObject target)
+        private void ChangeSelectedGO(GameObject target, ComponentUtilUI.GenericUIListEntry uiEntry)
         {
             _selectedGO = target;
-            GetAllComponents(_selectedGO);
-            GetAllFieldsAndProperties(_selectedComponent);
+            _selectedTransformUIEntry = uiEntry;
+            GetAllComponents(_selectedGO, _selectedTransformUIEntry);
+            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
         }
 
-        private void ChangeSelectedComponent(Component target)
+        private void ChangeSelectedComponent(Component target, ComponentUtilUI.GenericUIListEntry uiEntry)
         {
             _selectedComponent = target;
-            GetAllFieldsAndProperties(_selectedComponent);
+            _selectedComponentUiEntry = uiEntry;
+
+            uiEntry.ResetBgAndChildren();
+
+            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
         }
         #endregion private
 
@@ -447,7 +483,9 @@ namespace RSkoi_ComponentUtil
                 return p.GetValue(input, null);
             if (isField)
                 return f.GetValue(input);
+
             // this should never be the case
+            logger.LogError("GetValueFieldOrProperty received neither PropertyInfo nor FieldInfo");
             return null;
         }
         #endregion internal getters
@@ -466,8 +504,6 @@ namespace RSkoi_ComponentUtil
                 p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
             }
             catch (Exception e) { logger.LogError(e); }
-
-            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         internal void SetPropertyValueInt(PropertyInfo p, int value, Component input, bool track = true)
@@ -481,8 +517,6 @@ namespace RSkoi_ComponentUtil
                 p.SetValue(input, value, null);
             }
             catch (Exception e) { logger.LogError(e); }
-
-            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         internal void SetFieldValue(FieldInfo f, string value, Component input, bool track = true)
@@ -496,8 +530,6 @@ namespace RSkoi_ComponentUtil
                 f.SetValue(input, Convert.ChangeType(value, f.FieldType));
             }
             catch (Exception e) { logger.LogError(e); }
-
-            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
 
         internal void SetFieldValueInt(FieldInfo f, int value, Component input, bool track = true)
@@ -511,8 +543,6 @@ namespace RSkoi_ComponentUtil
                 f.SetValue(input, value);
             }
             catch (Exception e) { logger.LogError(e); }
-
-            ComponentUtilUI.UpdateTransformsAndComponentsBg(_tracker.Keys);
         }
         #endregion internal setters
     }

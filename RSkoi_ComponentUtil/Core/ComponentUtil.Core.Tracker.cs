@@ -114,6 +114,7 @@ namespace RSkoi_ComponentUtil
         {
             if (_tracker.ContainsKey(key))
                 return _tracker[key][propertyName].DefaultValue;
+            // assumes null as magic value, this could cause problems
             return null;
         }
 

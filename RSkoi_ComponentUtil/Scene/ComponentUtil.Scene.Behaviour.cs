@@ -37,7 +37,7 @@ namespace RSkoi_ComponentUtil.Scene
                 SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict
                     = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerDataSO>>>((byte[])dict);
 
-                PrintSavedDict(deserializedTrackerDataDict);
+                //PrintSavedDict(deserializedTrackerDataDict);
 
                 StartCoroutine(OnSceneLoadRoutine(deserializedTrackerDataDict, loadedItems));
             }
@@ -47,7 +47,7 @@ namespace RSkoi_ComponentUtil.Scene
             SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
-            yield return new WaitForSeconds(WAIT_TIME_AFTER_LOADING_SCENE_SECONDS);
+            yield return new WaitForSecondsRealtime(WAIT_TIME_AFTER_LOADING_SCENE_SECONDS);
 
             // this is beyond horrid
             foreach (var entry in deserializedTrackerDataDict)
@@ -80,7 +80,7 @@ namespace RSkoi_ComponentUtil.Scene
                         object value = _instance.GetValueFieldOrProperty(component, p, f);
                         if (value == null)
                         {
-                            logger.LogWarning($"Could not find {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
+                            logger.LogWarning($"Could not find property or field on {loadedItemEditTransform.name}" +
                                 $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
                             continue;
                         }
@@ -92,7 +92,7 @@ namespace RSkoi_ComponentUtil.Scene
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
-                        // because SetPropertyValue on loading scene we need to track loadedItem, not _selectedObject
+                        // on loading scene we need to track loadedItem, not _selectedObject
                         _instance.AddPropertyToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,
@@ -115,6 +115,9 @@ namespace RSkoi_ComponentUtil.Scene
                     }
                 }
             }
+
+            if (ComponentUtilUI._canvasContainer.activeSelf)
+                ComponentUtilUI.HideWindow();
         }
 
         protected override void OnSceneSave()
@@ -156,7 +159,7 @@ namespace RSkoi_ComponentUtil.Scene
             }
             data.data.Add(name, MessagePackSerializer.Serialize(savedDict));
 
-            PrintSavedDict(savedDict);
+            //PrintSavedDict(savedDict);
 
             SetExtendedData(data);
         }

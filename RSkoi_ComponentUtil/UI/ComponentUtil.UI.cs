@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 namespace RSkoi_ComponentUtil.UI
 {
-    internal static class ComponentUtilUI
+    internal static partial class ComponentUtilUI
     {
         #region containers
         internal static GameObject _canvasContainer;
@@ -40,17 +40,10 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _componentPropertyListContainer;
         #endregion scroll view content containers
 
+        #region entry bg colors
         private static readonly Color ENTRY_BG_COLOR_DEFAULT = Color.white;
         private static readonly Color ENTRY_BG_COLOR_EDITED = Color.green;
-
-        #region list entries
-        // Dictionary<Target, Data>
-        internal readonly static Dictionary<Transform, GenericUIListEntry> _transformListEntries = [];
-        internal readonly static Dictionary<Component, GenericUIListEntry> _componentListEntries = [];
-        // Dictionary<ListEntryGO, Data>
-        internal readonly static Dictionary<GameObject, PropertyUIEntry> _componentPropertyListEntries = [];
-        internal readonly static Dictionary<GameObject, PropertyUIEntry> _componentFieldListEntries = [];
-        #endregion list entries
+        #endregion entry bg colors
 
         #region selected text
         internal static Text _componentListSelectedGOText;
@@ -61,7 +54,7 @@ namespace RSkoi_ComponentUtil.UI
         private static float _baseCanvasReferenceResolutionY = 600f;
 
         /// <summary>
-        /// initializes the UI
+        /// initializes the UI, call only once
         /// </summary>
         public static void Init()
         {
@@ -85,13 +78,57 @@ namespace RSkoi_ComponentUtil.UI
             }
         }
 
-        #region internal
-        internal static void UpdateTransformsAndComponentsBg(IEnumerable<ComponentUtil.PropertyKey> propertyKeys)
+        /// <summary>
+        /// shows the ui, sets referenceResolution of CanvasScaler
+        /// </summary>
+        public static void ShowWindow()
         {
-            ResetTransformsAndComponentsBg();
+            _canvasContainer.gameObject.SetActive(true);
+            float uiScale = ComponentUtil.UiScale.Value;
+            // aiiee float division, what could go wrong
+            _canvasScaler.referenceResolution = new(_canvasScaler.referenceResolution.x, _baseCanvasReferenceResolutionY / uiScale);
+        }
 
-            if (propertyKeys != null && propertyKeys.Any())
-                MarkTransformsAndComponentsBgAsEdited(propertyKeys);
+        /// <summary>
+        /// hides the ui
+        /// </summary>
+        public static void HideWindow()
+        {
+            _canvasContainer.gameObject.SetActive(false);
+        }
+
+        #region internal
+        internal static void TraverseAndSetEditedParents()
+        {
+            foreach (var key in ComponentUtil._tracker.Keys)
+            {
+                Transform t = key.ObjCtrlInfo.guideObject.transformTarget;
+                Component c = key.Component;
+
+                // TODO: very slow iteration until entries are found, improve with hashing of UiTarget/t/c?
+
+                foreach (var entry in TransformListEntries)
+                {
+                    if (entry.UiGO.activeSelf
+                        && entry.BgImage?.color != ENTRY_BG_COLOR_EDITED
+                        && (Transform)entry.UiTarget == t)
+                    {
+                        entry.SetBgColorEdited(null);
+                        break;
+                    }
+                }
+
+                foreach (var entry in ComponentListEntries)
+                {
+                    if (entry.UiGO.activeSelf
+                        && entry.BgImage?.color != ENTRY_BG_COLOR_EDITED
+                        && (Component)entry.UiTarget == c)
+                    {
+                        entry.SetBgColorEdited(null);
+                        break;
+                    }
+                }
+            }
         }
 
         internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
@@ -109,7 +146,7 @@ namespace RSkoi_ComponentUtil.UI
             Button resetButton = entry.transform.Find("ResetButton").GetComponent<Button>();
             Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
             Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
-            return new(resetButton, entryname, bgImage, entry, usedPrefab, null, null);
+            return new(resetButton, entryname, bgImage, null, entry, usedPrefab, null);
         }
 
         internal static GenericUIListEntry PreConfigureNewGenericUIListEntry(GameObject entry)
@@ -117,7 +154,7 @@ namespace RSkoi_ComponentUtil.UI
             Button selfButton = entry.GetComponent<Button>();
             Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
             Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
-            return new(selfButton, entryname, bgImage, entry, null);
+            return new(selfButton, entryname, bgImage, entry, null, null);
         }
 
         internal static void UpdateUISelectedText(Text uiText, string selectedName, char separator = ':')
@@ -126,32 +163,6 @@ namespace RSkoi_ComponentUtil.UI
             string newText = uiText.text.Substring(0, splitIndex + 1);
             newText += " <b>" + selectedName + "</b>";
             uiText.text = newText;
-        }
-
-        internal static void ClearEntryListGO<T>(Dictionary<GameObject, T> list)
-        {
-            // destroying UI objects is really bad for performance
-            // TODO: implement pooling, remember to remove onClick listeners
-            foreach (var t in list)
-                GameObject.Destroy(t.Key);
-            list.Clear();
-        }
-
-        internal static void ClearEntryListData<T>(Dictionary<T, GenericUIListEntry> list)
-        {
-            // destroying UI objects is really bad for performance
-            // TODO: implement pooling, remember to remove onClick listeners
-            foreach (var t in list)
-                GameObject.Destroy(t.Value.UiGO);
-            list.Clear();
-        }
-
-        internal static void ClearAllEntryLists()
-        {
-            ClearEntryListData(_transformListEntries);
-            ClearEntryListData(_componentListEntries);
-            ClearEntryListGO(_componentPropertyListEntries);
-            ClearEntryListGO(_componentFieldListEntries);
         }
         #endregion internal
 
@@ -232,41 +243,6 @@ namespace RSkoi_ComponentUtil.UI
             group.blocksRaycasts = true;
             group.alpha = 1.0f;
         }
-
-        private static void ShowWindow()
-        {
-            _canvasContainer.gameObject.SetActive(true);
-            float uiScale = ComponentUtil.UiScale.Value;
-            // aiiee float division, what could go wrong
-            _canvasScaler.referenceResolution = new(_canvasScaler.referenceResolution.x, _baseCanvasReferenceResolutionY / uiScale);
-        }
-
-        private static void HideWindow()
-        {
-            _canvasContainer.gameObject.SetActive(false);
-        }
-
-        private static void ResetTransformsAndComponentsBg()
-        {
-            foreach (var entry in _transformListEntries)
-                entry.Value.ResetBgColor();
-            foreach (var entry in _componentListEntries)
-                entry.Value.ResetBgColor();
-        }
-
-        private static void MarkTransformsAndComponentsBgAsEdited(IEnumerable<ComponentUtil.PropertyKey> propertyKeys)
-        {
-            foreach (var entry in propertyKeys)
-            {
-                Transform t = entry.Component.transform;
-                if (_transformListEntries.ContainsKey(t))
-                    _transformListEntries[t].SetBgColorEdited();
-
-                Component c = entry.Component;
-                if (_componentListEntries.ContainsKey(c))
-                    _componentListEntries[c].SetBgColorEdited();
-            }
-        }
         #endregion private
 
         #region internal UI container classes
@@ -275,24 +251,46 @@ namespace RSkoi_ComponentUtil.UI
             Text entryName,
             Image bgImage,
             GameObject instantiatedUiGo,
-            object uiTarget)
+            object uiTarget,
+            GenericUIListEntry parentUiEntry)
         {
+            public HashSet<GenericUIListEntry> editedChildren = [];
+
             public Button SelfButton = selfButton;
             public Text EntryName = entryName;
             public Image BgImage = bgImage;
             public GameObject UiGO = instantiatedUiGo;
             public object UiTarget = uiTarget;
+            public GenericUIListEntry ParentUiEntry = parentUiEntry;
 
-            public void SetBgColorEdited()
+            public void SetBgColorEdited(GenericUIListEntry child)
             {
-                if (BgImage != null)
-                    BgImage.color = ENTRY_BG_COLOR_EDITED;
+                if (child != null)
+                    editedChildren.Add(child); // hashset has no duplicates
+
+                if (BgImage.color == ENTRY_BG_COLOR_EDITED)
+                    return;
+
+                BgImage.color = ENTRY_BG_COLOR_EDITED;
+                ParentUiEntry?.SetBgColorEdited(this);
             }
 
-            public void ResetBgColor()
+            public void SetBgColorDefault(GenericUIListEntry child)
             {
-                if (BgImage != null)
-                    BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+                if (child != null)
+                    editedChildren.Remove(child);
+
+                if (editedChildren.Count > 0)
+                    return;
+
+                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+                ParentUiEntry?.SetBgColorDefault(this);
+            }
+
+            public void ResetBgAndChildren()
+            {
+                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+                editedChildren.Clear();
             }
         }
 
@@ -300,32 +298,47 @@ namespace RSkoi_ComponentUtil.UI
             Button resetButton,
             Text propertyName,
             Image bgImage,
+            GenericUIListEntry parentUiEntry,
             GameObject instantiatedUiGo,
             GameObject usedPrefab,
-            object uiComponentTarget,
             Func<object, object> uiComponentSetValueDelegateForReset)
+            : GenericUIListEntry(null, propertyName, bgImage, instantiatedUiGo, null, parentUiEntry)
         {
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
-            public Image BgImage = bgImage;
-            public GameObject UiGO = instantiatedUiGo;
+            public new Image BgImage = bgImage;
+            public new GameObject UiGO = instantiatedUiGo;
+            // the parent ui list entry, here a component entry
+            public new GenericUIListEntry ParentUiEntry = parentUiEntry;
             // could be useful in determining what kind of property entry we are dealing with
             public GameObject UsedPrefab = usedPrefab;
-            // currently not actively read by anything
-            public object UiComponentTarget = uiComponentTarget;
             // this delegate is used by the reset button
             public Func<object, object> UiComponentSetValueDelegateForReset = uiComponentSetValueDelegateForReset;
 
             public void SetBgColorEdited()
             {
-                if (BgImage != null)
-                    BgImage.color = ENTRY_BG_COLOR_EDITED;
+                BgImage.color = ENTRY_BG_COLOR_EDITED;
+
+                // this must never be the case for property/field entries
+                if (ParentUiEntry == null)
+                {
+                    ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
+                    return;
+                }
+                ParentUiEntry.SetBgColorEdited(this);
             }
 
-            public void ResetBgColor()
+            public void SetBgColorDefault()
             {
-                if (BgImage != null)
-                    BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+
+                // this must never be the case for property/field entries
+                if (ParentUiEntry == null)
+                {
+                    ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
+                    return;
+                }
+                ParentUiEntry.SetBgColorDefault(this);
             }
 
             public void SetUiComponentTargetValue(object value)
