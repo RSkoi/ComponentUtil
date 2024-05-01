@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net35</TargetFramework>
     <AssemblyName>RSkoi_ComponentUtil</AssemblyName>
-    <Description>My first plugin</Description>
+    <Description>Allows for inspection and editing of primitive types on components within a scene.</Description>
     <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
