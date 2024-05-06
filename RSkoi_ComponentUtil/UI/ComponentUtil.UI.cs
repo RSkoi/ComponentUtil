@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using VirtualList;
 
 namespace RSkoi_ComponentUtil.UI
 {
@@ -36,6 +37,7 @@ namespace RSkoi_ComponentUtil.UI
 
         #region scroll view content containers
         internal static Transform _transformListContainer;
+        internal static VirtualGridList _transformListVirtual;
         internal static Transform _componentListContainer;
         internal static Transform _componentPropertyListContainer;
         #endregion scroll view content containers
@@ -83,7 +85,7 @@ namespace RSkoi_ComponentUtil.UI
         /// </summary>
         public static void ShowWindow()
         {
-            _canvasContainer.gameObject.SetActive(true);
+            _canvasContainer.SetActive(true);
             float uiScale = ComponentUtil.UiScale.Value;
             _canvasScaler.referenceResolution = new(
                 _canvasScaler.referenceResolution.x,
@@ -95,10 +97,16 @@ namespace RSkoi_ComponentUtil.UI
         /// </summary>
         public static void HideWindow()
         {
-            _canvasContainer.gameObject.SetActive(false);
+            _canvasContainer.SetActive(false);
         }
 
         #region internal
+        internal static void SetTransformListSource()
+        {
+            //SimpleSource<> source = new();
+            //_transformListVirtual.SetSource(input.guideObject.transformTarget.);
+        }
+
         internal static void TraverseAndSetEditedParents()
         {
             foreach (var key in ComponentUtil._tracker.Keys)
@@ -196,9 +204,11 @@ namespace RSkoi_ComponentUtil.UI
 
             // scroll view content containers
             _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
+            _transformListVirtual = SetupVirtualList(_transformListContainer, _transformWindow.Find("TransformList/TransformEntryScrollView/"));
+
             _componentListContainer = _componentWindow.Find("ComponentList/ComponentEntryScrollView/Viewport/Content");
             _componentPropertyListContainer = _inspectorWindow.Find("ComponentPropertyList/ComponentPropertyEntryScrollView/Viewport/Content");
-
+            
             // window tooltips
             _componentListSelectedGOText = _componentWindow.Find("ComponentList/ComponentText").GetComponent<Text>();
             _componentPropertyListSelectedComponentText = _inspectorWindow.Find("ComponentPropertyList/ComponentText").GetComponent<Text>();
@@ -215,6 +225,20 @@ namespace RSkoi_ComponentUtil.UI
             SetupDraggable(_inspectorWindow);
 
             _baseCanvasReferenceResolutionY = _canvasScaler.referenceResolution.y;
+        }
+
+        private static VirtualGridList SetupVirtualList(Transform listContainer, Transform scrollViewTransform)
+        {
+            VirtualGridList v = listContainer.gameObject.AddComponent<VirtualGridList>();
+            v.scrollRect = scrollViewTransform.GetComponent<ScrollRect>();
+            v.tilePrefab = _genericListEntryPrefab;
+            v.buffer = 0;
+            v.padding.left = 2;
+            v.axis = VirtualGridList.Axis.Vertical;
+            v.cellSize = new(204, 22);
+            v.spacing = new(0, 0);
+            v.limit = 1;
+            return v;
         }
 
         private static void SetupDraggable(Transform windowContainer)

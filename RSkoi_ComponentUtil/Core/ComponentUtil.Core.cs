@@ -67,6 +67,8 @@ namespace RSkoi_ComponentUtil
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
+            ComponentUtilUI.SetTransformListSource();
+
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
