@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using VirtualList;
+using RSkoi_ComponentUtil.UI.VirtualList;
 
 namespace RSkoi_ComponentUtil.UI
 {
@@ -101,12 +102,6 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         #region internal
-        internal static void SetTransformListSource()
-        {
-            //SimpleSource<> source = new();
-            //_transformListVirtual.SetSource(input.guideObject.transformTarget.);
-        }
-
         internal static void TraverseAndSetEditedParents()
         {
             foreach (var key in ComponentUtil._tracker.Keys)
@@ -238,6 +233,9 @@ namespace RSkoi_ComponentUtil.UI
             v.cellSize = new(204, 22);
             v.spacing = new(0, 0);
             v.limit = 1;
+
+            v.SetSource(new GenericListEntrySource<string, GenericListEntryView>(_cachedTransformNames));
+
             return v;
         }
 
