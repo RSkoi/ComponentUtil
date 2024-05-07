@@ -9,7 +9,36 @@ namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
+        // keeps track of properties and fields and their default values
         internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _tracker = [];
+
+        /// <summary>
+        /// compiles a HashSet of all tracked transforms (from the PropertyKeys)
+        /// </summary>
+        internal static HashSet<Transform> TrackedTransforms
+        {
+            get
+            {
+                HashSet<Transform> res = [];
+                foreach (PropertyKey key in _tracker.Keys)
+                    res.Add(key.Go.transform);
+                return res;
+            }
+        }
+
+        /// <summary>
+        /// compiles a HashSet of all tracked components (from the PropertyKeys)
+        /// </summary>
+        internal static HashSet<Component> TrackedComponents
+        {
+            get
+            {
+                HashSet<Component> res = [];
+                foreach (PropertyKey key in _tracker.Keys)
+                    res.Add(key.Component);
+                return res;
+            }
+        }
 
         #region internal
         internal void ClearTracker()

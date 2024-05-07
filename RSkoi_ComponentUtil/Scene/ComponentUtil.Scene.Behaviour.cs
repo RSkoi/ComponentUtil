@@ -23,10 +23,7 @@ namespace RSkoi_ComponentUtil.Scene
         protected override void OnSceneLoad(SceneOperationKind operation, ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
             if (operation == SceneOperationKind.Clear || operation == SceneOperationKind.Load)
-            {
-                _instance.ClearTracker();
-                _instance.Reset();
-            }
+                _instance.ResetState();
 
             PluginData data = GetExtendedData();
             if (data == null || operation == SceneOperationKind.Clear)
@@ -116,7 +113,7 @@ namespace RSkoi_ComponentUtil.Scene
                 }
             }
 
-            if (ComponentUtilUI._canvasContainer.activeSelf)
+            if (ComponentUtilUI.CanvasIsActive)
                 ComponentUtilUI.HideWindow();
         }
 
@@ -170,7 +167,7 @@ namespace RSkoi_ComponentUtil.Scene
             if (objectCtrlInfo.Count != 1)
                 return;
 
-            if (ComponentUtilUI._canvasContainer.activeSelf)
+            if (ComponentUtilUI.CanvasIsActive)
                 _instance.Entry(objectCtrlInfo[0]);
 
             base.OnObjectsSelected(objectCtrlInfo);

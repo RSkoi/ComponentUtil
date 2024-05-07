@@ -5,24 +5,12 @@ using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using VirtualList;
-using RSkoi_ComponentUtil.UI.VirtualList;
+using UnityEngine.Events;
 
 namespace RSkoi_ComponentUtil.UI
 {
     internal static partial class ComponentUtilUI
     {
-        #region containers
-        internal static GameObject _canvasContainer;
-        internal static CanvasScaler _canvasScaler;
-
-        internal static Transform _transformWindow;
-        internal static CanvasGroup _transformWindowCanvasGroup;
-        internal static Transform _componentWindow;
-        internal static CanvasGroup _componentWindowCanvasGroup;
-        internal static Transform _inspectorWindow;
-        #endregion
-
         #region prefabs
         private static GameObject _canvasPrefab;
         internal static GameObject _genericListEntryPrefab;
@@ -31,10 +19,27 @@ namespace RSkoi_ComponentUtil.UI
         internal static GameObject _componentPropertyBoolEntryPrefab;
         #endregion prefabs
 
-        #region hide buttons
-        private static Button _hideTransformListButton;
-        private static Button _hideComponentListButton;
-        #endregion hide buttons
+        #region canvas and containers
+        internal static GameObject _canvasContainer;
+        internal static Canvas _canvas;
+        internal static CanvasScaler _canvasScaler;
+        /// <summary>
+        /// use this to determine whether the UI is visible
+        /// </summary>
+        public static bool CanvasIsActive
+        {
+            get
+            {
+                if (_canvas != null)
+                    return _canvas.enabled;
+                return false;
+            }
+        }
+
+        internal static Transform _transformWindow;
+        internal static Transform _componentWindow;
+        internal static Transform _inspectorWindow;
+        #endregion canvas and containers
 
         #region scroll view content containers
         internal static Transform _transformListContainer;
@@ -42,6 +47,11 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _componentListContainer;
         internal static Transform _componentPropertyListContainer;
         #endregion scroll view content containers
+
+        #region hide buttons
+        private static Button _hideTransformListButton;
+        private static Button _hideComponentListButton;
+        #endregion hide buttons
 
         #region entry bg colors
         private static readonly Color ENTRY_BG_COLOR_DEFAULT = Color.white;
@@ -52,6 +62,16 @@ namespace RSkoi_ComponentUtil.UI
         internal static Text _componentListSelectedGOText;
         internal static Text _componentPropertyListSelectedComponentText;
         #endregion selected text
+
+        #region pages
+        private static Text _currentPageTransformText;
+        private static Button _pageLastTransformButton;
+        private static Button _pageNextTransformButton;
+
+        private static Text _currentPageComponentText;
+        private static Button _pageLastComponentButton;
+        private static Button _pageNextComponentButton;
+        #endregion pages
 
         // this will be overwritten in InstantiateUI()
         private static float _baseCanvasReferenceResolutionY = 600f;
@@ -70,7 +90,7 @@ namespace RSkoi_ComponentUtil.UI
         /// </summary>
         public static void ToggleWindow()
         {
-            if (_canvasContainer.activeSelf)
+            if (CanvasIsActive)
                 HideWindow();
             else
             {
@@ -86,7 +106,7 @@ namespace RSkoi_ComponentUtil.UI
         /// </summary>
         public static void ShowWindow()
         {
-            _canvasContainer.SetActive(true);
+            _canvas.enabled = true;
             float uiScale = ComponentUtil.UiScale.Value;
             _canvasScaler.referenceResolution = new(
                 _canvasScaler.referenceResolution.x,
@@ -98,40 +118,24 @@ namespace RSkoi_ComponentUtil.UI
         /// </summary>
         public static void HideWindow()
         {
-            _canvasContainer.SetActive(false);
+            _canvas.enabled = false;
         }
 
         #region internal
         internal static void TraverseAndSetEditedParents()
         {
-            foreach (var key in ComponentUtil._tracker.Keys)
-            {
-                Transform t = key.Go.transform;
-                Component c = key.Component;
+            HashSet<Transform> trackedTransforms = ComponentUtil.TrackedTransforms;
+            HashSet<Component> trackedComponents = ComponentUtil.TrackedComponents;
 
-                // TODO: very slow iteration until entries are found, improve with hashing of UiTarget/t/c?
-                foreach (var entry in TransformListEntries)
-                {
-                    if (entry.UiGO.activeSelf
-                        && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
-                        && (Transform)entry.UiTarget == t)
-                    {
-                        entry.SetBgColorEdited(null);
-                        break;
-                    }
-                }
+            foreach (var entry in TransformListEntries)
+                if (entry.UiGO.activeSelf && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
+                    && trackedTransforms.Contains((Transform)entry.UiTarget))
+                    entry.SetBgColorEdited(null);
 
-                foreach (var entry in ComponentListEntries)
-                {
-                    if (entry.UiGO.activeSelf
-                        && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
-                        && (Component)entry.UiTarget == c)
-                    {
-                        entry.SetBgColorEdited(null);
-                        break;
-                    }
-                }
-            }
+            foreach (var entry in ComponentListEntries)
+                if (entry.UiGO.activeSelf && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
+                    && trackedComponents.Contains((Component)entry.UiTarget))
+                    entry.SetBgColorEdited(null);
         }
 
         internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
@@ -167,6 +171,32 @@ namespace RSkoi_ComponentUtil.UI
             newText += " <b>" + selectedName + "</b>";
             uiText.text = newText;
         }
+
+        internal static void ResetPageNumbers()
+        {
+            ResetPageNumberTransform();
+            ResetPageNumberComponent();
+        }
+
+        internal static void UpdatePageNumberTransform(int pageNumber)
+        {
+            _currentPageTransformText.text = pageNumber.ToString();
+        }
+
+        internal static void ResetPageNumberTransform()
+        {
+            _currentPageTransformText.text = "0";
+        }
+
+        internal static void UpdatePageNumberComponent(int pageNumber)
+        {
+            _currentPageComponentText.text = pageNumber.ToString();
+        }
+
+        internal static void ResetPageNumberComponent()
+        {
+            _currentPageComponentText.text = "0";
+        }
         #endregion internal
 
         #region private
@@ -188,14 +218,13 @@ namespace RSkoi_ComponentUtil.UI
         private static void InstantiateUI()
         {
             _canvasContainer = GameObject.Instantiate(_canvasPrefab);
-            _canvasContainer.SetActive(false);
+            _canvas = _canvasContainer.GetComponent<Canvas>();
+            _canvas.enabled = false;
             // window containers
             _canvasScaler = _canvasContainer.GetComponent<CanvasScaler>();
             _transformWindow = _canvasContainer.transform.Find("TransformListContainer");
             _componentWindow = _canvasContainer.transform.Find("ComponentListContainer");
             _inspectorWindow = _canvasContainer.transform.Find("ComponentInspectorContainer");
-            _transformWindowCanvasGroup = _transformWindow.GetComponent<CanvasGroup>();
-            _componentWindowCanvasGroup = _componentWindow.GetComponent<CanvasGroup>();
 
             // scroll view content containers
             _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
@@ -210,9 +239,37 @@ namespace RSkoi_ComponentUtil.UI
 
             // buttons to hide windows
             _hideTransformListButton = _componentWindow.Find("ToggleTransformListButton").GetComponent<Button>();
-            _hideTransformListButton.onClick.AddListener(() => ToggleCanvasGroup(_transformWindowCanvasGroup));
+            _hideTransformListButton.onClick.AddListener(() => ToggleSubWindow(_transformWindow));
             _hideComponentListButton = _inspectorWindow.Find("ToggleComponentListButton").GetComponent<Button>();
-            _hideComponentListButton.onClick.AddListener(() => ToggleCanvasGroup(_componentWindowCanvasGroup));
+            _hideComponentListButton.onClick.AddListener(() => ToggleSubWindow(_componentWindow));
+
+            // page buttons
+            Transform page = _transformWindow.Find("TransformList/PageContainer");
+            _currentPageTransformText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            _pageLastTransformButton = page.Find("PageLast").GetComponent<Button>();
+            _pageNextTransformButton = page.Find("PageNext").GetComponent<Button>();
+            SetupPage(
+                _currentPageTransformText,
+                _pageLastTransformButton,
+                ComponentUtil._instance.LastTransformPage,
+                _pageNextTransformButton,
+                ComponentUtil._instance.NextTransformPage);
+
+            page = _componentWindow.Find("ComponentList/PageContainer");
+            _currentPageComponentText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            _pageLastComponentButton = page.Find("PageLast").GetComponent<Button>();
+            _pageNextComponentButton = page.Find("PageNext").GetComponent<Button>();
+            SetupPage(
+                _currentPageComponentText,
+                _pageLastComponentButton,
+                ComponentUtil._instance.LastComponentPage,
+                _pageNextComponentButton,
+                ComponentUtil._instance.NextComponentPage);
+
+            // prepare pools
+            int itemsPerPage = ComponentUtil.ItemsPerPageValue;
+            PrepareTransformPool(itemsPerPage);
+            PrepareComponentPool(itemsPerPage);
 
             // draggables
             SetupDraggable(_transformWindow);
@@ -222,21 +279,11 @@ namespace RSkoi_ComponentUtil.UI
             _baseCanvasReferenceResolutionY = _canvasScaler.referenceResolution.y;
         }
 
-        private static VirtualGridList SetupVirtualList(Transform listContainer, Transform scrollViewTransform)
+        private static void SetupPage(Text label, Button lastButton, UnityAction lastCall, Button nextButton, UnityAction nextCall)
         {
-            VirtualGridList v = listContainer.gameObject.AddComponent<VirtualGridList>();
-            v.scrollRect = scrollViewTransform.GetComponent<ScrollRect>();
-            v.tilePrefab = _genericListEntryPrefab;
-            v.buffer = 0;
-            v.padding.left = 2;
-            v.axis = VirtualGridList.Axis.Vertical;
-            v.cellSize = new(204, 22);
-            v.spacing = new(0, 0);
-            v.limit = 1;
-
-            v.SetSource(new GenericListEntrySource<string, GenericListEntryView>(_cachedTransformNames));
-
-            return v;
+            label.text = "0";
+            lastButton.onClick.AddListener(lastCall);
+            nextButton.onClick.AddListener(nextCall);
         }
 
         private static void SetupDraggable(Transform windowContainer)
@@ -245,25 +292,12 @@ namespace RSkoi_ComponentUtil.UI
             draggable.target = windowContainer.GetComponent<RectTransform>();
         }
 
-        private static void ToggleCanvasGroup(CanvasGroup group)
+        private static void ToggleSubWindow(Transform container)
         {
-            if (group.blocksRaycasts)
-                HideCanvasGroup(group);
+            if (container.gameObject.activeSelf)
+                container.gameObject.SetActive(false);
             else
-                ShowCanvasGroup(group);
-        }
-
-        private static void HideCanvasGroup(CanvasGroup group)
-        {
-            // blocksRaycasts=false prevents interactions
-            group.blocksRaycasts = false;
-            group.alpha = 0.0f;
-        }
-
-        private static void ShowCanvasGroup(CanvasGroup group)
-        {
-            group.blocksRaycasts = true;
-            group.alpha = 1.0f;
+                container.gameObject.SetActive(true);
         }
         #endregion private
 

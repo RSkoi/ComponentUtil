@@ -5,19 +5,25 @@ using UnityEngine;
 using UnityEngine.UI;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
         #region currently selected
+        private static Studio.ObjectCtrlInfo _selectedObject;
         private static GameObject _selectedGO;
         private static Component _selectedComponent;
-        private static Studio.ObjectCtrlInfo _selectedObject;
 
         private static ComponentUtilUI.GenericUIListEntry _selectedTransformUIEntry;
         private static ComponentUtilUI.GenericUIListEntry _selectedComponentUiEntry;
         #endregion currently selected
+
+        #region current page
+        internal static int _currentPageTransformList = 0;
+        internal static int _currentPageComponentList = 0;
+        #endregion current page
 
         /// <summary>
         /// the types ComponentUtil supports
@@ -41,26 +47,35 @@ namespace RSkoi_ComponentUtil
         ];
 
         /// <summary>
-        /// resets the UI and cached selected objects
+        /// sets selected objects to null, resets the tracker, UI pools, cache and pages
         /// </summary>
-        public void Reset()
+        public void ResetState()
         {
             _selectedGO = null;
             _selectedComponent = null;
             _selectedObject = null;
 
+            _currentPageTransformList = 0;
+            _currentPageComponentList = 0;
+
+            ClearTracker();
+            ComponentUtilUI.ResetPageNumbers();
             ComponentUtilUI.ClearAllEntryPools();
+            ComponentUtilCache.ClearCache();
         }
 
         /// <summary>
         /// entry point for the core functionality
-        /// flattens transform hierarchy, lists all components, lists all properties
+        /// , flattens transform hierarchy, lists all components, lists all properties
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>
         public void Entry(Studio.ObjectCtrlInfo input)
         {
             if (input == null)
                 return;
+
+            _currentPageTransformList = 0;
+            ComponentUtilUI.ResetPageNumberTransform();
 
             _selectedObject = input;
             FlattenTransformHierarchy(input.guideObject.transformTarget.gameObject);
@@ -72,18 +87,26 @@ namespace RSkoi_ComponentUtil
 
         #region internal
         /// <summary>
-        /// flatten transform hierarchy of input to list entries
-        /// selects first list entry
+        /// flattens transform hierarchy of input to list entries
+        /// , selects first list entry
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>
-        internal void FlattenTransformHierarchy(GameObject input)
+        /// <param name="setsSelected">whether _selectedGO and _selectedTransformUIEntry
+        /// should be set to first item in flattened transform hiararchy
+        /// ; also whether to reset current component page number</param>
+        internal void FlattenTransformHierarchy(GameObject input, bool setsSelected = true)
         {
             if (input == null)
                 return;
 
-            Transform[] list = input.GetComponentsInChildren<Transform>();
-            ComponentUtilUI.PrepareTransformPool(list.Length);
-            for (int poolIndex = 0; poolIndex < list.Length; poolIndex++)
+            List<Transform> list = [ ..ComponentUtilCache.GetOrCacheTransforms(input) ];
+            int itemsPerPage = ItemsPerPageValue;
+            int startIndex = _currentPageTransformList * itemsPerPage;
+            int n = (list.Count - startIndex) <= itemsPerPage ? list.Count - startIndex : itemsPerPage;
+            list = list.GetRange(startIndex, n);
+
+            ComponentUtilUI.PrepareTransformPool(list.Count);
+            for (int poolIndex = 0; poolIndex < list.Count; poolIndex++)
             {
                 Transform t = list[poolIndex];
 
@@ -98,26 +121,39 @@ namespace RSkoi_ComponentUtil
                 uiEntry.ResetBgAndChildren();
                 uiEntry.UiGO.SetActive(true);
             }
-            _selectedGO = list[0].gameObject;
-            _selectedTransformUIEntry = ComponentUtilUI.TransformListEntries[0];
+
+            if (setsSelected)
+            {
+                _currentPageComponentList = 0;
+                ComponentUtilUI.ResetPageNumberComponent();
+                _selectedGO = list[0].gameObject;
+                _selectedTransformUIEntry = ComponentUtilUI.TransformListEntries[0];
+            }
         }
 
         /// <summary>
         /// gets all components on currently selected transform, maps to list entries
-        /// selects first list entry
+        /// , selects first list entry
         /// </summary>
         /// <param name="input">selected object to find all components in</param>
         /// <param name="inputUi">selected transform ui entry</param>
-        internal void GetAllComponents(GameObject input, ComponentUtilUI.GenericUIListEntry inputUi)
+        /// <param name="setsSelected">whether _selectedComponent and _selectedComponentUiEntry
+        /// should be set to first item in component list</param>
+        internal void GetAllComponents(GameObject input, ComponentUtilUI.GenericUIListEntry inputUi, bool setsSelected = true)
         {
             if (input == null || inputUi == null)
                 return;
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
 
-            Component[] list = input.GetComponents(typeof(Component));
-            ComponentUtilUI.PrepareComponentPool(list.Length);
-            for (int poolIndex = 0; poolIndex < list.Length; poolIndex++)
+            List<Component> list = [.. ComponentUtilCache.GetOrCacheComponents(input)];
+            int itemsPerPage = ItemsPerPageValue;
+            int startIndex = _currentPageComponentList * itemsPerPage;
+            int n = (list.Count - startIndex) <= itemsPerPage ? list.Count - startIndex : itemsPerPage;
+            list = list.GetRange(startIndex, n);
+
+            ComponentUtilUI.PrepareComponentPool(list.Count);
+            for (int poolIndex = 0; poolIndex < list.Count; poolIndex++)
             {
                 Component c = list[poolIndex];
 
@@ -131,8 +167,12 @@ namespace RSkoi_ComponentUtil
                 uiEntry.ResetBgAndChildren();
                 uiEntry.UiGO.SetActive(true);
             }
-            _selectedComponent = list[0];
-            _selectedComponentUiEntry = ComponentUtilUI.ComponentListEntries[0];
+
+            if (setsSelected)
+            {
+                _selectedComponent = list[0];
+                _selectedComponentUiEntry = ComponentUtilUI.ComponentListEntries[0];
+            }
         }
 
         /// <summary>
@@ -154,9 +194,7 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI._componentPropertyListSelectedComponentText,
                 input.gameObject.name + "." + input.GetType().Name);
 
-            foreach (PropertyInfo p in input
-                .GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfos(input))
             {
                 // reference types are annoying
                 // this includes strings
@@ -170,9 +208,7 @@ namespace RSkoi_ComponentUtil
                 ConfigureComponentEntry(_selectedComponentUiEntry, input, p, null);
             }
 
-            foreach (FieldInfo f in input
-                .GetType()
-                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfos(input))
             {
                 // reference types are annoying
                 // this includes strings
@@ -192,7 +228,7 @@ namespace RSkoi_ComponentUtil
             // this should never be the case
             if ((!isProperty && !isField) || (isProperty && isField))
             {
-                logger.LogError("ConfigureComponentEntry: use either PropertyInfo OR FieldInfo");
+                logger.LogError("ConfigureComponentEntry: pass either PropertyInfo (X)OR FieldInfo as arguments");
                 return;
             }
             
@@ -448,6 +484,9 @@ namespace RSkoi_ComponentUtil
             _selectedGO = target;
             _selectedTransformUIEntry = uiEntry;
 
+            _currentPageComponentList = 0;
+            ComponentUtilUI.ResetPageNumberComponent();
+
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
@@ -550,5 +589,63 @@ namespace RSkoi_ComponentUtil
             catch (Exception e) { logger.LogError(e); }
         }
         #endregion internal setters
+
+        #region internal page operations
+        internal void LastTransformPage()
+        {
+            if (_selectedObject == null)
+                return;
+            if (_currentPageTransformList == 0)
+                return;
+
+            _currentPageTransformList--;
+            ComponentUtilUI.UpdatePageNumberTransform(_currentPageTransformList);
+            FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject, false);
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+
+        internal void NextTransformPage()
+        {
+            if (_selectedObject == null)
+                return;
+            // out of bounds start index
+            if (((_currentPageTransformList + 1) * ItemsPerPageValue)
+                >= ComponentUtilCache._transformSearchCache[_selectedObject.guideObject.transformTarget.gameObject].Length)
+                return;
+
+            _currentPageTransformList++;
+            ComponentUtilUI.UpdatePageNumberTransform(_currentPageTransformList);
+            FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject, false);
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+
+        internal void LastComponentPage()
+        {
+            if (_selectedGO == null)
+                return;
+            if (_currentPageComponentList == 0)
+                return;
+
+            _currentPageComponentList--;
+            ComponentUtilUI.UpdatePageNumberComponent(_currentPageComponentList);
+            GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+
+        internal void NextComponentPage()
+        {
+            if (_selectedGO == null)
+                return;
+            // out of bounds start index
+            if (((_currentPageComponentList + 1) * ItemsPerPageValue)
+                >= ComponentUtilCache._componentSearchCache[_selectedGO].Length)
+                return;
+
+            _currentPageComponentList++;
+            ComponentUtilUI.UpdatePageNumberComponent(_currentPageComponentList);
+            GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+        #endregion internal page operations
     }
 }

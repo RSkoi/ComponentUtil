@@ -26,6 +26,22 @@ namespace RSkoi_ComponentUtil
         #region bepinex config
         internal static ConfigEntry<float> UiScale { get; private set; }
         internal static ConfigEntry<KeyboardShortcut> ToggleUI { get; private set; }
+
+        private const int DEFAULT_ITEMS_PER_PAGE = 9;
+        internal static ConfigEntry<int> ItemsPerPage { get; private set; }
+        internal static int ItemsPerPageValue
+        {
+            get
+            {
+                int itemsPerPage = ItemsPerPage.Value;
+                if (itemsPerPage <= 0)
+                {
+                    ItemsPerPage.Value = DEFAULT_ITEMS_PER_PAGE;
+                    return DEFAULT_ITEMS_PER_PAGE;
+                }
+                return itemsPerPage;
+            }
+        }
         #endregion bepinex config
 
         internal static ManualLogSource logger;
@@ -68,6 +84,14 @@ namespace RSkoi_ComponentUtil
                 new ConfigDescription("Toggle the UI of ComponentUtil.",
                 null,
                 new ConfigurationManagerAttributes { Order = 2 }));
+
+            ItemsPerPage = Config.Bind(
+                "Config",
+                "Items per page",
+                DEFAULT_ITEMS_PER_PAGE,
+                new ConfigDescription("How many items will be displayed in the transform/component list per page. Don't set too high.",
+                null,
+                new ConfigurationManagerAttributes { Order = 3 }));
         }
 
         private void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)

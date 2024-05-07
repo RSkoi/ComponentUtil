@@ -27,8 +27,7 @@ namespace RSkoi_ComponentUtil.UI
         #region transform pool
         internal static void PrepareTransformPool(int newEntriesCount)
         {
-            SetTransformListEntriesInactive();
-            ResetTransformsBgAndChildren();
+            ResetAndDisableTransformEntries();
 
             // instantiate new entries if needed
             if (newEntriesCount > TransformListEntries.Count)
@@ -39,24 +38,20 @@ namespace RSkoi_ComponentUtil.UI
                     _transformListContainer);
         }
 
-        private static void SetTransformListEntriesInactive()
+        private static void ResetAndDisableTransformEntries()
         {
             foreach (var entry in TransformListEntries)
+            {
                 entry.UiGO.SetActive(false);
-        }
-
-        private static void ResetTransformsBgAndChildren()
-        {
-            foreach (var entry in TransformListEntries)
                 entry.ResetBgAndChildren();
+            }
         }
         #endregion transform pool
 
         #region component pool
         internal static void PrepareComponentPool(int newEntriesCount)
         {
-            SetComponentListEntriesInactive();
-            ResetComponentsBgAndChildren();
+            ResetAndDisableComponentEntries();
 
             // instantiate new entries if needed
             if (newEntriesCount > ComponentListEntries.Count)
@@ -67,16 +62,13 @@ namespace RSkoi_ComponentUtil.UI
                     _componentListContainer);
         }
 
-        private static void SetComponentListEntriesInactive()
+        private static void ResetAndDisableComponentEntries()
         {
             foreach (var entry in ComponentListEntries)
+            {
                 entry.UiGO.SetActive(false);
-        }
-
-        private static void ResetComponentsBgAndChildren()
-        {
-            foreach (var entry in ComponentListEntries)
                 entry.ResetBgAndChildren();
+            }
         }
         #endregion component pool
 
