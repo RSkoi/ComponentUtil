@@ -43,7 +43,6 @@ namespace RSkoi_ComponentUtil.UI
 
         #region scroll view content containers
         internal static Transform _transformListContainer;
-        internal static VirtualGridList _transformListVirtual;
         internal static Transform _componentListContainer;
         internal static Transform _componentPropertyListContainer;
         #endregion scroll view content containers
@@ -228,8 +227,6 @@ namespace RSkoi_ComponentUtil.UI
 
             // scroll view content containers
             _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
-            _transformListVirtual = SetupVirtualList(_transformListContainer, _transformWindow.Find("TransformList/TransformEntryScrollView/"));
-
             _componentListContainer = _componentWindow.Find("ComponentList/ComponentEntryScrollView/Viewport/Content");
             _componentPropertyListContainer = _inspectorWindow.Find("ComponentPropertyList/ComponentPropertyEntryScrollView/Viewport/Content");
             

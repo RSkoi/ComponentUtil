@@ -17,8 +17,6 @@ namespace RSkoi_ComponentUtil.Scene
 {
     internal class ComponentUtilSceneBehaviour : SceneCustomFunctionController
     {
-        private static readonly float WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 2f;
-
         #region override
         protected override void OnSceneLoad(SceneOperationKind operation, ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
@@ -44,7 +42,7 @@ namespace RSkoi_ComponentUtil.Scene
             SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
-            yield return new WaitForSeconds(WAIT_TIME_AFTER_LOADING_SCENE_SECONDS);
+            yield return new WaitForSeconds(WaitTimeLoadSceneValue);
 
             // this is beyond horrid
             foreach (var entry in deserializedTrackerDataDict)

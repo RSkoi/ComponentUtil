@@ -24,9 +24,14 @@ namespace RSkoi_ComponentUtil
         internal static ComponentUtil _instance;
 
         #region bepinex config
+        private const float DEFAULT_UI_SCALE = 0.7f;
         internal static ConfigEntry<float> UiScale { get; private set; }
+
+        private const KeyCode DEFAULT_TOGGLE_MAIN_KEY = KeyCode.M;
+        private const KeyCode DEFAULT_TOGGLE_MODIFIER = KeyCode.RightControl;
         internal static ConfigEntry<KeyboardShortcut> ToggleUI { get; private set; }
 
+        #region ItemsPerPage
         private const int DEFAULT_ITEMS_PER_PAGE = 9;
         internal static ConfigEntry<int> ItemsPerPage { get; private set; }
         internal static int ItemsPerPageValue
@@ -42,6 +47,25 @@ namespace RSkoi_ComponentUtil
                 return itemsPerPage;
             }
         }
+        #endregion ItemsPerPage
+
+        #region WaitTimeLoadScene
+        private const float DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 2f;
+        internal static ConfigEntry<float> WaitTimeLoadScene { get; private set; }
+        internal static float WaitTimeLoadSceneValue
+        {
+            get
+            {
+                float waitTime = WaitTimeLoadScene.Value;
+                if (waitTime <= 0)
+                {
+                    WaitTimeLoadScene.Value = DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS;
+                    return DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS;
+                }
+                return waitTime;
+            }
+        }
+        #endregion WaitTimeLoadScene
         #endregion bepinex config
 
         internal static ManualLogSource logger;
@@ -72,26 +96,35 @@ namespace RSkoi_ComponentUtil
             UiScale = Config.Bind(
                 "Config",
                 "UI scale",
-                0.7f,
+                DEFAULT_UI_SCALE,
                 new ConfigDescription("Scales the UI to given factor. Reopen ComponentUtil window for the change to apply.",
                 null,
-                new ConfigurationManagerAttributes { Order = 1 }));
+                new ConfigurationManagerAttributes { Order = 2 }));
 
             ToggleUI = Config.Bind(
                 "Keyboard Shortcuts",
                 "Toggle UI",
-                new KeyboardShortcut(KeyCode.M, KeyCode.RightControl),
+                new KeyboardShortcut(DEFAULT_TOGGLE_MAIN_KEY, DEFAULT_TOGGLE_MODIFIER),
                 new ConfigDescription("Toggle the UI of ComponentUtil.",
                 null,
-                new ConfigurationManagerAttributes { Order = 2 }));
+                new ConfigurationManagerAttributes { Order = 1 }));
 
             ItemsPerPage = Config.Bind(
                 "Config",
                 "Items per page",
                 DEFAULT_ITEMS_PER_PAGE,
-                new ConfigDescription("How many items will be displayed in the transform/component list per page. Don't set too high.",
+                new ConfigDescription("How many items will be displayed in the transform/component list per page. Don't set this too high.",
                 null,
-                new ConfigurationManagerAttributes { Order = 3 }));
+                new ConfigurationManagerAttributes { Order = 0 }));
+
+            WaitTimeLoadScene = Config.Bind(
+                "Config",
+                "Wait time after scene load",
+                DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS,
+                new ConfigDescription("How long ComponentUtil should wait in seconds after a scene is loaded before applying tracked changes." +
+                " Try setting this higher if after loading a scene the changes saved with ComponentUtil seem to be overwritten.",
+                null,
+                new ConfigurationManagerAttributes { Order = 1 }));
         }
 
         private void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)
