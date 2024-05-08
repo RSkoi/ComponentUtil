@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Events;
 
 namespace RSkoi_ComponentUtil.UI
 {
@@ -63,13 +62,37 @@ namespace RSkoi_ComponentUtil.UI
         #endregion selected text
 
         #region pages
+        #region transform list
+        private static InputField _pageSearchTransformInput;
+        internal static string PageSearchTransformInputValue
+        {
+            get
+            {
+                if (_pageSearchTransformInput == null)
+                    return "";
+                return _pageSearchTransformInput.text;
+            }
+        }
         private static Text _currentPageTransformText;
         private static Button _pageLastTransformButton;
         private static Button _pageNextTransformButton;
+        #endregion transform list
 
+        #region component list
+        private static InputField _pageSearchComponentInput;
+        internal static string PageSearchComponentInputValue
+        {
+            get
+            {
+                if (_pageSearchComponentInput == null)
+                    return "";
+                return _pageSearchComponentInput.text;
+            }
+        }
         private static Text _currentPageComponentText;
         private static Button _pageLastComponentButton;
         private static Button _pageNextComponentButton;
+        #endregion component list
         #endregion pages
 
         // this will be overwritten in InstantiateUI()
@@ -123,18 +146,45 @@ namespace RSkoi_ComponentUtil.UI
         #region internal
         internal static void TraverseAndSetEditedParents()
         {
+            /* Run every time the state of the ui list entry 'edited' state could have changed
+             * It's not pretty, but it works
+             * 
+             * Maximum amount of entries to iterate through is ComponentUtil.ItemsPerPageValue (bepin config) * 2
+             * n = ComponentUtil.ItemsPerPageValue, m = ComponentUtil._tracker.Keys.Count
+             * 2*O(m) + 2*O(n) == O(m) + O(n), right? could be worse...
+             * 
+             * => realistically, there are always more entries in the pool than in the tracker => O(n) wins
+             * => the more entries in the tracker and the bigger the pool, the worse this gets
+             */
+
             HashSet<Transform> trackedTransforms = ComponentUtil.TrackedTransforms;
             HashSet<Component> trackedComponents = ComponentUtil.TrackedComponents;
 
             foreach (var entry in TransformListEntries)
-                if (entry.UiGO.activeSelf && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
-                    && trackedTransforms.Contains((Transform)entry.UiTarget))
+            {
+                if (!entry.UiGO.activeSelf)
+                    continue;
+
+                bool defaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
+                bool tracked = trackedTransforms.Contains((Transform)entry.UiTarget);
+                if (defaultColor && tracked)
                     entry.SetBgColorEdited(null);
+                else if (!defaultColor && !tracked)
+                    entry.SetBgColorDefault(null);
+            }
 
             foreach (var entry in ComponentListEntries)
-                if (entry.UiGO.activeSelf && entry.BgImage.color != ENTRY_BG_COLOR_EDITED
-                    && trackedComponents.Contains((Component)entry.UiTarget))
+            {
+                if (!entry.UiGO.activeSelf)
+                    continue;
+
+                bool defaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
+                bool tracked = trackedComponents.Contains((Component)entry.UiTarget);
+                if (defaultColor && tracked)
                     entry.SetBgColorEdited(null);
+                else if (!defaultColor && !tracked)
+                    entry.SetBgColorDefault(null);
+            }
         }
 
         internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
@@ -242,26 +292,24 @@ namespace RSkoi_ComponentUtil.UI
 
             // page buttons
             Transform page = _transformWindow.Find("TransformList/PageContainer");
+            _pageSearchTransformInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchTransformInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterTransform());
             _currentPageTransformText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            _currentPageTransformText.text = "0";
             _pageLastTransformButton = page.Find("PageLast").GetComponent<Button>();
+            _pageLastTransformButton.onClick.AddListener(ComponentUtil._instance.OnLastTransformPage);
             _pageNextTransformButton = page.Find("PageNext").GetComponent<Button>();
-            SetupPage(
-                _currentPageTransformText,
-                _pageLastTransformButton,
-                ComponentUtil._instance.LastTransformPage,
-                _pageNextTransformButton,
-                ComponentUtil._instance.NextTransformPage);
+            _pageNextTransformButton.onClick.AddListener(ComponentUtil._instance.OnNextTransformPage);
 
             page = _componentWindow.Find("ComponentList/PageContainer");
+            _pageSearchComponentInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchComponentInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponent());
             _currentPageComponentText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            _currentPageComponentText.text = "0";
             _pageLastComponentButton = page.Find("PageLast").GetComponent<Button>();
+            _pageLastComponentButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentPage);
             _pageNextComponentButton = page.Find("PageNext").GetComponent<Button>();
-            SetupPage(
-                _currentPageComponentText,
-                _pageLastComponentButton,
-                ComponentUtil._instance.LastComponentPage,
-                _pageNextComponentButton,
-                ComponentUtil._instance.NextComponentPage);
+            _pageNextComponentButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentPage);
 
             // prepare pools
             int itemsPerPage = ComponentUtil.ItemsPerPageValue;
@@ -274,13 +322,6 @@ namespace RSkoi_ComponentUtil.UI
             SetupDraggable(_inspectorWindow);
 
             _baseCanvasReferenceResolutionY = _canvasScaler.referenceResolution.y;
-        }
-
-        private static void SetupPage(Text label, Button lastButton, UnityAction lastCall, Button nextButton, UnityAction nextCall)
-        {
-            label.text = "0";
-            lastButton.onClick.AddListener(lastCall);
-            nextButton.onClick.AddListener(nextCall);
         }
 
         private static void SetupDraggable(Transform windowContainer)
@@ -307,7 +348,7 @@ namespace RSkoi_ComponentUtil.UI
             object uiTarget,
             GenericUIListEntry parentUiEntry)
         {
-            public HashSet<GenericUIListEntry> editedChildren = [];
+            //public HashSet<GenericUIListEntry> editedChildren = [];
 
             public Button SelfButton = selfButton;
             public Text EntryName = entryName;
@@ -316,34 +357,34 @@ namespace RSkoi_ComponentUtil.UI
             public object UiTarget = uiTarget;
             public GenericUIListEntry ParentUiEntry = parentUiEntry;
 
-            public void SetBgColorEdited(GenericUIListEntry child)
+            public void SetBgColorEdited(GenericUIListEntry _ /*child*/)
             {
-                if (child != null)
+                /*if (child != null)
                     editedChildren.Add(child); // hashset has no duplicates
 
                 if (BgImage.color == ENTRY_BG_COLOR_EDITED)
-                    return;
+                    return;*/
 
                 BgImage.color = ENTRY_BG_COLOR_EDITED;
-                ParentUiEntry?.SetBgColorEdited(this);
+                //ParentUiEntry?.SetBgColorEdited(this);
             }
 
-            public void SetBgColorDefault(GenericUIListEntry child)
+            public void SetBgColorDefault(GenericUIListEntry _ /*child*/)
             {
-                if (child != null)
+                /*if (child != null)
                     editedChildren.Remove(child);
 
                 if (editedChildren.Count > 0)
-                    return;
+                    return;*/
 
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                ParentUiEntry?.SetBgColorDefault(this);
+                //ParentUiEntry?.SetBgColorDefault(this);
             }
 
             public void ResetBgAndChildren()
             {
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                editedChildren.Clear();
+                //editedChildren.Clear();
             }
         }
 
@@ -368,17 +409,23 @@ namespace RSkoi_ComponentUtil.UI
             // this delegate is used by the reset button
             public Func<object, object> UiComponentSetValueDelegateForReset = uiComponentSetValueDelegateForReset;
 
+            /* Originally a value change of a property would trigger SetBgColorEdited and call the same on its parent,
+             * i.e. GenericUIListEntry, and propagate all the way to a transform ui entry (transform list).
+             * This removes the necessity to traverse all visible list entries, but makes the whole thing way too annoying
+             * when pages and filter strings come into play. See comment in ComponentUtilUI.TraverseAndSetEditedParents
+             */
+
             public void SetBgColorEdited()
             {
                 BgImage.color = ENTRY_BG_COLOR_EDITED;
 
                 // this must never be the case for property/field entries
-                if (ParentUiEntry == null)
+                /*if (ParentUiEntry == null)
                 {
                     ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
                     return;
                 }
-                ParentUiEntry.SetBgColorEdited(this);
+                ParentUiEntry.SetBgColorEdited(this);*/
             }
 
             public void SetBgColorDefault()
@@ -386,12 +433,12 @@ namespace RSkoi_ComponentUtil.UI
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
 
                 // this must never be the case for property/field entries
-                if (ParentUiEntry == null)
+                /*if (ParentUiEntry == null)
                 {
                     ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
                     return;
                 }
-                ParentUiEntry.SetBgColorDefault(this);
+                ParentUiEntry.SetBgColorDefault(this);*/
             }
 
             public void SetUiComponentTargetValue(object value)

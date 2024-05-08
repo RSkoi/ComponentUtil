@@ -32,7 +32,7 @@ namespace RSkoi_ComponentUtil.Scene
                 SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict
                     = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerDataSO>>>((byte[])dict);
 
-                PrintSavedDict(deserializedTrackerDataDict);
+                //PrintSavedDict(deserializedTrackerDataDict);
 
                 StartCoroutine(OnSceneLoadRoutine(deserializedTrackerDataDict, loadedItems));
             }
@@ -169,6 +169,19 @@ namespace RSkoi_ComponentUtil.Scene
                 _instance.Entry(objectCtrlInfo[0]);
 
             base.OnObjectsSelected(objectCtrlInfo);
+        }
+
+        protected override void OnObjectDeleted(ObjectCtrlInfo objectCtrlInfo)
+        {
+            // copy keys into separate list to avoid System.InvalidOperationException: out of sync
+            foreach (var key in new List<PropertyKey>(_tracker.Keys))
+                if (key.ObjCtrlInfo == objectCtrlInfo)
+                    _tracker.Remove(key);
+
+            if (ComponentUtilUI.CanvasIsActive && _selectedObject == objectCtrlInfo)
+                ComponentUtilUI.HideWindow();
+
+            base.OnObjectDeleted(objectCtrlInfo);
         }
         #endregion override
 
