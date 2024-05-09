@@ -12,6 +12,7 @@ Messing around with properties or fields of important `Component`s can corrupt o
 
 Each item in the studio workspace represents a so-called transform hierarchy of Unity `GameObject`s. Each hierarchy holds a variable amount of `GameObject`s. Each `GameObject` holds a variable amount of `Component`s. Each `Component` holds a variable amount of properties and fields. ComponentUtil finds all `GameObject`s of the selected item, their `Component`s, their properties and fields, and lists said things in paged, searchable lists.
 
+0. Select single item in workspace.
 1. Select `Transform` entry in the TransformList by clicking on it.
 2. Select `Component` entry in the ComponentList by clicking on it.
 3. View, edit and reset values in the ComponentInspector. Edited entries are marked green.
