@@ -1,3 +1,6 @@
+![componentutil_preview_](https://github.com/RSkoi/ComponentUtil/assets/31830382/28fc7d7c-5ff9-4a2f-9a06-708e5f17ef53)
+<img src="[https://your-image-url.type](https://github.com/RSkoi/ComponentUtil/assets/31830382/28fc7d7c-5ff9-4a2f-9a06-708e5f17ef53)" height="200">
+
 # ComponentUtil
 
 Koikatsu studio BepInEx plugin that adds a simple UI editor for Unity `Component` properties and fields. Allows for limited inspection and editing of primitive types. ComponentUtil tracks changed properties / fields and their default values, and saves changes into the Koikatsu scene file.
