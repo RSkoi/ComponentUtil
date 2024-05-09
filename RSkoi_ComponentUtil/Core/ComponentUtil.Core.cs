@@ -344,8 +344,11 @@ namespace RSkoi_ComponentUtil
                     dropdownField.onValueChanged.AddListener(value => SetPropertyValueInt(p, value, input));
                 else
                     dropdownField.onValueChanged.AddListener(value => SetFieldValueInt(f, value, input));
-                dropdownField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
-                dropdownField.onValueChanged.AddListener(_ => ComponentUtilUI.TraverseAndSetEditedParents());
+                dropdownField.onValueChanged.AddListener(_ => 
+                {
+                    uiEntry.SetBgColorEdited();
+                    ComponentUtilUI.TraverseAndSetEditedParents();
+                });
             }
             registerMyEvents();
 
@@ -383,8 +386,11 @@ namespace RSkoi_ComponentUtil
                     toggleField.onValueChanged.AddListener(value => SetPropertyValue(p, value.ToString(), input));
                 else
                     toggleField.onValueChanged.AddListener(value => SetFieldValue(f, value.ToString(), input));
-                toggleField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
-                toggleField.onValueChanged.AddListener(_ => ComponentUtilUI.TraverseAndSetEditedParents());
+                toggleField.onValueChanged.AddListener(_ =>
+                {
+                    uiEntry.SetBgColorEdited();
+                    ComponentUtilUI.TraverseAndSetEditedParents();
+                });
             }
             registerMyEvents();
 
@@ -425,8 +431,11 @@ namespace RSkoi_ComponentUtil
                     inputField.onValueChanged.AddListener(value => SetPropertyValue(p, value, input));
                 else
                     inputField.onValueChanged.AddListener(value => SetFieldValue(f, value, input));
-                inputField.onValueChanged.AddListener(_ => uiEntry.SetBgColorEdited());
-                inputField.onValueChanged.AddListener(_ => ComponentUtilUI.TraverseAndSetEditedParents());
+                inputField.onValueChanged.AddListener(_ =>
+                {
+                    uiEntry.SetBgColorEdited();
+                    ComponentUtilUI.TraverseAndSetEditedParents();
+                });
             }
             registerMyEvents();
 

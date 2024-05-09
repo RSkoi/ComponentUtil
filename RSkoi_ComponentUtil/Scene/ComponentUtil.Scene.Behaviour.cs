@@ -27,6 +27,9 @@ namespace RSkoi_ComponentUtil.Scene
             if (data == null || operation == SceneOperationKind.Clear)
                 return;
 
+            if (!LoadSceneData.Value)
+                return;
+
             if (data.data.TryGetValue(name, out var dict) && dict != null)
             {
                 SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict
@@ -118,6 +121,13 @@ namespace RSkoi_ComponentUtil.Scene
         protected override void OnSceneSave()
         {
             PluginData data = new();
+
+            if (!SaveSceneData.Value)
+            {
+                data.data.Clear();
+                SetExtendedData(data);
+                return;
+            }
 
             SortedDictionary<int, List<TrackerDataSO>> savedDict = [];
             foreach (var entry in _tracker)

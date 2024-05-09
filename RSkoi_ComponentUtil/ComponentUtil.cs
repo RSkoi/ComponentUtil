@@ -24,6 +24,11 @@ namespace RSkoi_ComponentUtil
         internal static ComponentUtil _instance;
 
         #region bepinex config
+        private const bool DEFAULT_SAVE_SCENE_DATA = true;
+        internal static ConfigEntry<bool> SaveSceneData { get; private set; }
+        private const bool DEFAULT_LOAD_SCENE_DATA = true;
+        internal static ConfigEntry<bool> LoadSceneData { get; private set; }
+
         private const float DEFAULT_UI_SCALE = 0.7f;
         internal static ConfigEntry<float> UiScale { get; private set; }
 
@@ -113,7 +118,7 @@ namespace RSkoi_ComponentUtil
                 "Config",
                 "Items per page",
                 DEFAULT_ITEMS_PER_PAGE,
-                new ConfigDescription("How many items will be displayed in the transform/component list per page. Don't set this too high.",
+                new ConfigDescription("How many items to display in the transform / component list per page. Don't set this too high.",
                 null,
                 new ConfigurationManagerAttributes { Order = 0 }));
 
@@ -125,6 +130,24 @@ namespace RSkoi_ComponentUtil
                 " Try setting this higher if after loading a scene the changes saved with ComponentUtil seem to be overwritten.",
                 null,
                 new ConfigurationManagerAttributes { Order = 1 }));
+
+            LoadSceneData = Config.Bind(
+                "Config",
+                "Apply data on scene load",
+                DEFAULT_LOAD_SCENE_DATA,
+                new ConfigDescription("Whether ComponentUtil should apply related saved data on scene load." +
+                " Set to false for debugging purposes or if a scene fails to load due to ComponentUtil.",
+                null,
+                new ConfigurationManagerAttributes { Order = 3 }));
+
+            SaveSceneData = Config.Bind(
+                "Config",
+                "Save data on scene save",
+                DEFAULT_SAVE_SCENE_DATA,
+                new ConfigDescription("Whether ComponentUtil should save related data on scene save." +
+                " Set to false for debugging purposes or if you want to save a 'clean' scene with no edits.",
+                null,
+                new ConfigurationManagerAttributes { Order = 3 }));
         }
 
         private void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)
