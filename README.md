@@ -27,6 +27,7 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 
 ### Explicitly supported types
 
+- Enums
 - `float`
 - `double`
 - `decimal`
