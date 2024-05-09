@@ -1,5 +1,4 @@
 ![componentutil_preview_](https://github.com/RSkoi/ComponentUtil/assets/31830382/28fc7d7c-5ff9-4a2f-9a06-708e5f17ef53)
-<img src="[https://your-image-url.type](https://github.com/RSkoi/ComponentUtil/assets/31830382/28fc7d7c-5ff9-4a2f-9a06-708e5f17ef53)" height="200">
 
 # ComponentUtil
 
