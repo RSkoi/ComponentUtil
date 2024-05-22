@@ -230,6 +230,8 @@ namespace RSkoi_ComponentUtil
                     // force refresh the component list cache
                     ComponentUtilCache.GetOrCacheComponents(input, true);
                     GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
+
+                    ComponentUtilUI.TraverseAndSetEditedParents();
                 });
                 uiEntry.UiTarget = t;
                 uiEntry.ResetBgAndChildren();
