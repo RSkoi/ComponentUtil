@@ -54,5 +54,45 @@ namespace RSkoi_ComponentUtil.Scene
                     $"siblingIndex: {siblingIndex}, componentName: {componentName}, properties.Length: {properties.Length} ]";
             }
         }
+
+        [Serializable]
+        [MessagePackObject]
+        internal class TrackerAddedComponentDataSO(string componentName)
+        {
+            [Key("componentName")]
+            public string componentName = componentName;
+
+            public override string ToString()
+            {
+                return $"TrackerDataComponentSO [ componentName: {componentName} ]";
+            }
+        }
+
+        [Serializable]
+        [MessagePackObject]
+        internal class TrackerComponentDataSO(
+            int parentItemKey,
+            string parentPath,
+            string objectName,
+            int siblingIndex,
+            TrackerAddedComponentDataSO[] addedComponents)
+        {
+            [Key("parentItemKey")]
+            public int parentItemKey = parentItemKey;
+            [Key("parentPath")]
+            public string parentPath = parentPath;
+            [Key("objectName")]
+            public string objectName = objectName;
+            [Key("siblingIndex")]
+            public int siblingIndex = siblingIndex;
+            [Key("addedComponents")]
+            public TrackerAddedComponentDataSO[] addedComponents = addedComponents;
+
+            public override string ToString()
+            {
+                return $"TrackerComponentDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
+                    $"siblingIndex: {siblingIndex}, addedComponents.Length: {addedComponents.Length} ]";
+            }
+        }
     }
 }

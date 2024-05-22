@@ -38,17 +38,22 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _transformWindow;
         internal static Transform _componentWindow;
         internal static Transform _inspectorWindow;
+
+        internal static Transform _componentAdderWindow;
         #endregion canvas and containers
 
         #region scroll view content containers
         internal static Transform _transformListContainer;
         internal static Transform _componentListContainer;
         internal static Transform _componentPropertyListContainer;
+
+        internal static Transform _componentAdderListContainer;
         #endregion scroll view content containers
 
         #region hide buttons
         private static Button _hideTransformListButton;
         private static Button _hideComponentListButton;
+        private static Button _toggleComponentAdderButton;
         #endregion hide buttons
 
         #region entry bg colors
@@ -59,6 +64,8 @@ namespace RSkoi_ComponentUtil.UI
         #region selected text
         internal static Text _componentListSelectedGOText;
         internal static Text _componentPropertyListSelectedComponentText;
+
+        internal static Text _componentAdderListSelectedGOText;
         #endregion selected text
 
         #region pages
@@ -93,7 +100,27 @@ namespace RSkoi_ComponentUtil.UI
         private static Button _pageLastComponentButton;
         private static Button _pageNextComponentButton;
         #endregion component list
+
+        #region component adder list
+        private static InputField _pageSearchComponentAdderInput;
+        internal static string PageSearchComponentAdderInputValue
+        {
+            get
+            {
+                if (_pageSearchComponentAdderInput == null)
+                    return "";
+                return _pageSearchComponentAdderInput.text;
+            }
+        }
+        private static Text _currentPageComponentAdderText;
+        private static Button _pageLastComponentAdderButton;
+        private static Button _pageNextComponentAdderButton;
+        #endregion component adder list
         #endregion pages
+
+        #region inspector buttons
+        internal static Button _componentDeleteButton;
+        #endregion inspector buttons
 
         // this will be overwritten in InstantiateUI()
         private static float _baseCanvasReferenceResolutionY = 600f;
@@ -229,22 +256,32 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static void UpdatePageNumberTransform(int pageNumber)
         {
-            _currentPageTransformText.text = pageNumber.ToString();
+            _currentPageTransformText.text = (pageNumber + 1).ToString();
         }
 
         internal static void ResetPageNumberTransform()
         {
-            _currentPageTransformText.text = "0";
+            _currentPageTransformText.text = "1";
         }
 
         internal static void UpdatePageNumberComponent(int pageNumber)
         {
-            _currentPageComponentText.text = pageNumber.ToString();
+            _currentPageComponentText.text = (pageNumber + 1).ToString();
         }
 
         internal static void ResetPageNumberComponent()
         {
-            _currentPageComponentText.text = "0";
+            _currentPageComponentText.text = "1";
+        }
+
+        internal static void UpdatePageNumberComponentAdder(int pageNumber)
+        {
+            _currentPageComponentAdderText.text = (pageNumber + 1).ToString();
+        }
+
+        internal static void ResetPageNumberComponentAdder()
+        {
+            _currentPageComponentAdderText.text = "1";
         }
         #endregion internal
 
@@ -274,15 +311,20 @@ namespace RSkoi_ComponentUtil.UI
             _transformWindow = _canvasContainer.transform.Find("TransformListContainer");
             _componentWindow = _canvasContainer.transform.Find("ComponentListContainer");
             _inspectorWindow = _canvasContainer.transform.Find("ComponentInspectorContainer");
+            _componentAdderWindow = _canvasContainer.transform.Find("ComponentAdderContainer");
 
             // scroll view content containers
             _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
             _componentListContainer = _componentWindow.Find("ComponentList/ComponentEntryScrollView/Viewport/Content");
             _componentPropertyListContainer = _inspectorWindow.Find("ComponentPropertyList/ComponentPropertyEntryScrollView/Viewport/Content");
-            
+            _componentAdderListContainer = _componentAdderWindow.Find("ComponentAddList/ComponentAddEntryScrollView/Viewport/Content");
+
             // window tooltips
             _componentListSelectedGOText = _componentWindow.Find("ComponentList/ComponentText").GetComponent<Text>();
             _componentPropertyListSelectedComponentText = _inspectorWindow.Find("ComponentPropertyList/ComponentText").GetComponent<Text>();
+            _componentAdderListSelectedGOText = _componentAdderWindow.Find("ComponentAddList/ComponentAddListText").GetComponent<Text>();
+
+            _componentDeleteButton = _inspectorWindow.Find("ComponentPropertyList/DeleteComponentButton").GetComponent<Button>();
 
             // buttons to hide windows
             _hideTransformListButton = _componentWindow.Find("ToggleTransformListButton").GetComponent<Button>();
@@ -290,12 +332,15 @@ namespace RSkoi_ComponentUtil.UI
             _hideComponentListButton = _inspectorWindow.Find("ToggleComponentListButton").GetComponent<Button>();
             _hideComponentListButton.onClick.AddListener(() => ToggleSubWindow(_componentWindow));
 
+            _toggleComponentAdderButton = _componentWindow.Find("ComponentList/ToggleComponentAdderButton").GetComponent<Button>();
+            _toggleComponentAdderButton.onClick.AddListener(() => ToggleSubWindow(_componentAdderWindow));
+
             // page buttons
             Transform page = _transformWindow.Find("TransformList/PageContainer");
             _pageSearchTransformInput = page.Find("SearchInput").GetComponent<InputField>();
             _pageSearchTransformInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterTransform());
             _currentPageTransformText = page.Find("PageCurrentLabel").GetComponent<Text>();
-            _currentPageTransformText.text = "0";
+            ResetPageNumberTransform();
             _pageLastTransformButton = page.Find("PageLast").GetComponent<Button>();
             _pageLastTransformButton.onClick.AddListener(ComponentUtil._instance.OnLastTransformPage);
             _pageNextTransformButton = page.Find("PageNext").GetComponent<Button>();
@@ -305,21 +350,33 @@ namespace RSkoi_ComponentUtil.UI
             _pageSearchComponentInput = page.Find("SearchInput").GetComponent<InputField>();
             _pageSearchComponentInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponent());
             _currentPageComponentText = page.Find("PageCurrentLabel").GetComponent<Text>();
-            _currentPageComponentText.text = "0";
+            ResetPageNumberComponent();
             _pageLastComponentButton = page.Find("PageLast").GetComponent<Button>();
             _pageLastComponentButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentPage);
             _pageNextComponentButton = page.Find("PageNext").GetComponent<Button>();
             _pageNextComponentButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentPage);
 
+            page = _componentAdderWindow.Find("ComponentAddList/PageContainer");
+            _pageSearchComponentAdderInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchComponentAdderInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponentAdder());
+            _currentPageComponentAdderText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            ResetPageNumberComponentAdder();
+            _pageLastComponentAdderButton = page.Find("PageLast").GetComponent<Button>();
+            _pageLastComponentAdderButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentAdderPage);
+            _pageNextComponentAdderButton = page.Find("PageNext").GetComponent<Button>();
+            _pageNextComponentAdderButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentAdderPage);
+
             // prepare pools
             int itemsPerPage = ComponentUtil.ItemsPerPageValue;
             PrepareTransformPool(itemsPerPage);
             PrepareComponentPool(itemsPerPage);
+            PrepareComponentAdderPool(itemsPerPage);
 
             // draggables
             SetupDraggable(_transformWindow);
             SetupDraggable(_componentWindow);
             SetupDraggable(_inspectorWindow);
+            SetupDraggable(_componentAdderWindow);
 
             _baseCanvasReferenceResolutionY = _canvasScaler.referenceResolution.y;
         }
@@ -396,14 +453,13 @@ namespace RSkoi_ComponentUtil.UI
             GameObject instantiatedUiGo,
             GameObject usedPrefab,
             Func<object, object> uiComponentSetValueDelegateForReset)
-            : GenericUIListEntry(null, propertyName, bgImage, instantiatedUiGo, null, parentUiEntry)
         {
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
-            public new Image BgImage = bgImage;
-            public new GameObject UiGO = instantiatedUiGo;
+            public Image BgImage = bgImage;
+            public GameObject UiGO = instantiatedUiGo;
             // the parent ui list entry, here a component entry
-            public new GenericUIListEntry ParentUiEntry = parentUiEntry;
+            public GenericUIListEntry ParentUiEntry = parentUiEntry;
             // could be useful in determining what kind of property entry we are dealing with
             public GameObject UsedPrefab = usedPrefab;
             // this delegate is used by the reset button
@@ -444,6 +500,12 @@ namespace RSkoi_ComponentUtil.UI
             public void SetUiComponentTargetValue(object value)
             {
                 UiComponentSetValueDelegateForReset?.Invoke(value);
+            }
+
+            public void ResetBgAndChildren()
+            {
+                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+                //editedChildren.Clear();
             }
         }
         #endregion internal UI container classes

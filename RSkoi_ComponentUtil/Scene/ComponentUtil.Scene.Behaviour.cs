@@ -10,6 +10,7 @@ using KKAPI.Utilities;
 using KKAPI.Studio.SaveLoad;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Core;
 using static RSkoi_ComponentUtil.ComponentUtil;
 using static RSkoi_ComponentUtil.Scene.ComponentUtilSerializableObjects;
 
@@ -30,18 +31,98 @@ namespace RSkoi_ComponentUtil.Scene
             if (!LoadSceneData.Value)
                 return;
 
-            if (data.data.TryGetValue(name, out var dict) && dict != null)
+            #region add all components
+            if (data.data.TryGetValue($"{name}_addedComponents", out var componentDict) && componentDict != null)
+            {
+                SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict
+                    = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerComponentDataSO>>>((byte[])componentDict);
+
+                //PrintCompSavedDict(deserializedTrackerDataDict);
+
+                OnSceneLoadAddComponents(deserializedTrackerDataDict, loadedItems);
+                //StartCoroutine(OnSceneLoadAddComponentsRoutine(deserializedTrackerDataDict, loadedItems));
+            }
+            #endregion add all components
+
+            #region set all edited properties
+            if (data.data.TryGetValue(name, out var propertyDict) && propertyDict != null)
             {
                 SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict
-                    = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerDataSO>>>((byte[])dict);
+                    = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerDataSO>>>((byte[])propertyDict);
 
-                //PrintSavedDict(deserializedTrackerDataDict);
+                //PrintPropSavedDict(deserializedTrackerDataDict);
 
-                StartCoroutine(OnSceneLoadRoutine(deserializedTrackerDataDict, loadedItems));
+                StartCoroutine(OnSceneLoadEditPropsRoutine(deserializedTrackerDataDict, loadedItems));
+            }
+            #endregion set all edited properties
+
+            if (ComponentUtilUI.CanvasIsActive)
+                ComponentUtilUI.HideWindow();
+        }
+
+        private void OnSceneLoadAddComponents(
+            SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict,
+            ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
+        {
+            foreach (var entry in deserializedTrackerDataDict)
+            {
+                ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
+                Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+
+                foreach (var componentEntry in entry.Value)
+                {
+                    // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
+                    Transform loadedItemEditTransform = (componentEntry.parentPath == "")
+                        ? loadedItemTransformTarget : loadedItemTransformTarget.Find(componentEntry.parentPath);
+                    if (loadedItemEditTransform == null)
+                    {
+                        logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{componentEntry.parentPath}");
+                        continue;
+                    }
+
+                    foreach (var componentAddEntry in componentEntry.addedComponents)
+                    {
+                        /*Type type;
+                        try
+                        {
+                            type = Type.GetType(componentAddEntry.componentName);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError($"Could not get type of component {componentAddEntry.componentName}; {ex}");
+                            continue;
+                        }*/
+
+                        // _componentAdderSearchCache is populated once on plugin init (ComponentUtil.LoadedEvent)
+                        if (!ComponentUtilCache._componentAdderSearchCache.TryGetValue(componentAddEntry.componentName, out Type type))
+                        {
+                            logger.LogError($"Component {componentAddEntry.componentName} was not present in cache, cannot add it");
+                            continue;
+                        }
+
+                        loadedItemEditTransform.gameObject.AddComponent(type);
+
+                        // adding to tracker must not be done by Setter methods such as SetPropertyValue
+                        // on loading scene as we need to track loadedItem, not _selectedObject
+                        _instance.AddComponentToTracker(
+                            loadedItem,
+                            loadedItemEditTransform.gameObject,
+                            componentAddEntry.componentName);
+                    }
+                }
             }
         }
 
-        private IEnumerator OnSceneLoadRoutine(
+        private IEnumerator OnSceneLoadAddComponentsRoutine(
+            SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict,
+            ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
+        {
+            yield return new WaitForSeconds(WaitTimeLoadSceneValue);
+
+            OnSceneLoadAddComponents(deserializedTrackerDataDict, loadedItems);
+        }
+
+        private IEnumerator OnSceneLoadEditPropsRoutine(
             SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
@@ -113,9 +194,6 @@ namespace RSkoi_ComponentUtil.Scene
                     }
                 }
             }
-
-            if (ComponentUtilUI.CanvasIsActive)
-                ComponentUtilUI.HideWindow();
         }
 
         protected override void OnSceneSave()
@@ -128,9 +206,9 @@ namespace RSkoi_ComponentUtil.Scene
                 SetExtendedData(data);
                 return;
             }
-
-            SortedDictionary<int, List<TrackerDataSO>> savedDict = [];
-            foreach (var entry in _tracker)
+            
+            SortedDictionary<int, List<TrackerDataSO>> propertySavedDict = [];
+            foreach (var entry in _propertyTracker)
             {
                 int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
                 List<TrackerDataPropertySO> properties = [];
@@ -157,14 +235,41 @@ namespace RSkoi_ComponentUtil.Scene
                     entry.Key.Component.GetType().Name,
                     [ ..properties ]);
 
-                if (savedDict.ContainsKey(key))
-                    savedDict[key].Add(container);
+                if (propertySavedDict.ContainsKey(key))
+                    propertySavedDict[key].Add(container);
                 else
-                    savedDict.Add(key, [ container ]);
+                    propertySavedDict.Add(key, [ container ]);
             }
-            data.data.Add(name, MessagePackSerializer.Serialize(savedDict));
 
-            //PrintSavedDict(savedDict);
+            SortedDictionary<int, List<TrackerComponentDataSO>> componentSavedDict = [];
+            foreach (var entry in _addedComponentsTracker)
+            {
+                int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
+                List<TrackerAddedComponentDataSO> addedComponents = [];
+                foreach (string componentName in entry.Value)
+                {
+                    TrackerAddedComponentDataSO c = new(componentName);
+                    addedComponents.Add(c);
+                }
+
+                TrackerComponentDataSO container = new(
+                    key,
+                    GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
+                    entry.Key.Go.transform.name,
+                    entry.Key.Go.transform.GetSiblingIndex(),
+                    [ ..addedComponents ]);
+
+                if (componentSavedDict.ContainsKey(key))
+                    componentSavedDict[key].Add(container);
+                else
+                    componentSavedDict.Add(key, [container]);
+            }
+
+            data.data.Add(name, MessagePackSerializer.Serialize(propertySavedDict));
+            data.data.Add($"{name}_addedComponents", MessagePackSerializer.Serialize(componentSavedDict));
+
+            //PrintPropSavedDict(propertySavedDict);
+            //PrintCompSavedDict(componentSavedDict);
 
             SetExtendedData(data);
         }
@@ -184,9 +289,12 @@ namespace RSkoi_ComponentUtil.Scene
         protected override void OnObjectDeleted(ObjectCtrlInfo objectCtrlInfo)
         {
             // copy keys into separate list to avoid System.InvalidOperationException: out of sync
-            foreach (var key in new List<PropertyKey>(_tracker.Keys))
+            foreach (var key in new List<PropertyKey>(_propertyTracker.Keys))
                 if (key.ObjCtrlInfo == objectCtrlInfo)
-                    _tracker.Remove(key);
+                    _propertyTracker.Remove(key);
+            foreach (var key in new List<ComponentAdderKey>(_addedComponentsTracker.Keys))
+                if (key.ObjCtrlInfo == objectCtrlInfo)
+                    _addedComponentsTracker.Remove(key);
 
             if (ComponentUtilUI.CanvasIsActive && _selectedObject == objectCtrlInfo)
                 ComponentUtilUI.HideWindow();
@@ -219,7 +327,7 @@ namespace RSkoi_ComponentUtil.Scene
             return path;
         }
 
-        private void PrintSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
+        private void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
         {
             int i = 0;
             foreach (var entry in savedDict)
@@ -231,6 +339,24 @@ namespace RSkoi_ComponentUtil.Scene
                     logger.LogInfo(propEntry.ToString());
                     foreach (var propInner in propEntry.properties)
                         logger.LogInfo($"     {propInner}");
+                }
+                logger.LogInfo("--------------");
+                i++;
+            }
+        }
+
+        private void PrintCompSavedDict(SortedDictionary<int, List<TrackerComponentDataSO>> savedDict)
+        {
+            int i = 0;
+            foreach (var entry in savedDict)
+            {
+                logger.LogInfo($"-------------- Entry {i}:");
+                logger.LogInfo($"Key: {entry.Key}");
+                foreach (var cEntry in entry.Value)
+                {
+                    logger.LogInfo(cEntry.ToString());
+                    foreach (var cInner in cEntry.addedComponents)
+                        logger.LogInfo($"     {cInner}");
                 }
                 logger.LogInfo("--------------");
                 i++;

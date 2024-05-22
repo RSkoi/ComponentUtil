@@ -24,10 +24,11 @@ namespace RSkoi_ComponentUtil
         #region current page
         internal static int _currentPageTransformList = 0;
         internal static int _currentPageComponentList = 0;
+        internal static int _currentPageComponentAdderList = 0;
         #endregion current page
 
         /// <summary>
-        /// the types ComponentUtil supports
+        /// the property and field types ComponentUtil supports
         /// </summary>
         public static readonly HashSet<Type> supportedTypes =
         [
@@ -58,6 +59,7 @@ namespace RSkoi_ComponentUtil
 
             _currentPageTransformList = 0;
             _currentPageComponentList = 0;
+            _currentPageComponentAdderList = 0;
 
             ClearTracker();
             ComponentUtilUI.ResetPageNumbers();
@@ -81,6 +83,7 @@ namespace RSkoi_ComponentUtil
             _selectedObject = input;
             FlattenTransformHierarchy(input.guideObject.transformTarget.gameObject);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
+            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
@@ -184,6 +187,58 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <summary>
+        /// gets all components you could theoretically add to selected GameObject
+        /// </summary>
+        /// <param name="input">selected object to add components on</param>
+        /// <param name="inputUi">selected transform ui entry</param>
+        internal void GetAllComponentsAdder(GameObject input, ComponentUtilUI.GenericUIListEntry inputUi)
+        {
+            if (input == null || inputUi == null)
+                return;
+
+            ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentAdderListSelectedGOText, input.name);
+
+            List<Type> list = ComponentUtilCache.GetOrCacheComponentAdders();
+
+            // filter string
+            string filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
+            if (filter != "")
+                list = list.Where(t => t.FullName.ToLower().Contains(filter)).ToList();
+
+            // paging
+            int itemsPerPage = ItemsPerPageValue;
+            int startIndex = _currentPageComponentAdderList * itemsPerPage;
+            int n = (list.Count - startIndex) <= itemsPerPage ? list.Count - startIndex : itemsPerPage;
+
+            if (list.Count != 0)
+                list = list.GetRange(startIndex, n);
+
+            ComponentUtilUI.PrepareComponentAdderPool(list.Count);
+            for (int poolIndex = 0; poolIndex < list.Count; poolIndex++)
+            {
+                Type t = list[poolIndex];
+
+                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.ComponentAdderListEntries[poolIndex];
+                uiEntry.EntryName.text = t.Name;
+                // remove all (non-persistent) listeners
+                uiEntry.SelfButton.onClick.RemoveAllListeners();
+                uiEntry.SelfButton.onClick.AddListener(() =>
+                {
+                    input.AddComponent(t);
+                    AddComponentToTracker(_selectedObject, input, t.FullName);
+
+                    // force refresh the component list cache
+                    ComponentUtilCache.GetOrCacheComponents(input, true);
+                    GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
+                });
+                uiEntry.UiTarget = t;
+                uiEntry.ResetBgAndChildren();
+                uiEntry.UiGO.SetActive(true);
+            }
+        }
+
+        /// <summary>
+        /// sets up inspector: configure delete component button, 
         /// gets all fields of currently selected component, maps to list entries of different types
         /// </summary>
         /// <param name="input">selected component to list the properties and fields of</param>
@@ -192,6 +247,26 @@ namespace RSkoi_ComponentUtil
         {
             if (input == null || inputUi == null)
                 return;
+
+            // delete component button is only interactable if the component is tracked
+            ComponentUtilUI._componentDeleteButton.interactable = false;
+            ComponentUtilUI._componentDeleteButton.onClick.RemoveAllListeners();
+            if (ComponentIsTracked(_selectedObject, input.gameObject, input.GetType().FullName))
+            {
+                ComponentUtilUI._componentDeleteButton.interactable = true;
+                ComponentUtilUI._componentDeleteButton.onClick.AddListener(() =>
+                {
+                    GameObject go = input.gameObject;
+                    if (RemoveComponentFromTracker(_selectedObject, go, input))
+                        DestroyImmediate(input); // scary, so that GetOrCacheComponents doesn't pick it up again
+
+                    // force refresh cache
+                    ComponentUtilCache.ClearComponentFromCache(input);
+                    ComponentUtilCache.GetOrCacheComponents(go, true);
+
+                    Entry(_selectedObject);
+                });
+            }
 
             // destroying UI objects is really bad for performance
             // TODO: implement pooling for property/field elements, remember to remove onClick listeners
@@ -509,6 +584,7 @@ namespace RSkoi_ComponentUtil
             ComponentUtilUI.ResetPageNumberComponent();
 
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
+            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
@@ -716,6 +792,43 @@ namespace RSkoi_ComponentUtil
             GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
+
+        internal void OnLastComponentAdderPage()
+        {
+            if (_selectedGO == null)
+                return;
+            if (_currentPageComponentAdderList == 0)
+                return;
+
+            _currentPageComponentAdderList--;
+            ComponentUtilUI.UpdatePageNumberComponentAdder(_currentPageComponentAdderList);
+            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+
+        internal void OnNextComponentAdderPage()
+        {
+            if (_selectedGO == null)
+                return;
+            int toBeStartIndex = (_currentPageComponentAdderList + 1) * ItemsPerPageValue;
+            // page switch can only occur after the assemblies have been scanned for components
+            var cached = ComponentUtilCache._componentAdderSearchCache.Values;
+            // out of bounds start index
+            if (toBeStartIndex >= cached.Count)
+                return;
+
+            // if filter string reduces length of transform list
+            string filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
+            if (filter != "" && (toBeStartIndex >= cached
+                .Where(t => t.Name.ToLower().Contains(filter))
+                .Count()))
+                return;
+
+            _currentPageComponentAdderList++;
+            ComponentUtilUI.UpdatePageNumberComponentAdder(_currentPageComponentAdderList);
+            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
         #endregion internal page operations
 
         #region internal search operations
@@ -732,6 +845,7 @@ namespace RSkoi_ComponentUtil
 
             FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
+            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
@@ -747,6 +861,19 @@ namespace RSkoi_ComponentUtil
 
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+
+        internal void OnFilterComponentAdder()
+        {
+            if (_selectedGO == null)
+                return;
+
+            _currentPageComponentAdderList = 0;
+            ComponentUtilUI.ResetPageNumberComponentAdder();
+
+            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }

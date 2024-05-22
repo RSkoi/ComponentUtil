@@ -10,7 +10,9 @@ namespace RSkoi_ComponentUtil
     public partial class ComponentUtil
     {
         // keeps track of properties and fields and their default values
-        internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _tracker = [];
+        internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _propertyTracker = [];
+        // keeps track of which components were added to which objects
+        internal static readonly Dictionary<ComponentAdderKey, HashSet<string>> _addedComponentsTracker = [];
 
         /// <summary>
         /// compiles a HashSet of all tracked transforms (from the PropertyKeys)
@@ -20,7 +22,7 @@ namespace RSkoi_ComponentUtil
             get
             {
                 HashSet<Transform> res = [];
-                foreach (PropertyKey key in _tracker.Keys)
+                foreach (PropertyKey key in _propertyTracker.Keys)
                     res.Add(key.Go.transform);
                 return res;
             }
@@ -34,7 +36,7 @@ namespace RSkoi_ComponentUtil
             get
             {
                 HashSet<Component> res = [];
-                foreach (PropertyKey key in _tracker.Keys)
+                foreach (PropertyKey key in _propertyTracker.Keys)
                     res.Add(key.Component);
                 return res;
             }
@@ -43,9 +45,75 @@ namespace RSkoi_ComponentUtil
         #region internal
         internal void ClearTracker()
         {
-            _tracker.Clear();
+            _propertyTracker.Clear();
+            _addedComponentsTracker.Clear();
         }
 
+        #region added component tracker
+        internal bool AddComponentToTracker(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            string componentName)
+        {
+            ComponentAdderKey key = new(objCtrlInfo, go);
+            return AddComponentToTracker(key, componentName);
+        }
+
+        internal bool AddComponentToTracker(ComponentAdderKey key, string componentName)
+        {
+            if (_addedComponentsTracker.ContainsKey(key))
+                if (_addedComponentsTracker[key].Contains(componentName))
+                    return false; // component already added
+                else
+                    _addedComponentsTracker[key].Add(componentName); // at least one other component is tracked
+            else
+                _addedComponentsTracker.Add(key, [componentName]); // new component
+
+            return true;
+        }
+
+        internal bool RemoveComponentFromTracker(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component)
+        {
+            ComponentAdderKey key = new(objCtrlInfo, go);
+            return RemoveComponentFromTracker(key, component);
+        }
+
+        internal bool RemoveComponentFromTracker(ComponentAdderKey key, Component component)
+        {
+            string componentName = component.GetType().FullName;
+            if (!ComponentIsTracked(key, componentName))
+                return false;
+
+            _addedComponentsTracker[key].Remove(componentName);
+            if (_addedComponentsTracker[key].Count == 0)
+                _addedComponentsTracker.Remove(key);
+
+            _propertyTracker.Remove(new(key.ObjCtrlInfo, key.Go, component));
+
+            return true;
+        }
+
+        internal bool ComponentIsTracked(
+            ObjectCtrlInfo objCtrlInfo, GameObject go, string componentName)
+        {
+            ComponentAdderKey key = new(objCtrlInfo, go);
+            return ComponentIsTracked(key, componentName);
+        }
+
+        internal bool ComponentIsTracked(ComponentAdderKey key, string componentName)
+        {
+            if (!_addedComponentsTracker.ContainsKey(key))
+                return false;
+            if (!_addedComponentsTracker[key].Contains(componentName))
+                return false;
+            return true;
+        }
+        #endregion added component tracker
+
+        #region property tracker
         internal bool AddPropertyToTracker(
             ObjectCtrlInfo objCtrlInfo,
             GameObject go,
@@ -66,13 +134,13 @@ namespace RSkoi_ComponentUtil
         {
             PropertyTrackerData data = new(propertyName, optionFlags, defaultValue);
 
-            if (_tracker.ContainsKey(key))
-                if (_tracker[key].ContainsKey(propertyName))
+            if (_propertyTracker.ContainsKey(key))
+                if (_propertyTracker[key].ContainsKey(propertyName))
                     return false; // property already tracked
                 else
-                    _tracker[key].Add(propertyName, data); // at least one other property is tracked
+                    _propertyTracker[key].Add(propertyName, data); // at least one other property is tracked
             else
-                _tracker.Add(key, new() { { propertyName, data } }); // new property
+                _propertyTracker.Add(key, new() { { propertyName, data } }); // new property
 
             return true;
         }
@@ -92,9 +160,9 @@ namespace RSkoi_ComponentUtil
             if (!PropertyIsTracked(key, propertyName))
                 return false;
 
-            _tracker[key].Remove(propertyName);
-            if (_tracker[key].Count == 0)
-                _tracker.Remove(key);
+            _propertyTracker[key].Remove(propertyName);
+            if (_propertyTracker[key].Count == 0)
+                _propertyTracker.Remove(key);
 
             return true;
         }
@@ -108,9 +176,9 @@ namespace RSkoi_ComponentUtil
 
         internal bool PropertyIsTracked(PropertyKey key, string propertyName)
         {
-            if (!_tracker.ContainsKey(key))
+            if (!_propertyTracker.ContainsKey(key))
                 return false;
-            if (!_tracker[key].ContainsKey(propertyName))
+            if (!_propertyTracker[key].ContainsKey(propertyName))
                 return false;
             return true;
         }
@@ -124,7 +192,7 @@ namespace RSkoi_ComponentUtil
 
         internal bool TransformObjectAndComponentIsTracked(PropertyKey key)
         {
-            if (!_tracker.ContainsKey(key))
+            if (!_propertyTracker.ContainsKey(key))
                 return false;
             return true;
         }
@@ -141,8 +209,8 @@ namespace RSkoi_ComponentUtil
 
         internal object GetTrackedDefaultValue(PropertyKey key, string propertyName)
         {
-            if (_tracker.ContainsKey(key))
-                return _tracker[key][propertyName].DefaultValue;
+            if (_propertyTracker.ContainsKey(key))
+                return _propertyTracker[key][propertyName].DefaultValue;
             // assumes null as magic value, this could cause problems
             return null;
         }
@@ -152,18 +220,31 @@ namespace RSkoi_ComponentUtil
             defaultValue = GetTrackedDefaultValue(key, propertyName);
             return defaultValue;
         }
+        #endregion property tracker
         #endregion internal
 
         #region private helpers
         private void PrintTracker()
         {
             int i = 0;
-            foreach (var entry in _tracker)
+            logger.LogInfo($"+++++++++++++++++ Properties:");
+            foreach (var entry in _propertyTracker)
             {
                 logger.LogInfo($"++++++++ Entry {i}:");
                 logger.LogInfo(entry.Key.ToString());
                 foreach (var propEntry in entry.Value)
                     logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
+                logger.LogInfo("++++++++");
+                i++;
+            }
+
+            logger.LogInfo($"+++++++++++++++++ Components:");
+            foreach (var entry in _addedComponentsTracker)
+            {
+                logger.LogInfo($"++++++++ Entry {i}:");
+                logger.LogInfo(entry.Key.ToString());
+                foreach (var cEntry in entry.Value)
+                    logger.LogInfo($"    {cEntry}");
                 logger.LogInfo("++++++++");
                 i++;
             }
@@ -239,5 +320,47 @@ namespace RSkoi_ComponentUtil
             }
         }
         #endregion internal property classes
+
+        #region internal component classes
+        internal class ComponentAdderKey(ObjectCtrlInfo objCtrlInfo, GameObject go)
+            : IEquatable<ComponentAdderKey>
+        {
+            // the overarching item / ObjectCtrl (root)
+            public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+            // the GameObject the component resides in
+            // transform is Go.transform
+            public GameObject Go = go;
+
+            public override int GetHashCode()
+            {
+                // oh shit oh fuck
+                // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + ObjCtrlInfo.GetHashCode();
+                    hash = hash * 31 + Go.GetHashCode();
+                    return hash;
+                }
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as ComponentAdderKey);
+            }
+
+            public bool Equals(ComponentAdderKey other)
+            {
+                return other != null &&
+                   ObjCtrlInfo == other.ObjCtrlInfo &&
+                   Go == other.Go;
+            }
+
+            public override string ToString()
+            {
+                return $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go} ]";
+            }
+        }
+        #endregion internal component classes
     }
 }

@@ -8,6 +8,7 @@ namespace RSkoi_ComponentUtil.UI
         #region list entry pools
         internal readonly static List<GenericUIListEntry> TransformListEntries = [];
         internal readonly static List<GenericUIListEntry> ComponentListEntries = [];
+        internal readonly static List<GenericUIListEntry> ComponentAdderListEntries = [];
         // TODO: these are not pooled yet
         internal readonly static List<PropertyUIEntry> _componentPropertyListEntries = [];
         internal readonly static List<PropertyUIEntry> _componentFieldListEntries = [];
@@ -20,6 +21,7 @@ namespace RSkoi_ComponentUtil.UI
         {
             ClearEntryListData(TransformListEntries);
             ClearEntryListData(ComponentListEntries);
+            ClearEntryListData(ComponentAdderListEntries);
             ClearEntryListGO(_componentPropertyListEntries);
             ClearEntryListGO(_componentFieldListEntries);
         }
@@ -72,6 +74,30 @@ namespace RSkoi_ComponentUtil.UI
         }
         #endregion component pool
 
+        #region component adder pool
+        internal static void PrepareComponentAdderPool(int newEntriesCount)
+        {
+            ResetAndDisableComponentAdderEntries();
+
+            // instantiate new entries if needed
+            if (newEntriesCount > ComponentAdderListEntries.Count)
+                InstantiateGenericListEntries(
+                    newEntriesCount - ComponentAdderListEntries.Count,
+                    ComponentAdderListEntries,
+                    _genericListEntryPrefab,
+                    _componentAdderListContainer);
+        }
+
+        private static void ResetAndDisableComponentAdderEntries()
+        {
+            foreach (var entry in ComponentAdderListEntries)
+            {
+                entry.UiGO.SetActive(false);
+                entry.ResetBgAndChildren();
+            }
+        }
+        #endregion component adder pool
+
         #region generic
         private static void InstantiateGenericListEntries(
             int count,
@@ -82,6 +108,7 @@ namespace RSkoi_ComponentUtil.UI
             for (int i = 0; i < count; i++)
             {
                 GameObject entryGO = GameObject.Instantiate(prefab, contentContainer);
+                entryGO.SetActive(false);
                 // order of disabled pool entries shouldn't matter
                 //entryGO.transform.SetAsLastSibling();
                 GenericUIListEntry uiEntry = PreConfigureNewGenericUIListEntry(entryGO);

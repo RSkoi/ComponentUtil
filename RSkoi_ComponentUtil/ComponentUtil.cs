@@ -8,6 +8,7 @@ using KKAPI.Utilities;
 using KKAPI.Studio.SaveLoad;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Core;
 using RSkoi_ComponentUtil.Scene;
 
 namespace RSkoi_ComponentUtil
@@ -19,7 +20,7 @@ namespace RSkoi_ComponentUtil
     {
         internal const string PLUGIN_GUID = "RSkoi_ComponentUtil";
         internal const string PLUGIN_NAME = "RSkoi_ComponentUtil";
-        internal const string PLUGIN_VERSION = "1.0.0";
+        internal const string PLUGIN_VERSION = "1.1.0";
 
         internal static ComponentUtil _instance;
 
@@ -156,6 +157,7 @@ namespace RSkoi_ComponentUtil
                 return;
 
             ComponentUtilUI.Init();
+            ComponentUtilCache.GetOrCacheComponentAdders(true);
         }
     }
 }
