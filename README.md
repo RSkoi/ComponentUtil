@@ -2,7 +2,7 @@
 
 # ComponentUtil
 
-Koikatsu studio BepInEx plugin that adds a simple UI editor for Unity `Component` properties and fields. Allows for limited inspection and editing of primitive types. ComponentUtil tracks changed properties / fields and their default values, and saves changes into the Koikatsu scene file.
+Koikatsu studio BepInEx plugin that adds a simple UI editor for Unity `Component` properties and fields. Allows for limited inspection and editing of primitive types. ComponentUtil tracks changed properties / fields and their default values, and saves changes into the Koikatsu scene file. Can additionally add `Component`s to a `GameObject` and save them into the scene.
 
 Use of ComponentUtil is limited to items in the workspace of the scene. It does *not* cover all property / field value types and should *not* be used to overwrite values explicitly managed by other plugins. For in-depth debugging of *all* objects within the Unity scene, use the [Runtime Unity Editor](https://github.com/ManlyMarco/RuntimeUnityEditor).
 
@@ -16,6 +16,12 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 1. Select `Transform` entry in the TransformList by clicking on it.
 2. Select `Component` entry in the ComponentList by clicking on it.
 3. View, edit and reset values in the ComponentInspector. Edited entries are marked green.
+
+### Adding & Removing Components
+
+0. Click the `+ Add Component` button in the ComponentList.
+1. Click on an entry in the ComponentAdder window to add the listed `Component` to the selected object.
+2. You can remove added `Component`s by clicking on the `Remove Component` button in the ComponentInspector.
 
 ## BepInEx Config
 
