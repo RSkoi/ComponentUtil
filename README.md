@@ -51,6 +51,10 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 - `sbyte`
 - `nint`
 - `nuint`
+- `Vector2`
+- `Vector3`
+- `Vector4`
+- `Quaternion`
 
 ### Explicitly NOT supported types
 
@@ -59,8 +63,6 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 
 ### Types to be supported in the future (probably) (maybe)
 
-- `Vector2`, `Vector3`, `Vector4`
-- `Quaternion`
 - `UnityEngine.Color`
 
 ## Known Quirks
