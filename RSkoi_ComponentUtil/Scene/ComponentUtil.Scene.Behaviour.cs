@@ -150,8 +150,9 @@ namespace RSkoi_ComponentUtil.Scene
 
                     foreach (var propEdit in propEntry.properties)
                     {
-                        bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                         bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                        bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                        bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.isVector);
 
                         PropertyInfo p = isProperty ? componentType.GetProperty(propEdit.propertyName) : null;
                         FieldInfo f = !isProperty ? componentType.GetField(propEdit.propertyName) : null;
@@ -166,6 +167,18 @@ namespace RSkoi_ComponentUtil.Scene
 
                         if (isInt)
                             value = (int)value;
+                        else if (isVector)
+                        {
+                            string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
+                            if (vectorString.IsNullOrEmpty())
+                            {
+                                logger.LogError($"Failed to convert vector property or field on {loadedItemEditTransform.name}" +
+                                    $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
+                                continue;
+                            }
+                            value = vectorString;
+                        }
+                        
                         // a default value was saved -> can be discarded
                         if (value.ToString() == propEdit.propertyValue)
                             continue;
@@ -182,15 +195,23 @@ namespace RSkoi_ComponentUtil.Scene
 
                         // no
                         if (isProperty)
+                        {
                             if (isInt)
                                 _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), component, false);
+                            else if (isVector)
+                                _instance.SetVectorPropertyValue(p, propEdit.propertyValue, component, false);
                             else
                                 _instance.SetPropertyValue(p, propEdit.propertyValue, component, false);
+                        }
                         else
+                        {
                             if (isInt)
-                            _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component, false);
-                        else
-                            _instance.SetFieldValue(f, propEdit.propertyValue, component, false);
+                                _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component, false);
+                            else if (isVector)
+                                _instance.SetVectorFieldValue(f, propEdit.propertyValue, component, false);
+                            else
+                                _instance.SetFieldValue(f, propEdit.propertyValue, component, false);
+                        }
                     }
                 }
             }
@@ -214,14 +235,21 @@ namespace RSkoi_ComponentUtil.Scene
                 List<TrackerDataPropertySO> properties = [];
                 foreach (var propEntry in entry.Value)
                 {
+                    bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                    bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                    bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.isVector);
+
                     object value = null;
-                    if (HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty))
+                    
+                    if (isProperty)
                         entry.Key.Component.GetPropertyValue(propEntry.Key, out value);
                     else
                         entry.Key.Component.GetFieldValue(propEntry.Key, out value);
 
-                    if (HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt))
+                    if (isInt)
                         value = (int)value;
+                    else if (isVector)
+                        value = VectorConversion.VectorToStringByType(value.GetType(), value);
 
                     TrackerDataPropertySO prop = new(propEntry.Key, value.ToString(), propEntry.Value.OptionFlags);
                     properties.Add(prop);

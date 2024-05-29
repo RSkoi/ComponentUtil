@@ -272,6 +272,8 @@ namespace RSkoi_ComponentUtil
                 IsProperty = 1,
                 // whether value of tracked item should be treated as an integer (convenient for enums)
                 IsInt = 2,
+                // whether value of tracked item is encoded vector, exclusive with IsInt
+                isVector = 4,
             }
         }
 

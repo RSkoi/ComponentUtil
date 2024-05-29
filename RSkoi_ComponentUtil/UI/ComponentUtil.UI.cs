@@ -8,15 +8,16 @@ using UnityEngine.UI;
 
 namespace RSkoi_ComponentUtil.UI
 {
+    /// <summary>
+    /// class is split into multiple files:<br />
+    /// - generic stuff (this file)<br />
+    /// - ui windows<br />
+    /// - ui entries (for ComponentInspector)
+    /// </summary>
     internal static partial class ComponentUtilUI
     {
-        #region prefabs
+        // overarching canvas prefab
         private static GameObject _canvasPrefab;
-        internal static GameObject _genericListEntryPrefab;
-        internal static GameObject _componentPropertyDecimalEntryPrefab;
-        internal static GameObject _componentPropertyEnumEntryPrefab;
-        internal static GameObject _componentPropertyBoolEntryPrefab;
-        #endregion prefabs
 
         #region canvas and containers
         internal static GameObject _canvasContainer;
@@ -34,93 +35,12 @@ namespace RSkoi_ComponentUtil.UI
                 return false;
             }
         }
-
-        internal static Transform _transformWindow;
-        internal static Transform _componentWindow;
-        internal static Transform _inspectorWindow;
-
-        internal static Transform _componentAdderWindow;
         #endregion canvas and containers
-
-        #region scroll view content containers
-        internal static Transform _transformListContainer;
-        internal static Transform _componentListContainer;
-        internal static Transform _componentPropertyListContainer;
-
-        internal static Transform _componentAdderListContainer;
-        #endregion scroll view content containers
-
-        #region hide buttons
-        private static Button _hideTransformListButton;
-        private static Button _hideComponentListButton;
-        private static Button _toggleComponentAdderButton;
-        #endregion hide buttons
 
         #region entry bg colors
         private static readonly Color ENTRY_BG_COLOR_DEFAULT = Color.white;
         private static readonly Color ENTRY_BG_COLOR_EDITED = Color.green;
         #endregion entry bg colors
-
-        #region selected text
-        internal static Text _componentListSelectedGOText;
-        internal static Text _componentPropertyListSelectedComponentText;
-
-        internal static Text _componentAdderListSelectedGOText;
-        #endregion selected text
-
-        #region pages
-        #region transform list
-        private static InputField _pageSearchTransformInput;
-        internal static string PageSearchTransformInputValue
-        {
-            get
-            {
-                if (_pageSearchTransformInput == null)
-                    return "";
-                return _pageSearchTransformInput.text;
-            }
-        }
-        private static Text _currentPageTransformText;
-        private static Button _pageLastTransformButton;
-        private static Button _pageNextTransformButton;
-        #endregion transform list
-
-        #region component list
-        private static InputField _pageSearchComponentInput;
-        internal static string PageSearchComponentInputValue
-        {
-            get
-            {
-                if (_pageSearchComponentInput == null)
-                    return "";
-                return _pageSearchComponentInput.text;
-            }
-        }
-        private static Text _currentPageComponentText;
-        private static Button _pageLastComponentButton;
-        private static Button _pageNextComponentButton;
-        #endregion component list
-
-        #region component adder list
-        private static InputField _pageSearchComponentAdderInput;
-        internal static string PageSearchComponentAdderInputValue
-        {
-            get
-            {
-                if (_pageSearchComponentAdderInput == null)
-                    return "";
-                return _pageSearchComponentAdderInput.text;
-            }
-        }
-        private static Text _currentPageComponentAdderText;
-        private static Button _pageLastComponentAdderButton;
-        private static Button _pageNextComponentAdderButton;
-        #endregion component adder list
-        #endregion pages
-
-        #region inspector buttons
-        internal static Button _componentDeleteButton;
-        #endregion inspector buttons
 
         // this will be overwritten in InstantiateUI()
         private static float _baseCanvasReferenceResolutionY = 600f;
@@ -220,24 +140,13 @@ namespace RSkoi_ComponentUtil.UI
                 return _componentPropertyEnumEntryPrefab;
             else if (t.Equals(typeof(bool)))
                 return _componentPropertyBoolEntryPrefab;
+            else if (t.Equals(typeof(Vector2)) ||
+                     t.Equals(typeof(Vector3)) ||
+                     t.Equals(typeof(Vector4)) ||
+                     t.Equals(typeof(Quaternion)))
+                return _componentPropertyVector4EntryPrefab;
 
             return _componentPropertyDecimalEntryPrefab;
-        }
-
-        internal static PropertyUIEntry PreConfigureNewUiEntry(GameObject entry, GameObject usedPrefab)
-        {
-            Button resetButton = entry.transform.Find("ResetButton").GetComponent<Button>();
-            Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
-            Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
-            return new(resetButton, entryname, bgImage, null, entry, usedPrefab, null);
-        }
-
-        internal static GenericUIListEntry PreConfigureNewGenericUIListEntry(GameObject entry)
-        {
-            Button selfButton = entry.GetComponent<Button>();
-            Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
-            Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
-            return new(selfButton, entryname, bgImage, entry, null, null);
         }
 
         internal static void UpdateUISelectedText(Text uiText, string selectedName, char separator = ':')
@@ -253,39 +162,9 @@ namespace RSkoi_ComponentUtil.UI
             ResetPageNumberTransform();
             ResetPageNumberComponent();
         }
-
-        internal static void UpdatePageNumberTransform(int pageNumber)
-        {
-            _currentPageTransformText.text = (pageNumber + 1).ToString();
-        }
-
-        internal static void ResetPageNumberTransform()
-        {
-            _currentPageTransformText.text = "1";
-        }
-
-        internal static void UpdatePageNumberComponent(int pageNumber)
-        {
-            _currentPageComponentText.text = (pageNumber + 1).ToString();
-        }
-
-        internal static void ResetPageNumberComponent()
-        {
-            _currentPageComponentText.text = "1";
-        }
-
-        internal static void UpdatePageNumberComponentAdder(int pageNumber)
-        {
-            _currentPageComponentAdderText.text = (pageNumber + 1).ToString();
-        }
-
-        internal static void ResetPageNumberComponentAdder()
-        {
-            _currentPageComponentAdderText.text = "1";
-        }
         #endregion internal
 
-        #region private
+        #region private - loading and instantiating
         private static void LoadUIResources()
         {
             Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("RSkoi_ComponentUtil.Resources.componentutil.unity3d");
@@ -297,6 +176,7 @@ namespace RSkoi_ComponentUtil.UI
             _componentPropertyDecimalEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Decimal");
             _componentPropertyEnumEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Enum");
             _componentPropertyBoolEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Bool");
+            _componentPropertyVector4EntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Vector4");
 
             stream.Close();
         }
@@ -394,120 +274,6 @@ namespace RSkoi_ComponentUtil.UI
             else
                 container.gameObject.SetActive(true);
         }
-        #endregion private
-
-        #region internal UI container classes
-        internal class GenericUIListEntry(
-            Button selfButton,
-            Text entryName,
-            Image bgImage,
-            GameObject instantiatedUiGo,
-            object uiTarget,
-            GenericUIListEntry parentUiEntry)
-        {
-            //public HashSet<GenericUIListEntry> editedChildren = [];
-
-            public Button SelfButton = selfButton;
-            public Text EntryName = entryName;
-            public Image BgImage = bgImage;
-            public GameObject UiGO = instantiatedUiGo;
-            public object UiTarget = uiTarget;
-            public GenericUIListEntry ParentUiEntry = parentUiEntry;
-
-            public void SetBgColorEdited(GenericUIListEntry _ /*child*/)
-            {
-                /*if (child != null)
-                    editedChildren.Add(child); // hashset has no duplicates
-
-                if (BgImage.color == ENTRY_BG_COLOR_EDITED)
-                    return;*/
-
-                BgImage.color = ENTRY_BG_COLOR_EDITED;
-                //ParentUiEntry?.SetBgColorEdited(this);
-            }
-
-            public void SetBgColorDefault(GenericUIListEntry _ /*child*/)
-            {
-                /*if (child != null)
-                    editedChildren.Remove(child);
-
-                if (editedChildren.Count > 0)
-                    return;*/
-
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                //ParentUiEntry?.SetBgColorDefault(this);
-            }
-
-            public void ResetBgAndChildren()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                //editedChildren.Clear();
-            }
-        }
-
-        internal class PropertyUIEntry(
-            Button resetButton,
-            Text propertyName,
-            Image bgImage,
-            GenericUIListEntry parentUiEntry,
-            GameObject instantiatedUiGo,
-            GameObject usedPrefab,
-            Func<object, object> uiComponentSetValueDelegateForReset)
-        {
-            public Button ResetButton = resetButton;
-            public Text PropertyName = propertyName;
-            public Image BgImage = bgImage;
-            public GameObject UiGO = instantiatedUiGo;
-            // the parent ui list entry, here a component entry
-            public GenericUIListEntry ParentUiEntry = parentUiEntry;
-            // could be useful in determining what kind of property entry we are dealing with
-            public GameObject UsedPrefab = usedPrefab;
-            // this delegate is used by the reset button
-            public Func<object, object> UiComponentSetValueDelegateForReset = uiComponentSetValueDelegateForReset;
-
-            /* Originally a value change of a property would trigger SetBgColorEdited and call the same on its parent,
-             * i.e. GenericUIListEntry, and propagate all the way to a transform ui entry (transform list).
-             * This removes the necessity to traverse all visible list entries, but makes the whole thing way too annoying
-             * when pages and filter strings come into play. See comment in ComponentUtilUI.TraverseAndSetEditedParents
-             */
-
-            public void SetBgColorEdited()
-            {
-                BgImage.color = ENTRY_BG_COLOR_EDITED;
-
-                // this must never be the case for property/field entries
-                /*if (ParentUiEntry == null)
-                {
-                    ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
-                    return;
-                }
-                ParentUiEntry.SetBgColorEdited(this);*/
-            }
-
-            public void SetBgColorDefault()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-
-                // this must never be the case for property/field entries
-                /*if (ParentUiEntry == null)
-                {
-                    ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
-                    return;
-                }
-                ParentUiEntry.SetBgColorDefault(this);*/
-            }
-
-            public void SetUiComponentTargetValue(object value)
-            {
-                UiComponentSetValueDelegateForReset?.Invoke(value);
-            }
-
-            public void ResetBgAndChildren()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                //editedChildren.Clear();
-            }
-        }
-        #endregion internal UI container classes
+        #endregion private - loading and instantiating
     }
 }
