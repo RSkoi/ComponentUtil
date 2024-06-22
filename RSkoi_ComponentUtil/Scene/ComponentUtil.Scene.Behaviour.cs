@@ -304,8 +304,7 @@ namespace RSkoi_ComponentUtil.Scene
 
         protected override void OnObjectsSelected(List<ObjectCtrlInfo> objectCtrlInfo)
         {
-            // force singular selection
-            if (objectCtrlInfo.Count != 1)
+            if (!ComponentUtilUI.CanOpenWindowOnSelectedObject(objectCtrlInfo))
                 return;
 
             if (ComponentUtilUI.CanvasIsActive)

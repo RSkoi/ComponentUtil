@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Studio;
 
 namespace RSkoi_ComponentUtil.UI
 {
@@ -65,7 +66,7 @@ namespace RSkoi_ComponentUtil.UI
             {
                 ShowWindow();
                 var selected = KKAPI.Studio.StudioAPI.GetSelectedObjects();
-                if (selected.Any())
+                if (CanOpenWindowOnSelectedObject(selected))
                     ComponentUtil._instance.Entry(selected.First());
             }
         }
@@ -88,6 +89,26 @@ namespace RSkoi_ComponentUtil.UI
         public static void HideWindow()
         {
             _canvas.enabled = false;
+        }
+
+        /// <summary>
+        /// checks whether ComponentUtil UI window can be opened
+        /// </summary>
+        /// <param name="objectCtrlInfo">currently selected objects within the workspace</param>
+        /// <returns>true if window can be opened, else false</returns>
+        public static bool CanOpenWindowOnSelectedObject(IEnumerable<ObjectCtrlInfo> objectCtrlInfo)
+        {
+            List<ObjectCtrlInfo> selectedObjects = objectCtrlInfo.ToList();
+
+            // force singular selection
+            if (selectedObjects.Count != 1)
+                return false;
+
+            // folders are not a valid selection
+            if (selectedObjects[0].kind == 3)
+                return false;
+
+            return true;
         }
 
         #region internal
