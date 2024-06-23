@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>97d75d49-6f8f-4667-a252-20227635877b</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>RSkoi_ComponentUtil.Shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Resources\componentutil.unity3d">
+      <CustomToolNamespace>
+      </CustomToolNamespace>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)ComponentUtil.Config.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ComponentUtil.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Cache.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Tracker.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.GenericEntries.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.Vector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ComponentAdder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ComponentList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.TransformList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.Behaviour.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.SerializableObjects.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.Draggable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.Pooling.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Entries\ComponentUtil.UI.ComponentInspector.PropertyUIVectorEntry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Entries\ComponentUtil.UI.GenericEntries.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ComponentAdder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ComponentInspector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ComponentList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.TransformList.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)NuGet.Config" />
+  </ItemGroup>
+</Project>

@@ -3,21 +3,20 @@
   <PropertyGroup>
     <TargetFramework>net35</TargetFramework>
     <AssemblyName>RSkoi_ComponentUtil</AssemblyName>
-    <Description>Allows for inspection and editing of primitive types on components within a scene.</Description>
-    <Version>1.2.0</Version>
+    <Description>Allows for inspection and editing of primitive types on components within a scene. KK version.</Description>
+    <Version>1.2.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
+    <RepositoryUrl>https://github.com/RSkoi/ComponentUtil/</RepositoryUrl>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Resources\componentutil.unity3d" />
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>$(DefineConstants);KK</DefineConstants>
+  </PropertyGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\componentutil.unity3d">
-      <CustomToolNamespace>RSkoi_ComponentUtil.Resources.componentutil.unity3d</CustomToolNamespace>
-    </EmbeddedResource>
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>$(DefineConstants);KK</DefineConstants>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BepInEx.Core" Version="5.*" />
@@ -34,4 +33,12 @@
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
   </ItemGroup>
+
+  <ItemGroup>
+      <EmbeddedResource Include="..\RSkoi_ComponentUtil.Shared\Resources\componentutil.unity3d">
+          <CustomToolNamespace></CustomToolNamespace>
+      </EmbeddedResource>
+  </ItemGroup>
+  
+  <Import Project="..\RSkoi_ComponentUtil.Shared\RSkoi_ComponentUtil.Shared.projitems" Label="Shared" />
 </Project>

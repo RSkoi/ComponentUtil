@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34525.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RSkoi_ComponentUtil.KK", "RSkoi_ComponentUtil.KK\RSkoi_ComponentUtil.KK.csproj", "{984D7C5E-CE9E-4CF0-8173-0B056E6B71ED}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RSkoi_ComponentUtil.KKS", "RSkoi_ComponentUtil.KKS\RSkoi_ComponentUtil.KKS.csproj", "{1CFB155B-129A-4E15-9061-FB4DBDD993A5}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "RSkoi_ComponentUtil.Shared", "RSkoi_ComponentUtil.Shared\RSkoi_ComponentUtil.Shared.shproj", "{97D75D49-6F8F-4667-A252-20227635877B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{984D7C5E-CE9E-4CF0-8173-0B056E6B71ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{984D7C5E-CE9E-4CF0-8173-0B056E6B71ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{984D7C5E-CE9E-4CF0-8173-0B056E6B71ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{984D7C5E-CE9E-4CF0-8173-0B056E6B71ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CFB155B-129A-4E15-9061-FB4DBDD993A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CFB155B-129A-4E15-9061-FB4DBDD993A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CFB155B-129A-4E15-9061-FB4DBDD993A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CFB155B-129A-4E15-9061-FB4DBDD993A5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F34210BB-602E-49D7-A38A-CC8AE0432126}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		RSkoi_ComponentUtil.Shared\RSkoi_ComponentUtil.Shared.projitems*{1cfb155b-129a-4e15-9061-fb4dbdd993a5}*SharedItemsImports = 5
+		RSkoi_ComponentUtil.Shared\RSkoi_ComponentUtil.Shared.projitems*{97d75d49-6f8f-4667-a252-20227635877b}*SharedItemsImports = 13
+		RSkoi_ComponentUtil.Shared\RSkoi_ComponentUtil.Shared.projitems*{984d7c5e-ce9e-4cf0-8173-0b056e6b71ed}*SharedItemsImports = 5
+	EndGlobalSection
+EndGlobal

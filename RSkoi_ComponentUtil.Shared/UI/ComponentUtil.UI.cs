@@ -198,7 +198,12 @@ namespace RSkoi_ComponentUtil.UI
         #region private - loading and instantiating
         private static void LoadUIResources()
         {
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("RSkoi_ComponentUtil.Resources.componentutil.unity3d");
+#if KK
+            string resourceName = "RSkoi_ComponentUtil.KK.componentutil.unity3d";
+#elif KKS
+            string resourceName = "RSkoi_ComponentUtil.KKS.componentutil.unity3d";
+#endif
+            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
             byte[] buffer = new byte[stream.Length];
             stream.Read(buffer, 0, buffer.Length);
 
