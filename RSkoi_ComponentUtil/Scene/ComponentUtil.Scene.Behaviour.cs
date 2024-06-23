@@ -76,7 +76,7 @@ namespace RSkoi_ComponentUtil.Scene
                         ? loadedItemTransformTarget : loadedItemTransformTarget.Find(componentEntry.parentPath);
                     if (loadedItemEditTransform == null)
                     {
-                        logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{componentEntry.parentPath}");
+                        _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{componentEntry.parentPath}");
                         continue;
                     }
 
@@ -96,7 +96,7 @@ namespace RSkoi_ComponentUtil.Scene
                         // _componentAdderSearchCache is populated once on plugin init (ComponentUtil.LoadedEvent)
                         if (!ComponentUtilCache._componentAdderSearchCache.TryGetValue(componentAddEntry.componentName, out Type type))
                         {
-                            logger.LogError($"Component {componentAddEntry.componentName} was not present in cache, cannot add it");
+                            _logger.LogError($"Component {componentAddEntry.componentName} was not present in cache, cannot add it");
                             continue;
                         }
 
@@ -141,7 +141,7 @@ namespace RSkoi_ComponentUtil.Scene
                         ? loadedItemTransformTarget : loadedItemTransformTarget.Find(propEntry.parentPath);
                     if (loadedItemEditTransform == null)
                     {
-                        logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
+                        _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
                         continue;
                     }
 
@@ -160,7 +160,7 @@ namespace RSkoi_ComponentUtil.Scene
                         object value = _instance.GetValueFieldOrProperty(component, p, f);
                         if (value == null)
                         {
-                            logger.LogWarning($"Could not find property or field on {loadedItemEditTransform.name}" +
+                            _logger.LogWarning($"Could not find property or field on {loadedItemEditTransform.name}" +
                                 $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
                             continue;
                         }
@@ -172,7 +172,7 @@ namespace RSkoi_ComponentUtil.Scene
                             string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
                             if (vectorString.IsNullOrEmpty())
                             {
-                                logger.LogError($"Failed to convert vector property or field on {loadedItemEditTransform.name}" +
+                                _logger.LogError($"Failed to convert vector property or field on {loadedItemEditTransform.name}" +
                                     $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
                                 continue;
                             }
@@ -359,15 +359,15 @@ namespace RSkoi_ComponentUtil.Scene
             int i = 0;
             foreach (var entry in savedDict)
             {
-                logger.LogInfo($"-------------- Entry {i}:");
-                logger.LogInfo($"Key: {entry.Key}");
+                _logger.LogInfo($"-------------- Entry {i}:");
+                _logger.LogInfo($"Key: {entry.Key}");
                 foreach (var propEntry in entry.Value)
                 {
-                    logger.LogInfo(propEntry.ToString());
+                    _logger.LogInfo(propEntry.ToString());
                     foreach (var propInner in propEntry.properties)
-                        logger.LogInfo($"     {propInner}");
+                        _logger.LogInfo($"     {propInner}");
                 }
-                logger.LogInfo("--------------");
+                _logger.LogInfo("--------------");
                 i++;
             }
         }
@@ -377,15 +377,15 @@ namespace RSkoi_ComponentUtil.Scene
             int i = 0;
             foreach (var entry in savedDict)
             {
-                logger.LogInfo($"-------------- Entry {i}:");
-                logger.LogInfo($"Key: {entry.Key}");
+                _logger.LogInfo($"-------------- Entry {i}:");
+                _logger.LogInfo($"Key: {entry.Key}");
                 foreach (var cEntry in entry.Value)
                 {
-                    logger.LogInfo(cEntry.ToString());
+                    _logger.LogInfo(cEntry.ToString());
                     foreach (var cInner in cEntry.addedComponents)
-                        logger.LogInfo($"     {cInner}");
+                        _logger.LogInfo($"     {cInner}");
                 }
-                logger.LogInfo("--------------");
+                _logger.LogInfo("--------------");
                 i++;
             }
         }

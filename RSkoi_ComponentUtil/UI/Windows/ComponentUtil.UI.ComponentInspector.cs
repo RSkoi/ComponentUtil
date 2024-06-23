@@ -14,6 +14,8 @@ namespace RSkoi_ComponentUtil.UI
 
         // overarching window container
         internal static Transform _inspectorWindow;
+        internal static RectTransform _inspectorWindowRect;
+        internal static Vector2 _inspectorWindowRectOriginalSize;
         // scroll view content container
         internal static Transform _componentPropertyListContainer;
         // specific to ComponentInspector window

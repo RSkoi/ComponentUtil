@@ -82,7 +82,7 @@ namespace RSkoi_ComponentUtil
                 object vector = VectorConversion.FloatValuesToVectorByType(p.PropertyType, values);
                 p.SetValue(input, vector, null);
             }
-            catch (Exception e) { logger.LogError(e); }
+            catch (Exception e) { _logger.LogError(e); }
         }
 
         internal void SetVectorFieldValue(FieldInfo f, string value, Component input, bool track = true)
@@ -100,7 +100,7 @@ namespace RSkoi_ComponentUtil
                 object vector = VectorConversion.FloatValuesToVectorByType(f.FieldType, values);
                 f.SetValue(input, vector);
             }
-            catch (Exception e) { logger.LogError(e); }
+            catch (Exception e) { _logger.LogError(e); }
         }
         #endregion internal setters
 
@@ -122,7 +122,7 @@ namespace RSkoi_ComponentUtil
                 try { values = StringToVectorValues(value); }
                 catch (Exception e)
                 {
-                    logger.LogError(e);
+                    _logger.LogError(e);
                     vector = null;
                     return false;
                 }
@@ -176,7 +176,7 @@ namespace RSkoi_ComponentUtil
                 else if (t == typeof(Quaternion))
                     return ValuesToQuaternion(values);
 
-                logger.LogError($"FloatValuesToVectorByType was supplied not supported vector type {t.Name}");
+                _logger.LogError($"FloatValuesToVectorByType was supplied not supported vector type {t.Name}");
                 return null;
             }
 
@@ -197,7 +197,7 @@ namespace RSkoi_ComponentUtil
                 else if(t == typeof(Quaternion))
                     return QuaternionToString((Quaternion)v);
 
-                logger.LogError($"VectorToStringByType was supplied not supported vector type {t.Name}");
+                _logger.LogError($"VectorToStringByType was supplied not supported vector type {t.Name}");
                 return null;
             }
 

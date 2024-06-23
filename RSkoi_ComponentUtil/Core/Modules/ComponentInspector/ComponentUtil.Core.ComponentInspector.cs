@@ -87,7 +87,7 @@ namespace RSkoi_ComponentUtil
                 return f.GetValue(input);
 
             // this should never be the case
-            logger.LogError("GetValueFieldOrProperty received neither PropertyInfo nor FieldInfo");
+            _logger.LogError("GetValueFieldOrProperty received neither PropertyInfo nor FieldInfo");
             return null;
         }
 
@@ -98,7 +98,7 @@ namespace RSkoi_ComponentUtil
             // this should never be the case
             if ((!isProperty && !isField) || (isProperty && isField))
             {
-                logger.LogError("ConfigurePropertyEntry: pass either PropertyInfo (X)OR FieldInfo as arguments");
+                _logger.LogError("ConfigurePropertyEntry: pass either PropertyInfo (X)OR FieldInfo as arguments");
                 return;
             }
 
@@ -118,7 +118,7 @@ namespace RSkoi_ComponentUtil
             object value = GetValueFieldOrProperty(input, p, f);
             if (value == null)
             {
-                logger.LogWarning($"Could not find property or field on {input.transform.name}" +
+                _logger.LogWarning($"Could not find property or field on {input.transform.name}" +
                     $".{input.name} with name {propName}, destroying entry and returning");
                 Destroy(entry);
                 return;
@@ -133,7 +133,7 @@ namespace RSkoi_ComponentUtil
             {
                 if (!ConfigVector(parentUiEntry, entry, uiEntry, input, p, f, type, setMethodIsPublic, isProperty, value))
                 {
-                    logger.LogWarning($"Could not configure vector property entry on {input.transform.name}" +
+                    _logger.LogWarning($"Could not configure vector property entry on {input.transform.name}" +
                     $".{input.name} with name {propName}, destroying entry and returning");
                     Destroy(entry);
                     return;
@@ -174,7 +174,7 @@ namespace RSkoi_ComponentUtil
             object defaultValue = GetTrackedDefaultValue(key, propName);
             if (defaultValue == null)
             {
-                logger.LogError($"CheckTrackedAndMarkAsEdited: no defaultValue for property {propName} found or value is null");
+                _logger.LogError($"CheckTrackedAndMarkAsEdited: no defaultValue for property {propName} found or value is null");
                 return;
             }
 
@@ -193,7 +193,7 @@ namespace RSkoi_ComponentUtil
 
                 p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
             }
-            catch (Exception e) { logger.LogError(e); }
+            catch (Exception e) { _logger.LogError(e); }
         }
 
         internal void SetPropertyValueInt(PropertyInfo p, int value, Component input, bool track = true)
@@ -206,7 +206,7 @@ namespace RSkoi_ComponentUtil
 
                 p.SetValue(input, value, null);
             }
-            catch (Exception e) { logger.LogError(e); }
+            catch (Exception e) { _logger.LogError(e); }
         }
 
         internal void SetFieldValue(FieldInfo f, string value, Component input, bool track = true)
@@ -219,7 +219,7 @@ namespace RSkoi_ComponentUtil
 
                 f.SetValue(input, Convert.ChangeType(value, f.FieldType));
             }
-            catch (Exception e) { logger.LogError(e); }
+            catch (Exception e) { _logger.LogError(e); }
         }
 
         internal void SetFieldValueInt(FieldInfo f, int value, Component input, bool track = true)
@@ -232,7 +232,7 @@ namespace RSkoi_ComponentUtil
 
                 f.SetValue(input, value);
             }
-            catch (Exception e) { logger.LogError(e); }
+            catch (Exception e) { _logger.LogError(e); }
         }
         #endregion internal setters
     }

@@ -7,6 +7,8 @@ namespace RSkoi_ComponentUtil.UI
     {
         // overarching window container
         internal static Transform _componentAdderWindow;
+        internal static RectTransform _componentAdderWindowRect;
+        internal static Vector2 _componentAdderWindowRectOriginalSize;
         // scroll view content container
         internal static Transform _componentAdderListContainer;
         // specific to ComponentAdder window

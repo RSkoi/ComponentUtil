@@ -227,25 +227,25 @@ namespace RSkoi_ComponentUtil
         private void PrintTracker()
         {
             int i = 0;
-            logger.LogInfo($"+++++++++++++++++ Properties:");
+            _logger.LogInfo($"+++++++++++++++++ Properties:");
             foreach (var entry in _propertyTracker)
             {
-                logger.LogInfo($"++++++++ Entry {i}:");
-                logger.LogInfo(entry.Key.ToString());
+                _logger.LogInfo($"++++++++ Entry {i}:");
+                _logger.LogInfo(entry.Key.ToString());
                 foreach (var propEntry in entry.Value)
-                    logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
-                logger.LogInfo("++++++++");
+                    _logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
+                _logger.LogInfo("++++++++");
                 i++;
             }
 
-            logger.LogInfo($"+++++++++++++++++ Components:");
+            _logger.LogInfo($"+++++++++++++++++ Components:");
             foreach (var entry in _addedComponentsTracker)
             {
-                logger.LogInfo($"++++++++ Entry {i}:");
-                logger.LogInfo(entry.Key.ToString());
+                _logger.LogInfo($"++++++++ Entry {i}:");
+                _logger.LogInfo(entry.Key.ToString());
                 foreach (var cEntry in entry.Value)
-                    logger.LogInfo($"    {cEntry}");
-                logger.LogInfo("++++++++");
+                    _logger.LogInfo($"    {cEntry}");
+                _logger.LogInfo("++++++++");
                 i++;
             }
         }

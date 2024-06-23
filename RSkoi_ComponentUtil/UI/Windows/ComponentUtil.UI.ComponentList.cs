@@ -7,6 +7,8 @@ namespace RSkoi_ComponentUtil.UI
     {
         // overarching window container
         internal static Transform _componentWindow;
+        internal static RectTransform _componentWindowRect;
+        internal static Vector2 _componentWindowRectOriginalSize;
         // scroll view content container
         internal static Transform _componentListContainer;
         // specific to ComponentList window window

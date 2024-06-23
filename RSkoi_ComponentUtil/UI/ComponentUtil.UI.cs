@@ -81,6 +81,11 @@ namespace RSkoi_ComponentUtil.UI
             _canvasScaler.referenceResolution = new(
                 _canvasScaler.referenceResolution.x,
                 _baseCanvasReferenceResolutionY / uiScale); // aiiee float division, what could go wrong
+
+            SetRectTransformSizeDelta(_transformWindowRect, _transformWindowRectOriginalSize, ComponentUtil.TransformWindowScaleValue);
+            SetRectTransformSizeDelta(_componentWindowRect, _componentWindowRectOriginalSize, ComponentUtil.ComponentWindowScaleValue);
+            SetRectTransformSizeDelta(_componentAdderWindowRect, _componentAdderWindowRectOriginalSize, ComponentUtil.ComponentAdderWindowScaleValue);
+            SetRectTransformSizeDelta(_inspectorWindowRect, _inspectorWindowRectOriginalSize, ComponentUtil.ComponentInspectorScaleValue);
         }
 
         /// <summary>
@@ -174,7 +179,7 @@ namespace RSkoi_ComponentUtil.UI
         {
             int splitIndex = uiText.text.IndexOf(separator);
             string newText = uiText.text.Substring(0, splitIndex + 1);
-            newText += " <b>" + selectedName + "</b>";
+            newText += $" <b>{selectedName}</b>";
             uiText.text = newText;
         }
 
@@ -182,6 +187,11 @@ namespace RSkoi_ComponentUtil.UI
         {
             ResetPageNumberTransform();
             ResetPageNumberComponent();
+        }
+
+        internal static void SetRectTransformSizeDelta(RectTransform rect, Vector2 originalSize, Vector2 mulSize)
+        {
+            rect.sizeDelta = new(originalSize.x * mulSize.x, originalSize.y * mulSize.y);
         }
         #endregion internal
 
@@ -213,6 +223,14 @@ namespace RSkoi_ComponentUtil.UI
             _componentWindow = _canvasContainer.transform.Find("ComponentListContainer");
             _inspectorWindow = _canvasContainer.transform.Find("ComponentInspectorContainer");
             _componentAdderWindow = _canvasContainer.transform.Find("ComponentAdderContainer");
+            _transformWindowRect = _transformWindow.GetComponent<RectTransform>();
+            _componentWindowRect = _componentWindow.GetComponent<RectTransform>();
+            _inspectorWindowRect = _inspectorWindow.GetComponent<RectTransform>();
+            _componentAdderWindowRect = _componentAdderWindow.GetComponent<RectTransform>();
+            _transformWindowRectOriginalSize = _transformWindowRect.sizeDelta;
+            _componentWindowRectOriginalSize = _componentWindowRect.sizeDelta;
+            _inspectorWindowRectOriginalSize = _inspectorWindowRect.sizeDelta;
+            _componentAdderWindowRectOriginalSize = _componentAdderWindowRect.sizeDelta;
 
             // scroll view content containers
             _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");

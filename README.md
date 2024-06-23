@@ -26,6 +26,7 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 ## BepInEx Config
 
 - **UI scale:** Scales the UI to given factor. Reopen ComponentUtil window for the change to apply. (Default: 0.7)
+- **<name> window scale:** Scales the corresponding UI window to given factors in width (X) and height (Y). Reopen ComponentUtil window for the change to apply. (Default: 1, 1)
 - **Toggle UI:** Keyboard combo to toggle the UI of ComponentUtil. (Default: M+RightControl)
 - **Items per page:** How many items to display in the transform / component list per page. Don't set this too high. (Default: 9)
 - **Wait time after scene load:** How long ComponentUtil should wait in seconds after a scene is loaded before applying tracked changes. Try setting this higher if after loading a scene the changes saved with ComponentUtil seem to be overwritten. (Default: 2)

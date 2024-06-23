@@ -58,7 +58,7 @@ namespace RSkoi_ComponentUtil.Core
                 }
                 catch (ReflectionTypeLoadException)
                 {
-                    ComponentUtil.logger.LogWarning($"Could not load types of assembly {a.FullName}, skipping");
+                    ComponentUtil._logger.LogWarning($"Could not load types of assembly {a.FullName}, skipping");
                 }
             }
 
@@ -121,24 +121,24 @@ namespace RSkoi_ComponentUtil.Core
         #region internal helper
         internal static void PrintCache()
         {
-            ComponentUtil.logger.LogInfo("+++++++ cache entries");
+            ComponentUtil._logger.LogInfo("+++++++ cache entries");
 
             foreach (var entry in _transformSearchCache)
-                ComponentUtil.logger.LogInfo($"+ transforms: {entry.Key} , length {entry.Value.Length}");
+                ComponentUtil._logger.LogInfo($"+ transforms: {entry.Key} , length {entry.Value.Length}");
 
             foreach (var entry in _componentSearchCache)
-                ComponentUtil.logger.LogInfo($"+ components: {entry.Key} , length {entry.Value.Length}");
+                ComponentUtil._logger.LogInfo($"+ components: {entry.Key} , length {entry.Value.Length}");
 
             foreach (Component c in _propertyInfoSearchCache.Keys)
-                ComponentUtil.logger.LogInfo($"+ propertyInfos: {c}");
+                ComponentUtil._logger.LogInfo($"+ propertyInfos: {c}");
 
             foreach (Component c in _fieldInfoSearchCache.Keys)
-                ComponentUtil.logger.LogInfo($"+ fieldInfos: {c}");
+                ComponentUtil._logger.LogInfo($"+ fieldInfos: {c}");
 
             //foreach (string c in _componentAdderSearchCache.Keys)
             //    ComponentUtil.logger.LogInfo($"+ componentAdder: {c}");
 
-            ComponentUtil.logger.LogInfo("+++++++");
+            ComponentUtil._logger.LogInfo("+++++++");
         }
         #endregion internal helper
     }
