@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net46</TargetFramework>
-    <AssemblyName>RSkoi_ComponentUtil</AssemblyName>
+    <AssemblyName>RSkoi_ComponentUtil.KKS</AssemblyName>
     <Description>Allows for inspection and editing of primitive types on components within a scene. KKS version.</Description>
     <Version>1.2.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

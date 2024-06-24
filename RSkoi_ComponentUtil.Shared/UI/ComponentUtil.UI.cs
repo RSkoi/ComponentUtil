@@ -72,7 +72,7 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// shows the ui, sets referenceResolution of CanvasScaler
+        /// shows the ui, sets referenceResolution of CanvasScaler, sets sizeDelta of windows
         /// </summary>
         public static void ShowWindow()
         {
@@ -198,12 +198,8 @@ namespace RSkoi_ComponentUtil.UI
         #region private - loading and instantiating
         private static void LoadUIResources()
         {
-#if KK
-            string resourceName = "RSkoi_ComponentUtil.KK.componentutil.unity3d";
-#elif KKS
-            string resourceName = "RSkoi_ComponentUtil.KKS.componentutil.unity3d";
-#endif
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            Stream stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.componentutil.unity3d");
             byte[] buffer = new byte[stream.Length];
             stream.Read(buffer, 0, buffer.Length);
 

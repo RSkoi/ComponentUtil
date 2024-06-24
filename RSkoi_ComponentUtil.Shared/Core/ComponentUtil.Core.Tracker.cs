@@ -251,8 +251,9 @@ namespace RSkoi_ComponentUtil
         }
         #endregion private helpers
 
-        #region internal property classes
-        internal class PropertyTrackerData(string propertyName, PropertyTrackerDataOptions optionFlags, object defaultValue)
+        #region property classes
+        // keep this one public, see comment in ComponentUtilSerializableObjects class
+        public class PropertyTrackerData(string propertyName, PropertyTrackerDataOptions optionFlags, object defaultValue)
         {
             public string PropertyName = propertyName;
             public PropertyTrackerDataOptions OptionFlags = optionFlags;
@@ -321,9 +322,9 @@ namespace RSkoi_ComponentUtil
                 return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component} ]";
             }
         }
-        #endregion internal property classes
+        #endregion property classes
 
-        #region internal component classes
+        #region component classes
         internal class ComponentAdderKey(ObjectCtrlInfo objCtrlInfo, GameObject go)
             : IEquatable<ComponentAdderKey>
         {
@@ -363,6 +364,6 @@ namespace RSkoi_ComponentUtil
                 return $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go} ]";
             }
         }
-        #endregion internal component classes
+        #endregion component classes
     }
 }

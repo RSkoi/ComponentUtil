@@ -43,8 +43,13 @@ namespace RSkoi_ComponentUtil
 
         private void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)
         {
-            if (scene.buildIndex != 1 || scene.name != "Studio")
+#if KK
+            if (scene.buildIndex != 1)
                 return;
+#elif KKS
+            if (scene.buildIndex != 2)
+                return;
+#endif
 
             ComponentUtilUI.Init();
             ComponentUtilCache.GetOrCacheComponentAdders(true);

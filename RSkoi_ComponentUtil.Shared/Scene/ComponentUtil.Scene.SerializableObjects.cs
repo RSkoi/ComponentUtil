@@ -1,23 +1,26 @@
 ﻿using System;
 using MessagePack;
 
+using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
+
 namespace RSkoi_ComponentUtil.Scene
 {
-    internal static class ComponentUtilSerializableObjects
+    // keep all of these public, otherwise MessagePack throws MethodAccessException because of PropertyTrackerDataOptions
+    public static class ComponentUtilSerializableObjects
     {
         [Serializable]
         [MessagePackObject]
-        internal class TrackerDataPropertySO(
+        public class TrackerDataPropertySO(
             string propertyName,
             string propertyValue,
-            ComponentUtil.PropertyTrackerData.PropertyTrackerDataOptions propertyFlags = ComponentUtil.PropertyTrackerData.PropertyTrackerDataOptions.None)
+            PropertyTrackerDataOptions propertyFlags = PropertyTrackerDataOptions.None)
         {
             [Key("propertyName")]
             public string propertyName = propertyName;
             [Key("propertyValue")]
             public string propertyValue = propertyValue;
             [Key("propertyFlags")]
-            public ComponentUtil.PropertyTrackerData.PropertyTrackerDataOptions propertyFlags = propertyFlags;
+            public PropertyTrackerDataOptions propertyFlags = propertyFlags;
 
             public override string ToString()
             {
@@ -27,7 +30,7 @@ namespace RSkoi_ComponentUtil.Scene
 
         [Serializable]
         [MessagePackObject]
-        internal class TrackerDataSO(
+        public class TrackerDataSO(
             int parentItemKey,
             string parentPath,
             string objectName,
@@ -57,7 +60,7 @@ namespace RSkoi_ComponentUtil.Scene
 
         [Serializable]
         [MessagePackObject]
-        internal class TrackerAddedComponentDataSO(string componentName)
+        public class TrackerAddedComponentDataSO(string componentName)
         {
             [Key("componentName")]
             public string componentName = componentName;
@@ -70,7 +73,7 @@ namespace RSkoi_ComponentUtil.Scene
 
         [Serializable]
         [MessagePackObject]
-        internal class TrackerComponentDataSO(
+        public class TrackerComponentDataSO(
             int parentItemKey,
             string parentPath,
             string objectName,
