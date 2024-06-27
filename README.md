@@ -65,6 +65,7 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 ### Types to be supported in the future (probably) (maybe)
 
 - `UnityEngine.Color`
+- `AnimationCurve`
 
 ## Known Quirks
 
