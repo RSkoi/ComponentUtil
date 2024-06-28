@@ -50,6 +50,12 @@ namespace RSkoi_ComponentUtil
                 uiEntry.SelfButton.onClick.RemoveAllListeners();
                 uiEntry.SelfButton.onClick.AddListener(() =>
                 {
+                    if (input.GetComponent(t) != null)
+                    {
+                        _logger.LogWarning($"Cannot add component {t.Name} to {input.name} because instance already exists");
+                        return;
+                    }
+
                     input.AddComponent(t);
                     AddComponentToTracker(_selectedObject, input, t.FullName);
 
