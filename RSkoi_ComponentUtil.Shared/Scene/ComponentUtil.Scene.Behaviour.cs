@@ -328,6 +328,35 @@ namespace RSkoi_ComponentUtil.Scene
 
             base.OnObjectDeleted(objectCtrlInfo);
         }
+
+        protected override void OnObjectsCopied(ReadOnlyDictionary<int, ObjectCtrlInfo> copiedItems)
+        {
+            // TODO: this is a nightmare
+
+            /*ObjectCtrlInfo selected = null;
+            foreach (var entry in copiedItems)
+            {
+                // if original object (get with id) is tracked by components
+                //      for new ComponentAdderKey we need: ObjectCtrlInfo, GameObject
+                //      we have to mirror the path to the GameObject on the new hierarchy
+                //      then clone HashSet<string>, i.e. names of added components
+                //      then add to added components tracker
+                //      THEN actually add the components to the GameObject
+
+                // if original object (get with id) is tracked by properties
+                //      for new PropertyKey we need: ObjectCtrlInfo, GameObject, Component
+                //      mirror new path to GameObject and Component
+                //      then clone Dictionary<string, PropertyTrackerData>, i.e. property / field data
+                //      remember that the PropertyTrackerData objects probably need to be cloned too
+                //      then add to property tracker
+                //      THEN apply property / field changes
+            }
+
+            if (ComponentUtilUI.CanvasIsActive)
+                _instance.Entry(selected);*/
+
+            base.OnObjectsCopied(copiedItems);
+        }
         #endregion override
 
         #region private helpers
