@@ -86,6 +86,7 @@ namespace RSkoi_ComponentUtil.UI
             SetRectTransformSizeDelta(_componentWindowRect, _componentWindowRectOriginalSize, ComponentUtil.ComponentWindowScaleValue);
             SetRectTransformSizeDelta(_componentAdderWindowRect, _componentAdderWindowRectOriginalSize, ComponentUtil.ComponentAdderWindowScaleValue);
             SetRectTransformSizeDelta(_inspectorWindowRect, _inspectorWindowRectOriginalSize, ComponentUtil.ComponentInspectorScaleValue);
+            SetRectTransformSizeDelta(_objectInspectorWindowRect, _objectInspectorWindowRectOriginalSize, ComponentUtil.ObjectInspectorScaleValue);
         }
 
         /// <summary>
@@ -171,6 +172,8 @@ namespace RSkoi_ComponentUtil.UI
                      t.Equals(typeof(Vector4)) ||
                      t.Equals(typeof(Quaternion)))
                 return _componentPropertyVector4EntryPrefab;
+            else if (!t.IsValueType || ComponentUtil.supportedTypesRewireAsReference.Contains(t))
+                return _componentPropertyReferenceEntryPrefab;
 
             return _componentPropertyDecimalEntryPrefab;
         }
@@ -209,6 +212,7 @@ namespace RSkoi_ComponentUtil.UI
             _componentPropertyEnumEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Enum");
             _componentPropertyBoolEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Bool");
             _componentPropertyVector4EntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Vector4");
+            _componentPropertyReferenceEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Reference");
 
             stream.Close();
         }
@@ -224,25 +228,30 @@ namespace RSkoi_ComponentUtil.UI
             _componentWindow = _canvasContainer.transform.Find("ComponentListContainer");
             _inspectorWindow = _canvasContainer.transform.Find("ComponentInspectorContainer");
             _componentAdderWindow = _canvasContainer.transform.Find("ComponentAdderContainer");
+            _objectInspectorWindow = _canvasContainer.transform.Find("ObjectInspectorContainer");
             _transformWindowRect = _transformWindow.GetComponent<RectTransform>();
             _componentWindowRect = _componentWindow.GetComponent<RectTransform>();
             _inspectorWindowRect = _inspectorWindow.GetComponent<RectTransform>();
             _componentAdderWindowRect = _componentAdderWindow.GetComponent<RectTransform>();
+            _objectInspectorWindowRect = _objectInspectorWindow.GetComponent<RectTransform>();
             _transformWindowRectOriginalSize = _transformWindowRect.sizeDelta;
             _componentWindowRectOriginalSize = _componentWindowRect.sizeDelta;
             _inspectorWindowRectOriginalSize = _inspectorWindowRect.sizeDelta;
             _componentAdderWindowRectOriginalSize = _componentAdderWindowRect.sizeDelta;
+            _objectInspectorWindowRectOriginalSize = _objectInspectorWindowRect.sizeDelta;
 
             // scroll view content containers
             _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
             _componentListContainer = _componentWindow.Find("ComponentList/ComponentEntryScrollView/Viewport/Content");
             _componentPropertyListContainer = _inspectorWindow.Find("ComponentPropertyList/ComponentPropertyEntryScrollView/Viewport/Content");
             _componentAdderListContainer = _componentAdderWindow.Find("ComponentAddList/ComponentAddEntryScrollView/Viewport/Content");
+            _objectPropertyListContainer = _objectInspectorWindow.Find("ObjectPropertyList/ObjectPropertyEntryScrollView/Viewport/Content");
 
             // window tooltips
             _componentListSelectedGOText = _componentWindow.Find("ComponentList/ComponentText").GetComponent<Text>();
             _componentPropertyListSelectedComponentText = _inspectorWindow.Find("ComponentPropertyList/ComponentText").GetComponent<Text>();
             _componentAdderListSelectedGOText = _componentAdderWindow.Find("ComponentAddList/ComponentAddListText").GetComponent<Text>();
+            _objectPropertyListSelectedText = _objectInspectorWindow.Find("ObjectPropertyList/ObjectText").GetComponent<Text>();
 
             _componentDeleteButton = _inspectorWindow.Find("ComponentPropertyList/DeleteComponentButton").GetComponent<Button>();
 
@@ -254,6 +263,13 @@ namespace RSkoi_ComponentUtil.UI
 
             _toggleComponentAdderButton = _componentWindow.Find("ComponentList/ToggleComponentAdderButton").GetComponent<Button>();
             _toggleComponentAdderButton.onClick.AddListener(() => ToggleSubWindow(_componentAdderWindow));
+
+            // close buttons
+            SetupCloseButton(_transformWindow);
+            SetupCloseButton(_componentWindow);
+            SetupCloseButton(_inspectorWindow, true);
+            SetupCloseButton(_componentAdderWindow);
+            SetupCloseButton(_objectInspectorWindow);
 
             // page buttons
             Transform page = _transformWindow.Find("TransformList/PageContainer");
@@ -297,6 +313,7 @@ namespace RSkoi_ComponentUtil.UI
             SetupDraggable(_componentWindow);
             SetupDraggable(_inspectorWindow);
             SetupDraggable(_componentAdderWindow);
+            SetupDraggable(_objectInspectorWindow);
 
             _baseCanvasReferenceResolutionY = _canvasScaler.referenceResolution.y;
         }
@@ -305,6 +322,15 @@ namespace RSkoi_ComponentUtil.UI
         {
             ComponentUtilDraggable draggable = windowContainer.Find("LabelDragPanel").gameObject.AddComponent<ComponentUtilDraggable>();
             draggable.target = windowContainer.GetComponent<RectTransform>();
+        }
+
+        private static void SetupCloseButton(Transform windowContainer, bool hideWholeUI = false)
+        {
+            Button b = windowContainer.Find("CloseWindowButton").GetComponent<Button>();
+            if (hideWholeUI)
+                b.onClick.AddListener(() => HideWindow());
+            else
+                b.onClick.AddListener(() => ToggleSubWindow(windowContainer));
         }
 
         private static void ToggleSubWindow(Transform container)

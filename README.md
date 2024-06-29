@@ -23,6 +23,14 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 1. Click on an entry in the ComponentAdder window to add the listed `Component` to the selected object.
 2. You can remove added `Component`s by clicking on the `Remove Component` button in the ComponentInspector.
 
+### Redirectors
+
+ComponentUtil comes with a few custom scripts that redirect certain static classes to properties inside an addable `Component`. See above on how to add a `Component`. Redirectors currently include:
+
+- RenderSettingsRedirector: redirects variables of UnityEngine.RenderSettings
+- QualitySettingsRedirector: redirects variables of UnityEngine.QualitySettings
+- LightmapSettingsRedirector: redirects variables of UnityEngine.LightmapSettings
+
 ## BepInEx Config
 
 - **UI scale:** Scales the UI to given factor. Re-toggle ComponentUtil window for the change to apply. (Default: 0.7)
@@ -56,19 +64,22 @@ Each item in the studio workspace represents a so-called transform hierarchy of 
 - `Vector3`
 - `Vector4`
 - `Quaternion`
+- non-indexed reference types
+- ParticleSystem modules
 
 ### Explicitly NOT supported types
 
-- reference types (this includes `string`)
 - properties without a public `get` method
 
 ### Types to be supported in the future (probably) (maybe)
 
 - `UnityEngine.Color`
 - `AnimationCurve`
+- `string`
 
 ## Known Quirks
 
+- Properties of Redirector scripts will not be marked as edited on scene load. This is because the tracker interprets the current value of variables as the default values and as such will discard saved values if they equal the default values.
 - Not all properties expose a public `set` method. These entries are marked as read-only / non-interactable. Properties without a public `get` method will not be listed at all.
 - Performance is affected by the **Items per page** config setting. The more UI items per page, the more hiccups and stutters you may notice when toggling or interacting with the UI. All must bow to the garbage collector.
 - When loading a Koikatsu scene with saved property / field edits, the changes ComponentUtil applies after the scene finished loading in are sometimes overwritten. Presumably because God said so. God's will can be circumvented by waiting a certain amount of seconds after loading has finished. If in need, the amount of seconds to wait can be changed with the **Wait time after scene load** setting.

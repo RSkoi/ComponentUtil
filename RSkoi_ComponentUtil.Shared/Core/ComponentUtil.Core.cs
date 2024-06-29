@@ -19,9 +19,11 @@ namespace RSkoi_ComponentUtil
         internal static Studio.ObjectCtrlInfo _selectedObject;  // selected in workspace
         private static GameObject _selectedGO;                  // selected in TransformList
         private static Component _selectedComponent;            // selected in ComponentList
-
+        
         private static ComponentUtilUI.GenericUIListEntry _selectedTransformUIEntry;
         private static ComponentUtilUI.GenericUIListEntry _selectedComponentUiEntry;
+        // selected reference type in ComponentInspector
+        private static ComponentUtilUI.PropertyUIEntry _selectedReferencePropertyUiEntry;
         #endregion currently selected
 
         /// <summary>
@@ -50,6 +52,35 @@ namespace RSkoi_ComponentUtil
         ];
 
         /// <summary>
+        /// the property and field types ComponentUtil supports that should be treated as reference types
+        /// </summary>
+        public static readonly HashSet<Type> supportedTypesRewireAsReference =
+        [
+            typeof(ParticleSystem.MainModule),
+            typeof(ParticleSystem.CollisionModule),
+            typeof(ParticleSystem.ColorBySpeedModule),
+            typeof(ParticleSystem.ColorOverLifetimeModule),
+            typeof(ParticleSystem.CustomDataModule),
+            typeof(ParticleSystem.EmissionModule),
+            typeof(ParticleSystem.ExternalForcesModule),
+            typeof(ParticleSystem.ForceOverLifetimeModule),
+            typeof(ParticleSystem.InheritVelocityModule),
+            typeof(ParticleSystem.LightsModule),
+            typeof(ParticleSystem.LimitVelocityOverLifetimeModule),
+            typeof(ParticleSystem.NoiseModule),
+            typeof(ParticleSystem.RotationBySpeedModule),
+            typeof(ParticleSystem.RotationOverLifetimeModule),
+            typeof(ParticleSystem.ShapeModule),
+            typeof(ParticleSystem.SizeBySpeedModule),
+            typeof(ParticleSystem.SizeOverLifetimeModule),
+            typeof(ParticleSystem.SubEmittersModule),
+            typeof(ParticleSystem.TextureSheetAnimationModule),
+            typeof(ParticleSystem.TrailModule),
+            typeof(ParticleSystem.TriggerModule),
+            typeof(ParticleSystem.VelocityOverLifetimeModule),
+        ];
+
+        /// <summary>
         /// sets selected objects to null, resets the tracker, UI pools, cache and pages
         /// </summary>
         public void ResetState()
@@ -57,6 +88,7 @@ namespace RSkoi_ComponentUtil
             _selectedGO = null;
             _selectedComponent = null;
             _selectedObject = null;
+            _selectedReferencePropertyUiEntry = null;
 
             _currentPageTransformList = 0;
             _currentPageComponentList = 0;

@@ -82,15 +82,15 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// container for a 
+        /// container for a property entry
         /// </summary>
-        /// <param name="resetButton"></param>
-        /// <param name="propertyName"></param>
-        /// <param name="bgImage"></param>
-        /// <param name="parentUiEntry"></param>
-        /// <param name="instantiatedUiGo"></param>
-        /// <param name="usedPrefab"></param>
-        /// <param name="uiComponentSetValueResetDelegate"></param>
+        /// <param name="resetButton">reset button component of the property entry</param>
+        /// <param name="propertyName">label component of the property entry</param>
+        /// <param name="bgImage">image component of the property entry</param>
+        /// <param name="parentUiEntry">the parent ui list entry, here a component entry</param>
+        /// <param name="instantiatedUiGo">instantiated ui GameObject</param>
+        /// <param name="usedPrefab">used prefab when instantiating</param>
+        /// <param name="uiComponentSetValueResetDelegate">this delegate is used by the reset button to reset the ui value, return effective value</param>
         internal class PropertyUIEntry(
             Button resetButton,
             Text propertyName,
@@ -102,6 +102,10 @@ namespace RSkoi_ComponentUtil.UI
         {
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
+            public string PropertyNameValue
+            {
+                get { return PropertyName.text.Split(' ')[1]; }
+            }
             public Image BgImage = bgImage;
             public GameObject UiGO = instantiatedUiGo;
             /// <summary>
@@ -113,11 +117,11 @@ namespace RSkoi_ComponentUtil.UI
             /// </summary>
             public GameObject UsedPrefab = usedPrefab;
             /// <summary>
-            /// this delegate is used by the reset button to reset the ui value, return
+            /// this delegate is used by the reset button to reset the ui value, return effective value
             /// </summary>
             public Func<object, object> UiComponentSetValueResetDelegate = uiComponentSetValueResetDelegate;
             /// <summary>
-            /// if this delegate is not null it will be used by the reset button to reset the property / field value
+            /// if this delegate is not null it will be invoked by the reset button
             /// </summary>
             public Func<object, object> ResetOverrideDelegate;
 

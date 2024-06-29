@@ -12,6 +12,8 @@ namespace RSkoi_ComponentUtil.UI
         // TODO: these are not pooled yet
         internal readonly static List<PropertyUIEntry> _componentPropertyListEntries = [];
         internal readonly static List<PropertyUIEntry> _componentFieldListEntries = [];
+        internal readonly static List<PropertyUIEntry> _objectPropertyListEntries = [];
+        internal readonly static List<PropertyUIEntry> _objectFieldListEntries = [];
         #endregion list entry pools
 
         /// <summary>
@@ -22,8 +24,19 @@ namespace RSkoi_ComponentUtil.UI
             ClearEntryListData(TransformListEntries);
             ClearEntryListData(ComponentListEntries);
             ClearEntryListData(ComponentAdderListEntries);
+
+            ClearInspectorEntryPools();
+        }
+
+        /// <summary>
+        /// clears the non-pooled inspector ui components, use sparingly
+        /// </summary>
+        public static void ClearInspectorEntryPools()
+        {
             ClearEntryListGO(_componentPropertyListEntries);
             ClearEntryListGO(_componentFieldListEntries);
+            ClearEntryListGO(_objectPropertyListEntries);
+            ClearEntryListGO(_objectFieldListEntries);
         }
 
         #region transform pool

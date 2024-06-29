@@ -11,6 +11,8 @@ namespace RSkoi_ComponentUtil
     {
         // keeps track of properties and fields and their default values
         internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _propertyTracker = [];
+        // keeps track of properties and fields and their default values inside reference types
+        internal static readonly Dictionary<PropertyReferenceKey, Dictionary<string, PropertyTrackerData>> _referencePropertyTracker = [];
         // keeps track of which components were added to which objects
         internal static readonly Dictionary<ComponentAdderKey, HashSet<string>> _addedComponentsTracker = [];
 
@@ -91,7 +93,14 @@ namespace RSkoi_ComponentUtil
             if (_addedComponentsTracker[key].Count == 0)
                 _addedComponentsTracker.Remove(key);
 
+            // untrack all edited properties on component
             _propertyTracker.Remove(new(key.ObjCtrlInfo, key.Go, component));
+            // untrack all edited reference properties on component
+            foreach (var keyRef in new List<PropertyReferenceKey>(_referencePropertyTracker.Keys))
+                if (keyRef.ObjCtrlInfo == key.ObjCtrlInfo
+                    && keyRef.Go == key.Go
+                    && keyRef.Component == component)
+                    _referencePropertyTracker.Remove(keyRef);
 
             return true;
         }
@@ -221,6 +230,140 @@ namespace RSkoi_ComponentUtil
             return defaultValue;
         }
         #endregion property tracker
+
+        #region reference property tracker
+        internal bool AddPropertyToTracker(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string referencePropertyName,
+            string propertyName,
+            object defaultValue,
+            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
+        {
+            // add dummy tracker to reference type
+            AddPropertyToTracker(objCtrlInfo, go, component, referencePropertyName, 0, PropertyTrackerDataOptions.IsReference);
+            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
+        }
+
+        internal bool AddPropertyToTracker(
+            PropertyReferenceKey key,
+            string propertyName,
+            object defaultValue,
+            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
+        {
+            PropertyTrackerData data = new(propertyName, optionFlags, defaultValue);
+
+            if (_referencePropertyTracker.ContainsKey(key))
+                if (_referencePropertyTracker[key].ContainsKey(propertyName))
+                    return false; // property already tracked
+                else
+                    _referencePropertyTracker[key].Add(propertyName, data); // at least one other property is tracked
+            else
+                _referencePropertyTracker.Add(key, new() { { propertyName, data } }); // new property
+
+            return true;
+        }
+
+        internal bool RemovePropertyFromTracker(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string referencePropertyName,
+            string propertyName,
+            out bool removedKey)
+        {
+            RemovePropertyFromTracker(objCtrlInfo, go, component, referencePropertyName);
+            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            bool ret = RemovePropertyFromTracker(key, propertyName, out bool removedK);
+            removedKey = removedK;
+            return ret;
+        }
+
+        internal bool RemovePropertyFromTracker(PropertyReferenceKey key, string propertyName, out bool removedKey)
+        {
+            removedKey = false;
+            if (!PropertyIsTracked(key, propertyName))
+                return false;
+
+            _referencePropertyTracker[key].Remove(propertyName);
+            if (_referencePropertyTracker[key].Count == 0)
+            {
+                _referencePropertyTracker.Remove(key);
+                removedKey = RemovePropertyFromTracker(key.ObjCtrlInfo, key.Go, key.Component, key.ReferencePropertyName);
+            }
+
+            return true;
+        }
+
+        internal bool PropertyIsTracked(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string referencePropertyName,
+            string propertyName)
+        {
+            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            return PropertyIsTracked(key, propertyName)
+                && PropertyIsTracked(objCtrlInfo, go, component, referencePropertyName);
+        }
+
+        internal bool PropertyIsTracked(PropertyReferenceKey key, string propertyName)
+        {
+            if (!_referencePropertyTracker.ContainsKey(key))
+                return false;
+            if (!_referencePropertyTracker[key].ContainsKey(propertyName))
+                return false;
+            return true;
+        }
+
+        internal bool TransformObjectAndComponentIsTracked(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string referencePropertyName)
+        {
+            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            return TransformObjectAndComponentIsTracked(key)
+                && TransformObjectAndComponentIsTracked(objCtrlInfo, go, component);
+        }
+
+        internal bool TransformObjectAndComponentIsTracked(PropertyReferenceKey key)
+        {
+            if (!_referencePropertyTracker.ContainsKey(key))
+                return false;
+            return true;
+        }
+
+        internal object GetTrackedDefaultValue(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string referencePropertyName,
+            string propertyName)
+        {
+            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            return GetTrackedDefaultValue(key, propertyName);
+        }
+
+        internal object GetTrackedDefaultValue(PropertyReferenceKey key, string propertyName)
+        {
+            if (_referencePropertyTracker.ContainsKey(key))
+                return _referencePropertyTracker[key][propertyName].DefaultValue;
+            // assumes null as magic value, this could cause problems
+            return null;
+        }
+
+        internal object GetTrackedDefaultValue(
+            PropertyReferenceKey key,
+            string propertyName,
+            out object defaultValue)
+        {
+            defaultValue = GetTrackedDefaultValue(key, propertyName);
+            return defaultValue;
+        }
+        #endregion reference property tracker
         #endregion internal
 
         #region private helpers
@@ -229,6 +372,17 @@ namespace RSkoi_ComponentUtil
             int i = 0;
             _logger.LogInfo($"+++++++++++++++++ Properties:");
             foreach (var entry in _propertyTracker)
+            {
+                _logger.LogInfo($"++++++++ Entry {i}:");
+                _logger.LogInfo(entry.Key.ToString());
+                foreach (var propEntry in entry.Value)
+                    _logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
+                _logger.LogInfo("++++++++");
+                i++;
+            }
+
+            _logger.LogInfo($"+++++++++++++++++ Reference Properties:");
+            foreach (var entry in _referencePropertyTracker)
             {
                 _logger.LogInfo($"++++++++ Entry {i}:");
                 _logger.LogInfo(entry.Key.ToString());
@@ -274,7 +428,9 @@ namespace RSkoi_ComponentUtil
                 // whether value of tracked item should be treated as an integer (convenient for enums)
                 IsInt = 2,
                 // whether value of tracked item is encoded vector, exclusive with IsInt
-                isVector = 4,
+                IsVector = 4,
+                // whether value of tracked item is invalid as it's only used to keep track of edited states of reference types
+                IsReference = 8,
             }
         }
 
@@ -311,15 +467,65 @@ namespace RSkoi_ComponentUtil
 
             public bool Equals(PropertyKey other)
             {
-                return other != null &&
-                   ObjCtrlInfo == other.ObjCtrlInfo &&
-                   Go == other.Go &&
-                   Component == other.Component;
+                return other != null
+                   && ObjCtrlInfo   == other.ObjCtrlInfo
+                   && Go            == other.Go
+                   && Component     == other.Component;
             }
 
             public override string ToString()
             {
                 return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component} ]";
+            }
+        }
+
+        internal class PropertyReferenceKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string referencePropertyName)
+            : IEquatable<PropertyReferenceKey>
+        {
+            // the overarching item / ObjectCtrl (root)
+            public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+            // the GameObject the component resides in
+            // you can also get this with Component.gameObject
+            // transform is Go.transform
+            public GameObject Go = go;
+            // the component the property resides in
+            public Component Component = component;
+            // the name of the reference type property
+            public string ReferencePropertyName = referencePropertyName;
+
+            public override int GetHashCode()
+            {
+                // oh shit oh fuck
+                // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 31 + ObjCtrlInfo.GetHashCode();
+                    hash = hash * 31 + Go.GetHashCode();
+                    hash = hash * 31 + Component.GetHashCode();
+                    hash = hash * 31 + ReferencePropertyName.GetHashCode();
+                    return hash;
+                }
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as PropertyReferenceKey);
+            }
+
+            public bool Equals(PropertyReferenceKey other)
+            {
+                return other != null
+                   && ObjCtrlInfo           == other.ObjCtrlInfo
+                   && Go                    == other.Go
+                   && Component             == other.Component
+                   && ReferencePropertyName == other.ReferencePropertyName;
+            }
+
+            public override string ToString()
+            {
+                return $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component}, " +
+                    $"ReferencePropertyName: {ReferencePropertyName} ]";
             }
         }
         #endregion property classes
@@ -354,9 +560,9 @@ namespace RSkoi_ComponentUtil
 
             public bool Equals(ComponentAdderKey other)
             {
-                return other != null &&
-                   ObjCtrlInfo == other.ObjCtrlInfo &&
-                   Go == other.Go;
+                return other != null
+                   && ObjCtrlInfo   == other.ObjCtrlInfo
+                   && Go            == other.Go;
             }
 
             public override string ToString()

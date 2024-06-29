@@ -19,6 +19,7 @@ namespace RSkoi_ComponentUtil.Scene
     internal class ComponentUtilSceneBehaviour : SceneCustomFunctionController
     {
         #region override
+        #region load
         protected override void OnSceneLoad(SceneOperationKind operation, ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
             if (operation == SceneOperationKind.Clear || operation == SceneOperationKind.Load)
@@ -56,6 +57,18 @@ namespace RSkoi_ComponentUtil.Scene
             }
             #endregion set all edited properties
 
+            #region set all edited reference properties
+            if (data.data.TryGetValue($"{name}_referenceProperties", out var referencePropertyDict) && referencePropertyDict != null)
+            {
+                SortedDictionary<int, List<TrackerReferenceDataSO>> deserializedTrackerDataDict
+                    = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerReferenceDataSO>>>((byte[])referencePropertyDict);
+
+                //PrintPropSavedDict(deserializedTrackerDataDict);
+
+                StartCoroutine(OnSceneLoadEditReferencePropsRoutine(deserializedTrackerDataDict, loadedItems));
+            }
+            #endregion set all edited reference properties
+
             if (ComponentUtilUI.CanvasIsActive)
                 ComponentUtilUI.HideWindow();
         }
@@ -82,17 +95,6 @@ namespace RSkoi_ComponentUtil.Scene
 
                     foreach (var componentAddEntry in componentEntry.addedComponents)
                     {
-                        /*Type type;
-                        try
-                        {
-                            type = Type.GetType(componentAddEntry.componentName);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogError($"Could not get type of component {componentAddEntry.componentName}; {ex}");
-                            continue;
-                        }*/
-
                         // _componentAdderSearchCache is populated once on plugin init (ComponentUtil.LoadedEvent)
                         if (!ComponentUtilCache._componentAdderSearchCache.TryGetValue(componentAddEntry.componentName, out Type type))
                         {
@@ -150,12 +152,13 @@ namespace RSkoi_ComponentUtil.Scene
 
                     foreach (var propEdit in propEntry.properties)
                     {
+                        bool isReference = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
                         bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                         bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.isVector);
+                        bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
 
-                        PropertyInfo p = isProperty ? componentType.GetProperty(propEdit.propertyName) : null;
-                        FieldInfo f = !isProperty ? componentType.GetField(propEdit.propertyName) : null;
+                        PropertyInfo p = (isReference || isProperty) ? componentType.GetProperty(propEdit.propertyName) : null;
+                        FieldInfo f = (isReference || !isProperty) ? componentType.GetField(propEdit.propertyName) : null;
 
                         object value = _instance.GetValueFieldOrProperty(component, p, f);
                         if (value == null)
@@ -193,30 +196,144 @@ namespace RSkoi_ComponentUtil.Scene
                             value,
                             propEdit.propertyFlags);
 
+                        // dummy properties for reference types don't have a valid value to be set
+                        if (isReference)
+                            continue;
+
                         // no
                         if (isProperty)
                         {
                             if (isInt)
-                                _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), component, false);
+                                _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), component);
                             else if (isVector)
-                                _instance.SetVectorPropertyValue(p, propEdit.propertyValue, component, false);
+                                _instance.SetVectorPropertyValue(p, propEdit.propertyValue, component);
                             else
-                                _instance.SetPropertyValue(p, propEdit.propertyValue, component, false);
+                                _instance.SetPropertyValue(p, propEdit.propertyValue, component);
                         }
                         else
                         {
                             if (isInt)
-                                _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component, false);
+                                _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component);
                             else if (isVector)
-                                _instance.SetVectorFieldValue(f, propEdit.propertyValue, component, false);
+                                _instance.SetVectorFieldValue(f, propEdit.propertyValue, component);
                             else
-                                _instance.SetFieldValue(f, propEdit.propertyValue, component, false);
+                                _instance.SetFieldValue(f, propEdit.propertyValue, component);
                         }
                     }
                 }
             }
         }
 
+        private IEnumerator OnSceneLoadEditReferencePropsRoutine(
+            SortedDictionary<int, List<TrackerReferenceDataSO>> deserializedTrackerDataDict,
+            ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
+        {
+            yield return new WaitForSeconds(WaitTimeLoadSceneValue);
+
+            // this is beyond horrid
+            foreach (var entry in deserializedTrackerDataDict)
+            {
+                ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
+                Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+
+                foreach (var propEntry in entry.Value)
+                {
+                    // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
+                    Transform loadedItemEditTransform = (propEntry.parentPath == "")
+                        ? loadedItemTransformTarget : loadedItemTransformTarget.Find(propEntry.parentPath);
+                    if (loadedItemEditTransform == null)
+                    {
+                        _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
+                        continue;
+                    }
+
+                    Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    Type componentType = component.GetType();
+
+                    PropertyInfo propReferenceType = componentType.GetProperty(propEntry.referencePropertyName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    FieldInfo fieldReferenceType = componentType.GetField(propEntry.referencePropertyName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    object referenceObject = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
+                    Type referenceObjectType = referenceObject.GetType();
+
+                    foreach (var propEdit in propEntry.properties)
+                    {
+                        // reference properties are not allowed in object inspector
+                        bool isReference = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                        if (isReference)
+                            continue;
+
+                        bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                        bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                        bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+
+                        PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEdit.propertyName) : null;
+                        FieldInfo f = !isProperty ? referenceObjectType.GetField(propEdit.propertyName) : null;
+
+                        object value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
+                        if (value == null)
+                        {
+                            _logger.LogWarning($"Could not find reference property or field on {loadedItemEditTransform.name}" +
+                                $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}, ignoring");
+                            continue;
+                        }
+
+                        if (isInt)
+                            value = (int)value;
+                        else if (isVector)
+                        {
+                            string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
+                            if (vectorString.IsNullOrEmpty())
+                            {
+                                _logger.LogError($"Failed to convert vector property or field on {loadedItemEditTransform.name}" +
+                                    $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}, ignoring");
+                                continue;
+                            }
+                            value = vectorString;
+                        }
+
+                        // a default value was saved -> can be discarded
+                        if (value.ToString() == propEdit.propertyValue)
+                            continue;
+
+                        // adding to tracker must not be done by Setter methods such as SetPropertyValue
+                        // on loading scene as we need to track loadedItem, not _selectedObject
+                        _instance.AddPropertyToTracker(
+                            loadedItem,
+                            loadedItemEditTransform.gameObject,
+                            component,
+                            propEntry.referencePropertyName,
+                            propEdit.propertyName,
+                            value,
+                            propEdit.propertyFlags);
+
+                        // no
+                        if (isProperty)
+                        {
+                            if (isInt)
+                                _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), referenceObject);
+                            else if (isVector)
+                                _instance.SetVectorPropertyValue(p, propEdit.propertyValue, referenceObject);
+                            else
+                                _instance.SetPropertyValue(p, propEdit.propertyValue, referenceObject);
+                        }
+                        else
+                        {
+                            if (isInt)
+                                _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), referenceObject);
+                            else if (isVector)
+                                _instance.SetVectorFieldValue(f, propEdit.propertyValue, referenceObject);
+                            else
+                                _instance.SetFieldValue(f, propEdit.propertyValue, referenceObject);
+                        }
+                    }
+                }
+            }
+        }
+        #endregion load
+
+        #region save
         protected override void OnSceneSave()
         {
             PluginData data = new();
@@ -235,21 +352,25 @@ namespace RSkoi_ComponentUtil.Scene
                 List<TrackerDataPropertySO> properties = [];
                 foreach (var propEntry in entry.Value)
                 {
+                    bool isReference = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
                     bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                     bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                    bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.isVector);
+                    bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
 
-                    object value = null;
-                    
-                    if (isProperty)
-                        entry.Key.Component.GetPropertyValue(propEntry.Key, out value);
-                    else
-                        entry.Key.Component.GetFieldValue(propEntry.Key, out value);
+                    object value = 0;
 
-                    if (isInt)
-                        value = (int)value;
-                    else if (isVector)
-                        value = VectorConversion.VectorToStringByType(value.GetType(), value);
+                    if (!isReference)
+                    {
+                        if (isProperty)
+                            entry.Key.Component.GetPropertyValue(propEntry.Key, out value);
+                        else
+                            entry.Key.Component.GetFieldValue(propEntry.Key, out value);
+
+                        if (isInt)
+                            value = (int)value;
+                        else if (isVector)
+                            value = VectorConversion.VectorToStringByType(value.GetType(), value);
+                    }
 
                     TrackerDataPropertySO prop = new(propEntry.Key, value.ToString(), propEntry.Value.OptionFlags);
                     properties.Add(prop);
@@ -267,6 +388,60 @@ namespace RSkoi_ComponentUtil.Scene
                     propertySavedDict[key].Add(container);
                 else
                     propertySavedDict.Add(key, [ container ]);
+            }
+
+            SortedDictionary<int, List<TrackerReferenceDataSO>> referencePropertySavedDict = [];
+            foreach (var entry in _referencePropertyTracker)
+            {
+                int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
+                Type componentType = entry.Key.Component.GetType();
+                PropertyInfo propReferenceType = componentType.GetProperty(entry.Key.ReferencePropertyName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                FieldInfo fieldReferenceType = componentType.GetField(entry.Key.ReferencePropertyName,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                object referenceObject = _instance.GetValueFieldOrProperty(entry.Key.Component, propReferenceType, fieldReferenceType);
+
+                List<TrackerDataPropertySO> properties = [];
+                foreach (var propEntry in entry.Value)
+                {
+                    // reference properties are not allowed in object inspector
+                    bool isReference = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                    if (isReference)
+                        continue;
+
+                    bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                    bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                    bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+
+                    object value = null;
+
+                    if (isProperty)
+                        referenceObject.GetPropertyValue(propEntry.Key, out value);
+                    else
+                        referenceObject.GetFieldValue(propEntry.Key, out value);
+
+                    if (isInt)
+                        value = (int)value;
+                    else if (isVector)
+                        value = VectorConversion.VectorToStringByType(value.GetType(), value);
+
+                    TrackerDataPropertySO prop = new(propEntry.Key, value.ToString(), propEntry.Value.OptionFlags);
+                    properties.Add(prop);
+                }
+
+                TrackerReferenceDataSO container = new(
+                    key,
+                    GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
+                    entry.Key.Go.transform.name,
+                    entry.Key.Go.transform.GetSiblingIndex(),
+                    componentType.Name,
+                    entry.Key.ReferencePropertyName,
+                    [.. properties]);
+
+                if (referencePropertySavedDict.ContainsKey(key))
+                    referencePropertySavedDict[key].Add(container);
+                else
+                    referencePropertySavedDict.Add(key, [container]);
             }
 
             SortedDictionary<int, List<TrackerComponentDataSO>> componentSavedDict = [];
@@ -295,12 +470,15 @@ namespace RSkoi_ComponentUtil.Scene
 
             data.data.Add(name, MessagePackSerializer.Serialize(propertySavedDict));
             data.data.Add($"{name}_addedComponents", MessagePackSerializer.Serialize(componentSavedDict));
+            data.data.Add($"{name}_referenceProperties", MessagePackSerializer.Serialize(referencePropertySavedDict));
 
             //PrintPropSavedDict(propertySavedDict);
+            //PrintPropSavedDict(referencePropertySavedDict);
             //PrintCompSavedDict(componentSavedDict);
 
             SetExtendedData(data);
         }
+        #endregion save
 
         protected override void OnObjectsSelected(List<ObjectCtrlInfo> objectCtrlInfo)
         {
@@ -319,6 +497,9 @@ namespace RSkoi_ComponentUtil.Scene
             foreach (var key in new List<PropertyKey>(_propertyTracker.Keys))
                 if (key.ObjCtrlInfo == objectCtrlInfo)
                     _propertyTracker.Remove(key);
+            foreach (var key in new List<PropertyReferenceKey>(_referencePropertyTracker.Keys))
+                if (key.ObjCtrlInfo == objectCtrlInfo)
+                    _referencePropertyTracker.Remove(key);
             foreach (var key in new List<ComponentAdderKey>(_addedComponentsTracker.Keys))
                 if (key.ObjCtrlInfo == objectCtrlInfo)
                     _addedComponentsTracker.Remove(key);
@@ -384,6 +565,24 @@ namespace RSkoi_ComponentUtil.Scene
         }
 
         private void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
+        {
+            int i = 0;
+            foreach (var entry in savedDict)
+            {
+                _logger.LogInfo($"-------------- Entry {i}:");
+                _logger.LogInfo($"Key: {entry.Key}");
+                foreach (var propEntry in entry.Value)
+                {
+                    _logger.LogInfo(propEntry.ToString());
+                    foreach (var propInner in propEntry.properties)
+                        _logger.LogInfo($"     {propInner}");
+                }
+                _logger.LogInfo("--------------");
+                i++;
+            }
+        }
+
+        private void PrintPropSavedDict(SortedDictionary<int, List<TrackerReferenceDataSO>> savedDict)
         {
             int i = 0;
             foreach (var entry in savedDict)

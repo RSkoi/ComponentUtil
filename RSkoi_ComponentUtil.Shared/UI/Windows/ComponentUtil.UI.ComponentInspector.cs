@@ -10,6 +10,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static GameObject _componentPropertyEnumEntryPrefab;
         internal static GameObject _componentPropertyBoolEntryPrefab;
         internal static GameObject _componentPropertyVector4EntryPrefab;
+        internal static GameObject _componentPropertyReferenceEntryPrefab;
         #endregion entry prefabs
 
         // overarching window container

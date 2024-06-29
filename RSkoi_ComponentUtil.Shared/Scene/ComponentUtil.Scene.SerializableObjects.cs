@@ -60,6 +60,40 @@ namespace RSkoi_ComponentUtil.Scene
 
         [Serializable]
         [MessagePackObject]
+        public class TrackerReferenceDataSO(
+            int parentItemKey,
+            string parentPath,
+            string objectName,
+            int siblingIndex,
+            string componentName,
+            string referencePropertyName,
+            TrackerDataPropertySO[] properties)
+        {
+            [Key("parentItemKey")]
+            public int parentItemKey = parentItemKey;
+            [Key("parentPath")]
+            public string parentPath = parentPath;
+            [Key("objectName")]
+            public string objectName = objectName;
+            [Key("siblingIndex")]
+            public int siblingIndex = siblingIndex;
+            [Key("componentName")]
+            public string componentName = componentName;
+            [Key("referencePropertyName")]
+            public string referencePropertyName = referencePropertyName;
+            [Key("properties")]
+            public TrackerDataPropertySO[] properties = properties;
+
+            public override string ToString()
+            {
+                return $"TrackerReferenceDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
+                    $"siblingIndex: {siblingIndex}, componentName: {componentName}, referencePropertyName: {referencePropertyName}, " +
+                    $"properties.Length: {properties.Length} ]";
+            }
+        }
+
+        [Serializable]
+        [MessagePackObject]
         public class TrackerAddedComponentDataSO(string componentName)
         {
             [Key("componentName")]

@@ -48,6 +48,7 @@ namespace RSkoi_ComponentUtil
         internal static ConfigEntry<Vector2> ComponentWindowScale { get; private set; }
         internal static ConfigEntry<Vector2> ComponentAdderWindowScale { get; private set; }
         internal static ConfigEntry<Vector2> ComponentInspectorScale { get; private set; }
+        internal static ConfigEntry<Vector2> ObjectInspectorScale { get; private set; }
 
         internal static Vector2 TransformWindowScaleValue
         {
@@ -85,6 +86,16 @@ namespace RSkoi_ComponentUtil
             {
                 return ValidateConfigValue(
                     ComponentInspectorScale,
+                    val => (val.x >= 1 && val.y >= 1),
+                    DEFAULT_WINDOW_SIZE_FACTOR);
+            }
+        }
+        internal static Vector2 ObjectInspectorScaleValue
+        {
+            get
+            {
+                return ValidateConfigValue(
+                    ObjectInspectorScale,
                     val => (val.x >= 1 && val.y >= 1),
                     DEFAULT_WINDOW_SIZE_FACTOR);
             }
@@ -215,6 +226,15 @@ namespace RSkoi_ComponentUtil
                 "ComponentInspector window scale",
                 DEFAULT_WINDOW_SIZE_FACTOR,
                 new ConfigDescription("Scale the ComponentInspector window to given factors in width (X) and height (Y)." +
+                " Re-toggle ComponentUtil window for the change to apply.",
+                null,
+                new ConfigurationManagerAttributes { Order = 1 }));
+
+            ObjectInspectorScale = Config.Bind(
+                "Config - UI",
+                "ObjectInspector window scale",
+                DEFAULT_WINDOW_SIZE_FACTOR,
+                new ConfigDescription("Scale the ObjectInspector window to given factors in width (X) and height (Y)." +
                 " Re-toggle ComponentUtil window for the change to apply.",
                 null,
                 new ConfigurationManagerAttributes { Order = 1 }));

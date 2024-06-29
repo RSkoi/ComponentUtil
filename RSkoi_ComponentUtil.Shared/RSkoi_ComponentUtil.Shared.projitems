@@ -25,9 +25,13 @@
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.Vector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ComponentAdder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ComponentList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ObjectInspector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.TransformList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.Behaviour.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.SerializableObjects.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.LightmapSettingsRedirector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.QualitySettingsRedirector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.RenderSettingsRedirector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.Draggable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.Pooling.cs" />
@@ -36,6 +40,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ComponentAdder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ComponentInspector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ComponentList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.ObjectInspector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\Windows\ComponentUtil.UI.TransformList.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -8,6 +8,9 @@ namespace RSkoi_ComponentUtil.Core
 {
     internal static class ComponentUtilCache
     {
+        // TODO: this is subpar, cache will contain orphans with null key on deleting item / component
+        //       not as important as the tracker though, cache will just get less efficient over time
+
         // keys are objects the GetXYZ call is made on, only valid for current scene
         // cache is used to circumvent repeated GetComponentsInChildren, GetComponent calls
         internal static readonly Dictionary<GameObject, Transform[]> _transformSearchCache = [];
@@ -15,6 +18,8 @@ namespace RSkoi_ComponentUtil.Core
         // cache is used to circumvent repeated GetFields, GetProperties calls (reflection)
         internal static readonly Dictionary<Component, PropertyInfo[]> _propertyInfoSearchCache = [];
         internal static readonly Dictionary<Component, FieldInfo[]> _fieldInfoSearchCache = [];
+        internal static readonly Dictionary<object, PropertyInfo[]> _propertyInfoSearchCacheObject = [];
+        internal static readonly Dictionary<object, FieldInfo[]> _fieldInfoSearchCacheObject = [];
 
         // cache is used to avoid expensive reflection, key is Type.FullName
         internal static Dictionary<string, Type> _componentAdderSearchCache = [];
@@ -27,12 +32,16 @@ namespace RSkoi_ComponentUtil.Core
             //_componentAdderSearchCache.Clear();
             _propertyInfoSearchCache.Clear();
             _fieldInfoSearchCache.Clear();
+            _propertyInfoSearchCacheObject.Clear();
+            _fieldInfoSearchCacheObject.Clear();
         }
 
         internal static void ClearComponentFromCache(Component c)
         {
             _propertyInfoSearchCache.Remove(c);
             _fieldInfoSearchCache.Remove(c);
+
+            // TODO: how to remove from property/fieldInfoSearchCacheObject, is it really needed?
         }
 
         internal static List<Type> GetOrCacheComponentAdders(bool forceRefresh = false)
@@ -116,6 +125,34 @@ namespace RSkoi_ComponentUtil.Core
             _fieldInfoSearchCache.Add(input, res);
             return res;
         }
+
+        internal static PropertyInfo[] GetOrCachePropertyInfosObject(object input, bool forceRefresh = false)
+        {
+            if (!forceRefresh && _propertyInfoSearchCacheObject.TryGetValue(input, out PropertyInfo[] value) && value != null)
+                return value;
+            if (forceRefresh)
+                _propertyInfoSearchCacheObject.Clear();
+
+            PropertyInfo[] res = input
+                .GetType()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            _propertyInfoSearchCacheObject.Add(input, res);
+            return res;
+        }
+
+        internal static FieldInfo[] GetOrCacheFieldInfosObject(object input, bool forceRefresh = false)
+        {
+            if (!forceRefresh && _fieldInfoSearchCacheObject.TryGetValue(input, out FieldInfo[] value) && value != null)
+                return value;
+            if (forceRefresh)
+                _fieldInfoSearchCacheObject.Clear();
+
+            FieldInfo[] res = input
+                .GetType()
+                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            _fieldInfoSearchCacheObject.Add(input, res);
+            return res;
+        }
         #endregion internal
 
         #region internal helper
@@ -134,6 +171,12 @@ namespace RSkoi_ComponentUtil.Core
 
             foreach (Component c in _fieldInfoSearchCache.Keys)
                 ComponentUtil._logger.LogInfo($"+ fieldInfos: {c}");
+
+            foreach (object o in _propertyInfoSearchCacheObject.Keys)
+                ComponentUtil._logger.LogInfo($"+ referencePropertyInfos: {o}");
+
+            foreach (object o in _fieldInfoSearchCacheObject.Keys)
+                ComponentUtil._logger.LogInfo($"+ referenceFieldInfos: {o}");
 
             //foreach (string c in _componentAdderSearchCache.Keys)
             //    ComponentUtil.logger.LogInfo($"+ componentAdder: {c}");

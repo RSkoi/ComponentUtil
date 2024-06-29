@@ -12,13 +12,14 @@ namespace RSkoi_ComponentUtil
         private bool ConfigVector(ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
-            Component input,
+            object input,
             PropertyInfo p,
             FieldInfo f,
             Type type,
             bool setMethodIsPublic,
             bool isProperty,
-            object value)
+            object value,
+            bool objectMode)
         {
             string valueString = VectorConversion.VectorToStringByType(type, value);
             if (valueString.IsNullOrEmpty())
@@ -34,9 +35,33 @@ namespace RSkoi_ComponentUtil
             void ValueChangedEvents(string v)
             {
                 if (isProperty)
+                {
+                    string defaultValue = VectorConversion.VectorToStringByType(p.PropertyType, p.GetValue(input, null));
+                    if (objectMode)
+                    {
+                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
+                            p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                        _selectedReferencePropertyUiEntry.SetBgColorEdited();
+                    }
+                    else
+                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
+                            PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
                     SetVectorPropertyValue(p, v, input);
+                }
                 else
+                {
+                    string defaultValue = VectorConversion.VectorToStringByType(f.FieldType, f.GetValue(input));
+                    if (objectMode)
+                    {
+                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
+                            f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                        _selectedReferencePropertyUiEntry.SetBgColorEdited();
+                    }
+                    else
+                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
+                            PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
                     SetVectorFieldValue(f, v, input);
+                }
 
                 uiEntry.SetBgColorEdited();
                 ComponentUtilUI.TraverseAndSetEditedParents();
@@ -55,9 +80,9 @@ namespace RSkoi_ComponentUtil
             uiEntry.ResetOverrideDelegate = (v) =>
             {
                 if (isProperty)
-                    SetVectorPropertyValue(p, (string)v, input, false);
+                    SetVectorPropertyValue(p, (string)v, input);
                 else
-                    SetVectorFieldValue(f, (string)v, input, false);
+                    SetVectorFieldValue(f, (string)v, input);
 
                 return v;
             };
@@ -67,17 +92,10 @@ namespace RSkoi_ComponentUtil
         }
 
         #region internal setters
-        internal void SetVectorPropertyValue(PropertyInfo p, string value, Component input, bool track = true)
+        internal void SetVectorPropertyValue(PropertyInfo p, string value, object input)
         {
             try
             {
-                if (track)
-                {
-                    string defaultValue = VectorConversion.VectorToStringByType(p.PropertyType, p.GetValue(input, null));
-                    AddPropertyToTracker(_selectedObject, input.gameObject, input, p.Name, defaultValue,
-                        PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.isVector);
-                }
-
                 float[] values = VectorConversion.StringToVectorValues(value);
                 object vector = VectorConversion.FloatValuesToVectorByType(p.PropertyType, values);
                 p.SetValue(input, vector, null);
@@ -85,17 +103,10 @@ namespace RSkoi_ComponentUtil
             catch (Exception e) { _logger.LogError(e); }
         }
 
-        internal void SetVectorFieldValue(FieldInfo f, string value, Component input, bool track = true)
+        internal void SetVectorFieldValue(FieldInfo f, string value, object input)
         {
             try
             {
-                if (track)
-                {
-                    string defaultValue = VectorConversion.VectorToStringByType(f.FieldType, f.GetValue(input));
-                    AddPropertyToTracker(_selectedObject, input.gameObject, input, f.Name, defaultValue,
-                        PropertyTrackerData.PropertyTrackerDataOptions.isVector);
-                }
-
                 float[] values = VectorConversion.StringToVectorValues(value);
                 object vector = VectorConversion.FloatValuesToVectorByType(f.FieldType, values);
                 f.SetValue(input, vector);
