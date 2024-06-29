@@ -69,6 +69,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 ### Explicitly NOT supported types
 
+- indexed reference types
 - properties without a public `get` method
 
 ### Types to be supported in the future (probably) (maybe)
