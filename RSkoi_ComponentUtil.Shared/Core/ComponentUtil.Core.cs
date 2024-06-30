@@ -49,6 +49,8 @@ namespace RSkoi_ComponentUtil
             typeof(Vector3),
             typeof(Vector4),
             typeof(Quaternion),
+            typeof(Color),
+            typeof(string),
         ];
 
         /// <summary>
@@ -101,9 +103,8 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <summary>
-        /// entry point for the core functionality
-        /// , flattens transform hierarchy, lists all components, lists all properties, 
-        /// lists all addable components
+        /// entry point for the core functionality, flattens transform hierarchy, 
+        /// lists all components, lists all properties, lists all addable components
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>
         public void Entry(Studio.ObjectCtrlInfo input)

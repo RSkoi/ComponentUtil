@@ -46,6 +46,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 ### Explicitly supported types
 
 - Enums
+- `string`
 - `float`
 - `double`
 - `decimal`
@@ -64,6 +65,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 - `Vector3`
 - `Vector4`
 - `Quaternion`
+- `UnityEngine.Color`
 - non-indexed reference types
 - ParticleSystem modules
 
@@ -74,13 +76,11 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 ### Types to be supported in the future (probably) (maybe)
 
-- `UnityEngine.Color`
 - `AnimationCurve`
-- `string`
 
 ## Known Quirks
 
-- Properties of Redirector scripts will sometimes not be marked as edited on scene load. This is because the tracker interprets the current value of variables as the default values and as such will discard saved values if they equal the default values.
+- Properties of Redirector scripts will sometimes not be marked as edited on scene load. This is because the tracker interprets the current value of variables on scene load as the default values and as such will discard saved values if they equal the default values.
 - Not all properties expose a public `set` method. These entries are marked as read-only / non-interactable. Properties without a public `get` method will not be listed at all.
 - Performance is affected by the **Items per page** config setting. The more UI items per page, the more hiccups and stutters you may notice when toggling or interacting with the UI. All must bow to the garbage collector.
 - When loading a Koikatsu scene with saved property / field edits, the changes ComponentUtil applies after the scene finished loading in are sometimes overwritten. Presumably because God said so. God's will can be circumvented by waiting a certain amount of seconds after loading has finished. If in need, the amount of seconds to wait can be changed with the **Wait time after scene load** setting.

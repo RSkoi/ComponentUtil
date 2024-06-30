@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using UnityEngine;
+using Studio;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
@@ -22,6 +23,10 @@ namespace RSkoi_ComponentUtil
             }
 
             _selectedReferencePropertyUiEntry = uiEntry;
+
+            ColorPalette colorPalette = Studio.Studio.Instance.colorPalette;
+            if (colorPalette.visible)           // this closes the palette even if it doesn't 'belong' to ComponentUtil
+                colorPalette.visible = false;   // fix would be to e.g. check title of the window but that means a dependency
 
             if (!ComponentUtilUI._objectInspectorWindow.gameObject.activeSelf)
                 ComponentUtilUI._objectInspectorWindow.gameObject.SetActive(true);
@@ -50,10 +55,8 @@ namespace RSkoi_ComponentUtil
 
             foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfosObject(input))
             {
-                // TODO: strings
-
                 // no recursing in the object inspector else it could lead to circular hell
-                if (!p.PropertyType.IsValueType)
+                if (!p.PropertyType.IsValueType && !p.PropertyType.Equals(typeof(string)))
                     continue;
 
                 // ignore properties with private getters
@@ -66,7 +69,7 @@ namespace RSkoi_ComponentUtil
             foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfosObject(input))
             {
                 // no recursing in the object inspector else it could lead to circular hell
-                if (!f.FieldType.IsValueType)
+                if (!f.FieldType.IsValueType && !f.FieldType.Equals(typeof(string)))
                     continue;
 
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f, true);

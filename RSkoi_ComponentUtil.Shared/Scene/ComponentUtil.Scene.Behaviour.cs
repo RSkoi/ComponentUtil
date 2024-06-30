@@ -20,7 +20,9 @@ namespace RSkoi_ComponentUtil.Scene
     {
         #region override
         #region load
-        protected override void OnSceneLoad(SceneOperationKind operation, ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
+        protected override void OnSceneLoad(
+            SceneOperationKind operation,
+            ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
             if (operation == SceneOperationKind.Clear || operation == SceneOperationKind.Load)
                 _instance.ResetState();
@@ -156,6 +158,7 @@ namespace RSkoi_ComponentUtil.Scene
                         bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                         bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                         bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                        bool isColor = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                         PropertyInfo p = (isReference || isProperty) ? componentType.GetProperty(propEdit.propertyName) : null;
                         FieldInfo f = (isReference || !isProperty) ? componentType.GetField(propEdit.propertyName) : null;
@@ -181,6 +184,8 @@ namespace RSkoi_ComponentUtil.Scene
                             }
                             value = vectorString;
                         }
+                        else if (isColor)
+                            value = ColorConversion.ColorToString((Color)value);
 
                         string propEditValueString = propEdit.propertyValue.ToString();
                         // a default value was saved -> can be discarded
@@ -208,6 +213,8 @@ namespace RSkoi_ComponentUtil.Scene
                                 _instance.SetPropertyValueInt(p, int.Parse(propEditValueString), component);
                             else if (isVector)
                                 _instance.SetVectorPropertyValue(p, propEditValueString, component);
+                            else if (isColor)
+                                _instance.SetPropertyValue(p, ColorConversion.StringToColor(propEditValueString), component);
                             else
                                 _instance.SetPropertyValue(p, propEditValueString, component);
                         }
@@ -217,6 +224,8 @@ namespace RSkoi_ComponentUtil.Scene
                                 _instance.SetFieldValueInt(f, int.Parse(propEditValueString), component);
                             else if (isVector)
                                 _instance.SetVectorFieldValue(f, propEditValueString, component);
+                            else if (isColor)
+                                _instance.SetFieldValue(f, ColorConversion.StringToColor(propEditValueString), component);
                             else
                                 _instance.SetFieldValue(f, propEditValueString, component);
                         }
@@ -268,6 +277,7 @@ namespace RSkoi_ComponentUtil.Scene
                         bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                         bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                         bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                        bool isColor = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                         PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEdit.propertyName) : null;
                         FieldInfo f = !isProperty ? referenceObjectType.GetField(propEdit.propertyName) : null;
@@ -293,6 +303,8 @@ namespace RSkoi_ComponentUtil.Scene
                             }
                             value = vectorString;
                         }
+                        else if (isColor)
+                            value = ColorConversion.ColorToString((Color)value);
 
                         string propEditValueString = propEdit.propertyValue.ToString();
                         // a default value was saved -> can be discarded
@@ -317,6 +329,8 @@ namespace RSkoi_ComponentUtil.Scene
                                 _instance.SetPropertyValueInt(p, int.Parse(propEditValueString), referenceObject);
                             else if (isVector)
                                 _instance.SetVectorPropertyValue(p, propEditValueString, referenceObject);
+                            else if (isColor)
+                                _instance.SetPropertyValue(p, ColorConversion.StringToColor(propEditValueString), referenceObject);
                             else
                                 _instance.SetPropertyValue(p, propEditValueString, referenceObject);
                         }
@@ -326,6 +340,8 @@ namespace RSkoi_ComponentUtil.Scene
                                 _instance.SetFieldValueInt(f, int.Parse(propEditValueString), referenceObject);
                             else if (isVector)
                                 _instance.SetVectorFieldValue(f, propEditValueString, referenceObject);
+                            else if (isColor)
+                                _instance.SetFieldValue(f, ColorConversion.StringToColor(propEditValueString), referenceObject);
                             else
                                 _instance.SetFieldValue(f, propEditValueString, referenceObject);
                         }
@@ -358,6 +374,7 @@ namespace RSkoi_ComponentUtil.Scene
                     bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                     bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                     bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                    bool isColor = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                     object value = 0;
                     if (!isReference)
@@ -371,6 +388,8 @@ namespace RSkoi_ComponentUtil.Scene
                             value = (int)value;
                         else if (isVector)
                             value = VectorConversion.VectorToStringByType(value.GetType(), value);
+                        else if (isColor)
+                            value = ColorConversion.ColorToString((Color)value);
                     }
 
                     TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
@@ -414,6 +433,7 @@ namespace RSkoi_ComponentUtil.Scene
                     bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                     bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                     bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                    bool isColor = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                     PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEntry.Key) : null;
                     FieldInfo f = !isProperty ? referenceObjectType.GetField(propEntry.Key) : null;
@@ -430,6 +450,8 @@ namespace RSkoi_ComponentUtil.Scene
                         value = (int)value;
                     else if (isVector)
                         value = VectorConversion.VectorToStringByType(value.GetType(), value);
+                    else if (isColor)
+                        value = ColorConversion.ColorToString((Color)value);
 
                     TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
                     properties.Add(prop);
@@ -547,7 +569,9 @@ namespace RSkoi_ComponentUtil.Scene
         #endregion override
 
         #region private helpers
-        private bool HasPropertyFlag(PropertyTrackerData.PropertyTrackerDataOptions input, PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
+        private bool HasPropertyFlag(
+            PropertyTrackerData.PropertyTrackerDataOptions input,
+            PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
         {
             if ((input & flagToCheck) == flagToCheck)
                 return true;

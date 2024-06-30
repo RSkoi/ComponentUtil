@@ -26,6 +26,7 @@ namespace RSkoi_ComponentUtil.UI
             GameObject instantiatedUiGo,
             GameObject usedPrefab,
             Func<object, object> uiComponentSetValueDelegateForReset)
+            // TODO: make this an actual wrapper, set Wrapper in PropertyUIEntry
             : PropertyUIEntry(resetButton, propertyName, bgImage, parentUiEntry, instantiatedUiGo, usedPrefab, uiComponentSetValueDelegateForReset)
         {
             // 'just use primary constructor bro'

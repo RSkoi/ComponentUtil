@@ -5,6 +5,7 @@ using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
+using UnityEngine.UI;
 
 namespace RSkoi_ComponentUtil
 {
@@ -57,13 +58,6 @@ namespace RSkoi_ComponentUtil
 
             foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfos(input))
             {
-                // TODO: strings
-
-                // reference types are annoying
-                // this includes strings
-                //if (!p.PropertyType.IsValueType)
-                //    continue;
-
                 // indexed properties are annoying
                 if (p.GetIndexParameters().Length != 0)
                     continue;
@@ -76,14 +70,7 @@ namespace RSkoi_ComponentUtil
             }
 
             foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfos(input))
-            {
-                // reference types are annoying
-                // this includes strings
-                //if (!f.FieldType.IsValueType)
-                //    continue;
-
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f);
-            }
         }
 
         internal object GetValueFieldOrProperty(object input, PropertyInfo p, FieldInfo f)
@@ -175,19 +162,16 @@ namespace RSkoi_ComponentUtil
                 }
             }
             else if (type.Equals(typeof(Color)))
-            {
-                // TODO: color picker for UnityEngine.Color type
-                Destroy(entry);
-                return;
-            }
+                ConfigColor(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode);
             else if (type.Equals(typeof(AnimationCurve)))
             {
                 // TODO: spline editor for UnityEngine.AnimationCurve type
                 Destroy(entry);
                 return;
             }
-            else // default is decimal input field
-                ConfigInput(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode);
+            else // this includes string; default is input field with InputField.ContentType.IntegerNumber
+                ConfigInput(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode,
+                    MapTypeToInputContentType(type));
 
             uiEntry.ResetBgAndChildren();
 
@@ -273,6 +257,25 @@ namespace RSkoi_ComponentUtil
                 return;
 
             uiEntry.SetBgColorEdited();
+        }
+
+        private bool TypeIsFloatingPoint(Type type)
+        {
+            if (type.Equals(typeof(float))
+                || type.Equals(typeof(double))
+                || type.Equals(typeof(decimal)))
+                return true;
+            return false;
+        }
+
+        private InputField.ContentType MapTypeToInputContentType(Type type)
+        {
+            if (type.Equals(typeof(string)))
+                return InputField.ContentType.Standard;
+            else if (TypeIsFloatingPoint(type))
+                return InputField.ContentType.DecimalNumber;
+            else
+                return InputField.ContentType.IntegerNumber; // trying to cram an integer into e.g. a short could lead to problems
         }
 
         #region internal setters

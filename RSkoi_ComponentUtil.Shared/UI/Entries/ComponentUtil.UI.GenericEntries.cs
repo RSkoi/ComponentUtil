@@ -121,14 +121,14 @@ namespace RSkoi_ComponentUtil.UI
             /// </summary>
             public Func<object, object> UiComponentSetValueResetDelegate = uiComponentSetValueResetDelegate;
             /// <summary>
-            /// if this delegate is not null it will be invoked by the reset button
+            /// if this delegate is not null it will be used by the reset button
             /// </summary>
             public Func<object, object> ResetOverrideDelegate;
 
             /// <summary>
-            /// reference to the wrapper object if one is provided
+            /// reference to the wrapper object if one is provided, currently unused
             /// </summary>
-            //public object Wrapper;
+            public object Wrapper;
 
             /* Originally a value change of a property would trigger SetBgColorEdited and call the same on its parent,
              * i.e. GenericUIListEntry, and propagate all the way to a transform ui entry (transform list).

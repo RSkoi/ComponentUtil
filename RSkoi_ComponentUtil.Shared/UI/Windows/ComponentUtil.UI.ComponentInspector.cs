@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace RSkoi_ComponentUtil.UI
@@ -11,6 +12,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static GameObject _componentPropertyBoolEntryPrefab;
         internal static GameObject _componentPropertyVector4EntryPrefab;
         internal static GameObject _componentPropertyReferenceEntryPrefab;
+        internal static GameObject _componentPropertyColorEntryPrefab;
         #endregion entry prefabs
 
         // overarching window container
@@ -23,5 +25,26 @@ namespace RSkoi_ComponentUtil.UI
         private static Button _hideComponentListButton;
         internal static Button _componentDeleteButton;
         internal static Text _componentPropertyListSelectedComponentText;
+
+        internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
+        {
+            if (t.IsEnum)
+                return _componentPropertyEnumEntryPrefab;
+            else if (t.Equals(typeof(bool)))
+                return _componentPropertyBoolEntryPrefab;
+            else if (t.Equals(typeof(Vector2)) ||
+                     t.Equals(typeof(Vector3)) ||
+                     t.Equals(typeof(Vector4)) ||
+                     t.Equals(typeof(Quaternion)))
+                return _componentPropertyVector4EntryPrefab;
+            else if (t.Equals(typeof(Color)))
+                return _componentPropertyColorEntryPrefab;
+            else if (t.Equals(typeof(string)))
+                return _componentPropertyDecimalEntryPrefab;
+            else if (!t.IsValueType|| ComponentUtil.supportedTypesRewireAsReference.Contains(t))
+                return _componentPropertyReferenceEntryPrefab;
+
+            return _componentPropertyDecimalEntryPrefab;
+        }
     }
 }

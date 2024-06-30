@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
@@ -161,23 +160,6 @@ namespace RSkoi_ComponentUtil.UI
             }
         }
 
-        internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
-        {
-            if (t.IsEnum)
-                return _componentPropertyEnumEntryPrefab;
-            else if (t.Equals(typeof(bool)))
-                return _componentPropertyBoolEntryPrefab;
-            else if (t.Equals(typeof(Vector2)) ||
-                     t.Equals(typeof(Vector3)) ||
-                     t.Equals(typeof(Vector4)) ||
-                     t.Equals(typeof(Quaternion)))
-                return _componentPropertyVector4EntryPrefab;
-            else if (!t.IsValueType || ComponentUtil.supportedTypesRewireAsReference.Contains(t))
-                return _componentPropertyReferenceEntryPrefab;
-
-            return _componentPropertyDecimalEntryPrefab;
-        }
-
         internal static void UpdateUISelectedText(Text uiText, string selectedName, char separator = ':')
         {
             int splitIndex = uiText.text.IndexOf(separator);
@@ -213,6 +195,7 @@ namespace RSkoi_ComponentUtil.UI
             _componentPropertyBoolEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Bool");
             _componentPropertyVector4EntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Vector4");
             _componentPropertyReferenceEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Reference");
+            _componentPropertyColorEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Color");
 
             stream.Close();
         }

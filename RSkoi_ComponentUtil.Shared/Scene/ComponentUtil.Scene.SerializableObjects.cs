@@ -18,7 +18,7 @@ namespace RSkoi_ComponentUtil.Scene
             [Key("propertyName")]
             public string propertyName = propertyName;
             [Key("propertyValue")]
-            public object propertyValue = propertyValue;
+            public object propertyValue = propertyValue; // this will probably throw exceptions if object is not serializable
             [Key("propertyFlags")]
             public PropertyTrackerDataOptions propertyFlags = propertyFlags;
 

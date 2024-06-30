@@ -20,6 +20,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Cache.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Tracker.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.Color.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.GenericEntries.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentInspector\ComponentUtil.Core.ComponentInspector.Vector.cs" />

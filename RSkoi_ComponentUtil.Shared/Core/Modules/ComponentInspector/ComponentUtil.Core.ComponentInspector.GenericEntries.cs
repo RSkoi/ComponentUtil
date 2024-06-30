@@ -210,13 +210,12 @@ namespace RSkoi_ComponentUtil
             bool setMethodIsPublic,
             bool isProperty,
             object value,
-            bool objectMode)
+            bool objectMode,
+            InputField.ContentType contentType)
         {
             InputField inputField = entry.GetComponentInChildren<InputField>();
+            inputField.contentType = contentType;
             inputField.text = value.ToString();
-            // trying to cram an integer into (e.g.) a short could lead to problems
-            inputField.contentType =
-                TypeIsFloatingPoint(type) ? InputField.ContentType.DecimalNumber : InputField.ContentType.IntegerNumber;
             inputField.interactable = setMethodIsPublic;
 
             void registerMyEvents()
@@ -347,15 +346,6 @@ namespace RSkoi_ComponentUtil
                     _selectedReferencePropertyUiEntry.SetBgColorDefault();
                 ComponentUtilUI.TraverseAndSetEditedParents();
             });
-        }
-
-        private bool TypeIsFloatingPoint(Type type)
-        {
-            if (type.Equals(typeof(float))
-                || type.Equals(typeof(double))
-                || type.Equals(typeof(decimal)))
-                return true;
-            return false;
         }
     }
 }

@@ -225,7 +225,10 @@ namespace RSkoi_ComponentUtil
             return null;
         }
 
-        internal object GetTrackedDefaultValue(PropertyKey key, string propertyName, out object defaultValue)
+        internal object GetTrackedDefaultValue(
+            PropertyKey key,
+            string propertyName,
+            out object defaultValue)
         {
             defaultValue = GetTrackedDefaultValue(key, propertyName);
             return defaultValue;
@@ -282,7 +285,10 @@ namespace RSkoi_ComponentUtil
             return ret;
         }
 
-        internal bool RemovePropertyFromTracker(PropertyReferenceKey key, string propertyName, out bool removedKey)
+        internal bool RemovePropertyFromTracker(
+            PropertyReferenceKey key,
+            string propertyName,
+            out bool removedKey)
         {
             removedKey = false;
             if (!PropertyIsTracked(key, propertyName))
@@ -408,7 +414,10 @@ namespace RSkoi_ComponentUtil
 
         #region property classes
         // keep this one public, see comment in ComponentUtilSerializableObjects class
-        public class PropertyTrackerData(string propertyName, PropertyTrackerDataOptions optionFlags, object defaultValue)
+        public class PropertyTrackerData(
+            string propertyName,
+            PropertyTrackerDataOptions optionFlags,
+            object defaultValue)
         {
             public string PropertyName = propertyName;
             public PropertyTrackerDataOptions OptionFlags = optionFlags;
@@ -432,10 +441,15 @@ namespace RSkoi_ComponentUtil
                 IsVector = 4,
                 // whether value of tracked item is invalid as it's only used to keep track of edited states of reference types
                 IsReference = 8,
+                // whether value of tracked item is UnityEngine.Color
+                IsColor = 16,
             }
         }
 
-        internal class PropertyKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
+        internal class PropertyKey(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component)
             : IEquatable<PropertyKey>
         {
             // the overarching item / ObjectCtrl (root)
@@ -480,7 +494,11 @@ namespace RSkoi_ComponentUtil
             }
         }
 
-        internal class PropertyReferenceKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string referencePropertyName)
+        internal class PropertyReferenceKey(
+            ObjectCtrlInfo objCtrlInfo,
+            GameObject go,
+            Component component,
+            string referencePropertyName)
             : IEquatable<PropertyReferenceKey>
         {
             // the overarching item / ObjectCtrl (root)
