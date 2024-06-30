@@ -121,7 +121,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
             {
                 // suspending all (non-persistent) listeners because dropdownField.value
-                // will trigger onValueChanged, which would add to tracker via setter
+                // will trigger onValueChanged, which would add to tracker
                 dropdownField.onValueChanged.RemoveAllListeners();
                 dropdownField.value = (int)value;
                 registerMyEvents();
@@ -190,7 +190,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
             {
                 // suspending all (non-persistent) listeners because toggleField.isOn
-                // will trigger onValueChanged, which would add to tracker via setter
+                // will trigger onValueChanged, which would add to tracker
                 toggleField.onValueChanged.RemoveAllListeners();
                 toggleField.isOn = (bool)value;
                 registerMyEvents();
@@ -262,7 +262,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
             {
                 // suspending all (non-persistent) listeners because inputField.text
-                // will trigger onValueChanged, which would add to tracker via setter
+                // will trigger onValueChanged, which would add to tracker
                 inputField.onValueChanged.RemoveAllListeners();
                 inputField.text = value.ToString();
                 registerMyEvents();

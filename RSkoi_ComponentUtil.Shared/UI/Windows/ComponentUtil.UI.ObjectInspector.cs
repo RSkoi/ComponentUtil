@@ -11,7 +11,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Vector2 _objectInspectorWindowRectOriginalSize;
         // scroll view content container
         internal static Transform _objectPropertyListContainer;
-        // specific to ComponentInspector window
+        // specific to ObjectInspector window
         internal static Text _objectPropertyListSelectedText;
     }
 }

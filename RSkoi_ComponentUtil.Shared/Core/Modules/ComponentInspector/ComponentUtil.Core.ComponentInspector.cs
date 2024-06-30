@@ -276,7 +276,7 @@ namespace RSkoi_ComponentUtil
         }
 
         #region internal setters
-        internal void SetPropertyValue(PropertyInfo p, string value, object input)
+        internal void SetPropertyValue(PropertyInfo p, object value, object input)
         {
             try
             {
@@ -294,7 +294,7 @@ namespace RSkoi_ComponentUtil
             catch (Exception e) { _logger.LogError(e); }
         }
 
-        internal void SetFieldValue(FieldInfo f, string value, object input)
+        internal void SetFieldValue(FieldInfo f, object value, object input)
         {
             try
             {

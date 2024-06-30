@@ -181,9 +181,10 @@ namespace RSkoi_ComponentUtil.Scene
                             }
                             value = vectorString;
                         }
-                        
+
+                        string propEditValueString = propEdit.propertyValue.ToString();
                         // a default value was saved -> can be discarded
-                        if (value.ToString() == propEdit.propertyValue)
+                        if (value.ToString() == propEditValueString)
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
@@ -204,20 +205,20 @@ namespace RSkoi_ComponentUtil.Scene
                         if (isProperty)
                         {
                             if (isInt)
-                                _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), component);
+                                _instance.SetPropertyValueInt(p, int.Parse(propEditValueString), component);
                             else if (isVector)
-                                _instance.SetVectorPropertyValue(p, propEdit.propertyValue, component);
+                                _instance.SetVectorPropertyValue(p, propEditValueString, component);
                             else
-                                _instance.SetPropertyValue(p, propEdit.propertyValue, component);
+                                _instance.SetPropertyValue(p, propEditValueString, component);
                         }
                         else
                         {
                             if (isInt)
-                                _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), component);
+                                _instance.SetFieldValueInt(f, int.Parse(propEditValueString), component);
                             else if (isVector)
-                                _instance.SetVectorFieldValue(f, propEdit.propertyValue, component);
+                                _instance.SetVectorFieldValue(f, propEditValueString, component);
                             else
-                                _instance.SetFieldValue(f, propEdit.propertyValue, component);
+                                _instance.SetFieldValue(f, propEditValueString, component);
                         }
                     }
                 }
@@ -293,8 +294,9 @@ namespace RSkoi_ComponentUtil.Scene
                             value = vectorString;
                         }
 
+                        string propEditValueString = propEdit.propertyValue.ToString();
                         // a default value was saved -> can be discarded
-                        if (value.ToString() == propEdit.propertyValue)
+                        if (value.ToString() == propEditValueString)
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
@@ -312,20 +314,20 @@ namespace RSkoi_ComponentUtil.Scene
                         if (isProperty)
                         {
                             if (isInt)
-                                _instance.SetPropertyValueInt(p, int.Parse(propEdit.propertyValue), referenceObject);
+                                _instance.SetPropertyValueInt(p, int.Parse(propEditValueString), referenceObject);
                             else if (isVector)
-                                _instance.SetVectorPropertyValue(p, propEdit.propertyValue, referenceObject);
+                                _instance.SetVectorPropertyValue(p, propEditValueString, referenceObject);
                             else
-                                _instance.SetPropertyValue(p, propEdit.propertyValue, referenceObject);
+                                _instance.SetPropertyValue(p, propEditValueString, referenceObject);
                         }
                         else
                         {
                             if (isInt)
-                                _instance.SetFieldValueInt(f, int.Parse(propEdit.propertyValue), referenceObject);
+                                _instance.SetFieldValueInt(f, int.Parse(propEditValueString), referenceObject);
                             else if (isVector)
-                                _instance.SetVectorFieldValue(f, propEdit.propertyValue, referenceObject);
+                                _instance.SetVectorFieldValue(f, propEditValueString, referenceObject);
                             else
-                                _instance.SetFieldValue(f, propEdit.propertyValue, referenceObject);
+                                _instance.SetFieldValue(f, propEditValueString, referenceObject);
                         }
                     }
                 }
@@ -358,7 +360,6 @@ namespace RSkoi_ComponentUtil.Scene
                     bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
 
                     object value = 0;
-
                     if (!isReference)
                     {
                         if (isProperty)
@@ -372,7 +373,7 @@ namespace RSkoi_ComponentUtil.Scene
                             value = VectorConversion.VectorToStringByType(value.GetType(), value);
                     }
 
-                    TrackerDataPropertySO prop = new(propEntry.Key, value.ToString(), propEntry.Value.OptionFlags);
+                    TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
                     properties.Add(prop);
                 }
                 
@@ -400,6 +401,7 @@ namespace RSkoi_ComponentUtil.Scene
                 FieldInfo fieldReferenceType = componentType.GetField(entry.Key.ReferencePropertyName,
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 object referenceObject = _instance.GetValueFieldOrProperty(entry.Key.Component, propReferenceType, fieldReferenceType);
+                Type referenceObjectType = referenceObject.GetType();
 
                 List<TrackerDataPropertySO> properties = [];
                 foreach (var propEntry in entry.Value)
@@ -413,19 +415,23 @@ namespace RSkoi_ComponentUtil.Scene
                     bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                     bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
 
-                    object value = null;
+                    PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEntry.Key) : null;
+                    FieldInfo f = !isProperty ? referenceObjectType.GetField(propEntry.Key) : null;
 
-                    if (isProperty)
-                        referenceObject.GetPropertyValue(propEntry.Key, out value);
-                    else
-                        referenceObject.GetFieldValue(propEntry.Key, out value);
+                    object value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
+                    if (value == null)
+                    {
+                        _logger.LogWarning($"Could not find property or field on {entry.Key.Go.name}.{componentType.Name}" +
+                            $".{entry.Key.ReferencePropertyName} with name {propEntry.Key}, ignoring");
+                        continue;
+                    }
 
                     if (isInt)
                         value = (int)value;
                     else if (isVector)
                         value = VectorConversion.VectorToStringByType(value.GetType(), value);
 
-                    TrackerDataPropertySO prop = new(propEntry.Key, value.ToString(), propEntry.Value.OptionFlags);
+                    TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
                     properties.Add(prop);
                 }
 

@@ -71,7 +71,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.UiComponentSetValueResetDelegate = (v) =>
             {
                 // suspending all (non-persistent) listeners because vectorEntry.SetUIVectorValues
-                // will trigger OnValueChanged, which would add to tracker via setter
+                // will trigger OnValueChanged, which would add to tracker
                 vectorEntry.RemoveAllInputEvents();
                 vectorEntry.SetUIVectorValues((string)v);
                 vectorEntry.RegisterInputEvents();

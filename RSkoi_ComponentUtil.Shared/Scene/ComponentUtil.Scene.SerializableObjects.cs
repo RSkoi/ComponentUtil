@@ -12,13 +12,13 @@ namespace RSkoi_ComponentUtil.Scene
         [MessagePackObject]
         public class TrackerDataPropertySO(
             string propertyName,
-            string propertyValue,
+            object propertyValue,
             PropertyTrackerDataOptions propertyFlags = PropertyTrackerDataOptions.None)
         {
             [Key("propertyName")]
             public string propertyName = propertyName;
             [Key("propertyValue")]
-            public string propertyValue = propertyValue;
+            public object propertyValue = propertyValue;
             [Key("propertyFlags")]
             public PropertyTrackerDataOptions propertyFlags = propertyFlags;
 

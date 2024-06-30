@@ -48,6 +48,7 @@ namespace RSkoi_ComponentUtil
         internal void ClearTracker()
         {
             _propertyTracker.Clear();
+            _referencePropertyTracker.Clear();
             _addedComponentsTracker.Clear();
         }
 
