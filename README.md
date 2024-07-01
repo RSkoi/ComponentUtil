@@ -73,6 +73,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 - indexed reference types
 - properties without a public `get` method
+- `IEnumerable`s
 
 ### Types to be supported in the future (probably) (maybe)
 
@@ -80,6 +81,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 ## Known Quirks
 
+- Properties or fields with a null value will not be listed.
 - Properties of Redirector scripts will sometimes not be marked as edited on scene load. This is because the tracker interprets the current value of variables on scene load as the default values and as such will discard saved values if they equal the default values.
 - Not all properties expose a public `set` method. These entries are marked as read-only / non-interactable. Properties without a public `get` method will not be listed at all.
 - Performance is affected by the **Items per page** config setting. The more UI items per page, the more hiccups and stutters you may notice when toggling or interacting with the UI. All must bow to the garbage collector.

@@ -41,7 +41,7 @@ namespace RSkoi_ComponentUtil.UI
                 return _componentPropertyColorEntryPrefab;
             else if (t.Equals(typeof(string)))
                 return _componentPropertyDecimalEntryPrefab;
-            else if (!t.IsValueType|| ComponentUtil.supportedTypesRewireAsReference.Contains(t))
+            else if (!t.IsValueType || ComponentUtil.supportedTypesRewireAsReference.Contains(t))
                 return _componentPropertyReferenceEntryPrefab;
 
             return _componentPropertyDecimalEntryPrefab;

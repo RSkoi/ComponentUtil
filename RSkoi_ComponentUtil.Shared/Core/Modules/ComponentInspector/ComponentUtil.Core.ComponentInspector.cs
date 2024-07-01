@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Reflection;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
-using UnityEngine.UI;
 
 namespace RSkoi_ComponentUtil
 {
@@ -66,11 +67,23 @@ namespace RSkoi_ComponentUtil
                 if (p.GetGetMethod() == null)
                     continue;
 
+                // collections are annoying
+                if (typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+                    && !supportedTypes.Contains(p.PropertyType))
+                    continue;
+
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null);
             }
 
             foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfos(input))
+            {
+                // collections are annoying
+                if (typeof(IEnumerable).IsAssignableFrom(f.FieldType)
+                    && !supportedTypes.Contains(f.FieldType))
+                    continue;
+
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f);
+            }
         }
 
         internal object GetValueFieldOrProperty(object input, PropertyInfo p, FieldInfo f)
@@ -78,10 +91,17 @@ namespace RSkoi_ComponentUtil
             bool isProperty = p != null;
             bool isField = f != null;
 
-            if (isProperty)
-                return p.GetValue(input, null);
-            if (isField)
-                return f.GetValue(input);
+            try
+            {
+                if (isProperty)
+                    return p.GetValue(input, null);
+                if (isField)
+                    return f.GetValue(input);
+            }
+            catch (Exception e) {
+                _logger.LogError($"GetValueFieldOrProperty caught exception on reflection: {e}");
+                return null;
+            }
 
             // this should never be the case
             _logger.LogError("GetValueFieldOrProperty received neither PropertyInfo nor FieldInfo");
@@ -90,14 +110,30 @@ namespace RSkoi_ComponentUtil
 
         private void ConfigurePropertyEntry(ComponentUtilUI.GenericUIListEntry parentUiEntry, object input, PropertyInfo p, FieldInfo f, bool objectMode = false)
         {
-            // objectMode signifies whether we're populating ObjectInspector (true) or ComponentInspector (false)
-            // input is either
-            //      - the selected Component, or
-            //      - a referenced object to list the properties and fields of
-            // cInput is input cast to Component if input is selected Component
-            // value is either
-            //      - the value of the property / field on the Component, or
-            //      - the value of the property / field on the reference type
+            /* 'objectMode' signifies whether we're populating ObjectInspector (true) or ComponentInspector (false)
+            *  'input' is either
+            *     - the selected Component, or
+            *     - a referenced object to list the properties and fields of
+            *  'cInput' is input cast to Component if input is selected Component
+            *  'value' is either
+            *     - the value of the property / field on the Component, or
+            *     - the value of the property / field on the reference type
+            */
+
+            bool isProperty = p != null;
+            bool isField = f != null;
+            if ((!isProperty && !isField) || (isProperty && isField))
+            {
+                _logger.LogError("ConfigurePropertyEntry: pass either PropertyInfo (X)OR FieldInfo as arguments");
+                return;
+            }
+
+            if (input == null)
+            {
+                _logger.LogError("ConfigurePropertyEntry: received input null value for " +
+                    $"{(isProperty ? "property" : "field")} {(isProperty ? p.Name : f.Name)}");
+                return;
+            }
 
             Component cInput = objectMode ? null : (Component)input;
             if (!objectMode && cInput == null)
@@ -105,25 +141,26 @@ namespace RSkoi_ComponentUtil
                 _logger.LogError("ConfigurePropertyEntry: objectMode is false, but could not convert input to Component");
                 return;
             }
-
-            bool isProperty = p != null;
-            bool isField = f != null;
-            // this should never be the case
-            if ((!isProperty && !isField) || (isProperty && isField))
-            {
-                _logger.LogError("ConfigurePropertyEntry: pass either PropertyInfo (X)OR FieldInfo as arguments");
-                return;
-            }
-
+            
             Type type = isProperty ? p.PropertyType : f.FieldType;
             bool typeIsSupported = supportedTypes.Contains(type);
             bool typeIsSupportedAndRewired = supportedTypesRewireAsReference.Contains(type);
-            if (!type.IsEnum && !typeIsSupported && !typeIsSupportedAndRewired && type.IsValueType)
+            bool typeIsBlacklisted = blacklistTypes.Contains(type);
+            if (typeIsBlacklisted
+                || !type.IsEnum && type.IsValueType && !typeIsSupported && !typeIsSupportedAndRewired)
                 return;
-
+            
             // properties without set method will be non-interactable except 'generic' reference types
             bool setMethodIsPublic = !isProperty || (p.GetSetMethod() != null);
             string propName = isProperty ? p.Name : f.Name;
+            
+            object value = GetValueFieldOrProperty(objectMode ? input : cInput, p, f);
+            if (value == null)
+            {
+                _logger.LogWarning($"Value of property or field on {(objectMode ? input : cInput).GetType().Name}" +
+                    $" with name {propName} is null, returning");
+                return;
+            }
 
             GameObject entryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(type);
             Transform propertyListContainer = objectMode
@@ -131,15 +168,6 @@ namespace RSkoi_ComponentUtil
             GameObject entry = Instantiate(entryPrefab, propertyListContainer);
             ComponentUtilUI.PropertyUIEntry uiEntry = ComponentUtilUI.PreConfigureNewUiEntry(entry, entryPrefab);
             uiEntry.PropertyName.text = isProperty ? $"[Property] {propName}" : $"[Field] {propName}";
-
-            object value = GetValueFieldOrProperty(objectMode ? input : cInput, p, f);
-            if (value == null)
-            {
-                _logger.LogWarning($"Value of property or field on {cInput.transform.name}" +
-                    $".{cInput.GetType().Name} with name {propName} is null, destroying entry and returning");
-                Destroy(entry);
-                return;
-            }
 
             bool isValidReference = !objectMode                         // don't recurse down from object inspector
                 && !typeIsSupported                                     // don't override types with custom property entries

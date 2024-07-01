@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Collections;
 using UnityEngine;
 using Studio;
 
@@ -45,6 +46,8 @@ namespace RSkoi_ComponentUtil
             if (input == null || inputUi == null)
                 return;
 
+            // destroying UI objects is really bad for performance
+            // TODO: implement pooling for property/field elements, remember to remove onClick listeners
             ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._objectPropertyListEntries);
             ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._objectFieldListEntries);
 
@@ -55,12 +58,13 @@ namespace RSkoi_ComponentUtil
 
             foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfosObject(input))
             {
-                // no recursing in the object inspector else it could lead to circular hell
-                if (!p.PropertyType.IsValueType && !p.PropertyType.Equals(typeof(string)))
-                    continue;
-
                 // ignore properties with private getters
                 if (p.GetGetMethod() == null)
+                    continue;
+
+                // no recursing in the object inspector else it could lead to circular hell
+                // this includes collections
+                if (!p.PropertyType.IsValueType && !supportedTypes.Contains(p.PropertyType))
                     continue;
 
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null, true);
@@ -69,6 +73,7 @@ namespace RSkoi_ComponentUtil
             foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfosObject(input))
             {
                 // no recursing in the object inspector else it could lead to circular hell
+                // this includes collections
                 if (!f.FieldType.IsValueType && !f.FieldType.Equals(typeof(string)))
                     continue;
 

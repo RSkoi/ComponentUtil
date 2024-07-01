@@ -4,6 +4,7 @@ using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
+using System.Collections;
 
 namespace RSkoi_ComponentUtil
 {
@@ -81,6 +82,11 @@ namespace RSkoi_ComponentUtil
             typeof(ParticleSystem.TriggerModule),
             typeof(ParticleSystem.VelocityOverLifetimeModule),
         ];
+
+        /// <summary>
+        /// the property and field types ComponentUtil explicitly does not support (blacklist)
+        /// </summary>
+        public static readonly HashSet<Type> blacklistTypes = [ ];
 
         /// <summary>
         /// sets selected objects to null, resets the tracker, UI pools, cache and pages
