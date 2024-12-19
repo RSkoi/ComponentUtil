@@ -4,7 +4,6 @@ using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
-using System.Collections;
 
 namespace RSkoi_ComponentUtil
 {

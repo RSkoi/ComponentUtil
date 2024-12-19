@@ -188,14 +188,15 @@ namespace RSkoi_ComponentUtil.UI
             byte[] buffer = new byte[stream.Length];
             stream.Read(buffer, 0, buffer.Length);
 
-            _canvasPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentUtilCanvas");
-            _genericListEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ListEntry");
-            _componentPropertyDecimalEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Decimal");
-            _componentPropertyEnumEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Enum");
-            _componentPropertyBoolEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Bool");
-            _componentPropertyVector4EntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Vector4");
-            _componentPropertyReferenceEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Reference");
-            _componentPropertyColorEntryPrefab = AssetBundle.LoadFromMemory(buffer).LoadAsset<GameObject>("ComponentPropertyEntry_Color");
+            AssetBundle ab                          = AssetBundle.LoadFromMemory(buffer);
+            _canvasPrefab                           = ab.LoadAsset<GameObject>("ComponentUtilCanvas");
+            _genericListEntryPrefab                 = ab.LoadAsset<GameObject>("ListEntry");
+            _componentPropertyDecimalEntryPrefab    = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Decimal");
+            _componentPropertyEnumEntryPrefab       = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Enum");
+            _componentPropertyBoolEntryPrefab       = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Bool");
+            _componentPropertyVector4EntryPrefab    = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Vector4");
+            _componentPropertyReferenceEntryPrefab  = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Reference");
+            _componentPropertyColorEntryPrefab      = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Color");
 
             stream.Close();
         }
@@ -206,42 +207,42 @@ namespace RSkoi_ComponentUtil.UI
             _canvas = _canvasContainer.GetComponent<Canvas>();
             _canvas.enabled = false;
             // window containers
-            _canvasScaler = _canvasContainer.GetComponent<CanvasScaler>();
-            _transformWindow = _canvasContainer.transform.Find("TransformListContainer");
-            _componentWindow = _canvasContainer.transform.Find("ComponentListContainer");
-            _inspectorWindow = _canvasContainer.transform.Find("ComponentInspectorContainer");
-            _componentAdderWindow = _canvasContainer.transform.Find("ComponentAdderContainer");
-            _objectInspectorWindow = _canvasContainer.transform.Find("ObjectInspectorContainer");
-            _transformWindowRect = _transformWindow.GetComponent<RectTransform>();
-            _componentWindowRect = _componentWindow.GetComponent<RectTransform>();
-            _inspectorWindowRect = _inspectorWindow.GetComponent<RectTransform>();
-            _componentAdderWindowRect = _componentAdderWindow.GetComponent<RectTransform>();
-            _objectInspectorWindowRect = _objectInspectorWindow.GetComponent<RectTransform>();
-            _transformWindowRectOriginalSize = _transformWindowRect.sizeDelta;
-            _componentWindowRectOriginalSize = _componentWindowRect.sizeDelta;
-            _inspectorWindowRectOriginalSize = _inspectorWindowRect.sizeDelta;
-            _componentAdderWindowRectOriginalSize = _componentAdderWindowRect.sizeDelta;
-            _objectInspectorWindowRectOriginalSize = _objectInspectorWindowRect.sizeDelta;
+            _canvasScaler                           = _canvasContainer.GetComponent<CanvasScaler>();
+            _transformWindow                        = _canvasContainer.transform.Find("TransformListContainer");
+            _componentWindow                        = _canvasContainer.transform.Find("ComponentListContainer");
+            _inspectorWindow                        = _canvasContainer.transform.Find("ComponentInspectorContainer");
+            _componentAdderWindow                   = _canvasContainer.transform.Find("ComponentAdderContainer");
+            _objectInspectorWindow                  = _canvasContainer.transform.Find("ObjectInspectorContainer");
+            _transformWindowRect                    = _transformWindow.GetComponent<RectTransform>();
+            _componentWindowRect                    = _componentWindow.GetComponent<RectTransform>();
+            _inspectorWindowRect                    = _inspectorWindow.GetComponent<RectTransform>();
+            _componentAdderWindowRect               = _componentAdderWindow.GetComponent<RectTransform>();
+            _objectInspectorWindowRect              = _objectInspectorWindow.GetComponent<RectTransform>();
+            _transformWindowRectOriginalSize        = _transformWindowRect.sizeDelta;
+            _componentWindowRectOriginalSize        = _componentWindowRect.sizeDelta;
+            _inspectorWindowRectOriginalSize        = _inspectorWindowRect.sizeDelta;
+            _componentAdderWindowRectOriginalSize   = _componentAdderWindowRect.sizeDelta;
+            _objectInspectorWindowRectOriginalSize  = _objectInspectorWindowRect.sizeDelta;
 
             // scroll view content containers
-            _transformListContainer = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
-            _componentListContainer = _componentWindow.Find("ComponentList/ComponentEntryScrollView/Viewport/Content");
+            _transformListContainer         = _transformWindow.Find("TransformList/TransformEntryScrollView/Viewport/Content");
+            _componentListContainer         = _componentWindow.Find("ComponentList/ComponentEntryScrollView/Viewport/Content");
             _componentPropertyListContainer = _inspectorWindow.Find("ComponentPropertyList/ComponentPropertyEntryScrollView/Viewport/Content");
-            _componentAdderListContainer = _componentAdderWindow.Find("ComponentAddList/ComponentAddEntryScrollView/Viewport/Content");
-            _objectPropertyListContainer = _objectInspectorWindow.Find("ObjectPropertyList/ObjectPropertyEntryScrollView/Viewport/Content");
+            _componentAdderListContainer    = _componentAdderWindow.Find("ComponentAddList/ComponentAddEntryScrollView/Viewport/Content");
+            _objectPropertyListContainer    = _objectInspectorWindow.Find("ObjectPropertyList/ObjectPropertyEntryScrollView/Viewport/Content");
 
             // window tooltips
-            _componentListSelectedGOText = _componentWindow.Find("ComponentList/ComponentText").GetComponent<Text>();
+            _componentListSelectedGOText                = _componentWindow.Find("ComponentList/ComponentText").GetComponent<Text>();
             _componentPropertyListSelectedComponentText = _inspectorWindow.Find("ComponentPropertyList/ComponentText").GetComponent<Text>();
-            _componentAdderListSelectedGOText = _componentAdderWindow.Find("ComponentAddList/ComponentAddListText").GetComponent<Text>();
-            _objectPropertyListSelectedText = _objectInspectorWindow.Find("ObjectPropertyList/ObjectText").GetComponent<Text>();
+            _componentAdderListSelectedGOText           = _componentAdderWindow.Find("ComponentAddList/ComponentAddListText").GetComponent<Text>();
+            _objectPropertyListSelectedText             = _objectInspectorWindow.Find("ObjectPropertyList/ObjectText").GetComponent<Text>();
 
-            _componentDeleteButton = _inspectorWindow.Find("ComponentPropertyList/DeleteComponentButton").GetComponent<Button>();
+            _componentDeleteButton      = _inspectorWindow.Find("ComponentPropertyList/DeleteComponentButton").GetComponent<Button>();
 
             // buttons to hide windows
-            _hideTransformListButton = _componentWindow.Find("ToggleTransformListButton").GetComponent<Button>();
+            _hideTransformListButton    = _componentWindow.Find("ToggleTransformListButton").GetComponent<Button>();
             _hideTransformListButton.onClick.AddListener(() => ToggleSubWindow(_transformWindow));
-            _hideComponentListButton = _inspectorWindow.Find("ToggleComponentListButton").GetComponent<Button>();
+            _hideComponentListButton    = _inspectorWindow.Find("ToggleComponentListButton").GetComponent<Button>();
             _hideComponentListButton.onClick.AddListener(() => ToggleSubWindow(_componentWindow));
 
             _toggleComponentAdderButton = _componentWindow.Find("ComponentList/ToggleComponentAdderButton").GetComponent<Button>();

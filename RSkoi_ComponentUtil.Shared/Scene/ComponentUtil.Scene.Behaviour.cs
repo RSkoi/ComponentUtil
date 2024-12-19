@@ -151,6 +151,7 @@ namespace RSkoi_ComponentUtil.Scene
 
                     Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
                     Type componentType = component.GetType();
+                    bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
                     foreach (var propEdit in propEntry.properties)
                     {
@@ -189,7 +190,8 @@ namespace RSkoi_ComponentUtil.Scene
 
                         string propEditValueString = propEdit.propertyValue.ToString();
                         // a default value was saved -> can be discarded
-                        if (value.ToString() == propEditValueString)
+                        // redirector values are always set
+                        if (!componentTypeIsRedirector && value.ToString() == propEditValueString)
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
@@ -259,6 +261,7 @@ namespace RSkoi_ComponentUtil.Scene
 
                     Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
                     Type componentType = component.GetType();
+                    bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
                     PropertyInfo propReferenceType = componentType.GetProperty(propEntry.referencePropertyName,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -308,7 +311,8 @@ namespace RSkoi_ComponentUtil.Scene
 
                         string propEditValueString = propEdit.propertyValue.ToString();
                         // a default value was saved -> can be discarded
-                        if (value.ToString() == propEditValueString)
+                        // redirector values are always set
+                        if (!componentTypeIsRedirector && value.ToString() == propEditValueString)
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
@@ -569,6 +573,11 @@ namespace RSkoi_ComponentUtil.Scene
         #endregion override
 
         #region private helpers
+        private bool TypeIsSupportedRedirector(Type type)
+        {
+            return redirectorTypes.ContainsValue(type);
+        }
+
         private bool HasPropertyFlag(
             PropertyTrackerData.PropertyTrackerDataOptions input,
             PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)

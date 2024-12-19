@@ -32,6 +32,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.SerializableObjects.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.LightmapSettingsRedirector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.QualitySettingsRedirector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.RedirectorTypes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.RenderSettingsRedirector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)UI\ComponentUtil.UI.Draggable.cs" />
