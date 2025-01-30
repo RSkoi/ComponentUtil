@@ -150,6 +150,11 @@ namespace RSkoi_ComponentUtil.Scene
                     }
 
                     Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    if (component == null)
+                    {
+                        _logger.LogError($"Could not get component with name {propEntry.componentName} on {loadedItemTransformTarget.name}");
+                        continue;
+                    }
                     Type componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
@@ -260,6 +265,11 @@ namespace RSkoi_ComponentUtil.Scene
                     }
 
                     Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    if (component == null)
+                    {
+                        _logger.LogError($"Could not get component with name {propEntry.componentName} on {loadedItemTransformTarget.name}");
+                        continue;
+                    }
                     Type componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
@@ -268,6 +278,12 @@ namespace RSkoi_ComponentUtil.Scene
                     FieldInfo fieldReferenceType = componentType.GetField(propEntry.referencePropertyName,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                     object referenceObject = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
+                    if (referenceObject == null)
+                    {
+                        _logger.LogWarning($"Could not find reference on {loadedItemEditTransform.name}" +
+                            $".{componentType.Name} with name {propEntry.referencePropertyName}, ignoring");
+                        continue;
+                    }
                     Type referenceObjectType = referenceObject.GetType();
 
                     foreach (var propEdit in propEntry.properties)

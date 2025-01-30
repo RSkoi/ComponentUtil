@@ -78,11 +78,12 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 ### Types to be supported in the future (probably) (maybe)
 
 - `AnimationCurve`
+- `MinMaxCurve`
 
 ## Known Quirks
 
 - Properties or fields with a null value will not be listed.
-- Properties of Redirector scripts will sometimes not be marked as edited on scene load. This is because the tracker interprets the current value of variables on scene load as the default values. For 'normal' components, ComponentUtil will discard saved values if they equal the default values. For Redirectors, values will always be added to the tracker, meaning they will always be saved to and loaded from the scene.
+- Properties of Redirector scripts will sometimes not be marked as edited on scene load. This is because the tracker interprets the current value of variables on scene load as the default values. For 'normal' `Component`s, ComponentUtil will discard saved values if they equal the default values. For Redirectors, values will always be added to the tracker, meaning they will always be saved to and loaded from the scene.
 - Not all properties expose a public `set` method. These entries are marked as read-only / non-interactable. Properties without a public `get` method will not be listed at all.
 - Performance is affected by the **Items per page** config setting. The more UI items per page, the more hiccups and stutters you may notice when toggling or interacting with the UI. All must bow to the garbage collector.
 - When loading a Koikatsu scene with saved property / field edits, the changes ComponentUtil applies after the scene finished loading in are sometimes overwritten. Presumably because God said so. God's will can be circumvented by waiting a certain amount of seconds after loading has finished. If in need, the amount of seconds to wait can be changed with the **Wait time after scene load** setting.

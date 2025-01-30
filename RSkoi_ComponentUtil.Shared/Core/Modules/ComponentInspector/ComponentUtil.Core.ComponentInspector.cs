@@ -103,7 +103,6 @@ namespace RSkoi_ComponentUtil
                 return null;
             }
 
-            // this should never be the case
             _logger.LogError("GetValueFieldOrProperty received neither PropertyInfo nor FieldInfo");
             return null;
         }
