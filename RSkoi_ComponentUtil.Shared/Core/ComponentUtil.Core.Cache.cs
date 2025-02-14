@@ -44,6 +44,11 @@ namespace RSkoi_ComponentUtil.Core
             // TODO: how to remove from property/fieldInfoSearchCacheObject, is it really needed?
         }
 
+        /// <summary>
+        /// Gets and caches all addable Types
+        /// </summary>
+        /// <param name="forceRefresh">Whether to forcefully refresh the cache</param>
+        /// <returns>List of addable Types</returns>
         internal static List<Type> GetOrCacheComponentAdders(bool forceRefresh = false)
         {
             if (!forceRefresh && _componentAdderSearchCache.Count != 0)

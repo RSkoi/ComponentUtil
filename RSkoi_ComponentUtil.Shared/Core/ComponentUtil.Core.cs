@@ -4,11 +4,12 @@ using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
+using RSkoi_ComponentUtil.Timeline;
 
 namespace RSkoi_ComponentUtil
 {
     /// <summary>
-    /// class is split into multiple files:<br />
+    /// Class is split into multiple files:<br />
     /// - generic stuff (this file)<br />
     /// - modules (logic related to windows)<br />
     /// - tracker (tracks changes)
@@ -16,18 +17,35 @@ namespace RSkoi_ComponentUtil
     public partial class ComponentUtil
     {
         #region currently selected
-        internal static Studio.ObjectCtrlInfo _selectedObject;  // selected in workspace
-        private static GameObject _selectedGO;                  // selected in TransformList
-        private static Component _selectedComponent;            // selected in ComponentList
+        /// <summary>
+        /// Selected ObjectCtrlInfo in workspace.
+        /// </summary>
+        internal static Studio.ObjectCtrlInfo _selectedObject;
+        /// <summary>
+        /// Selected GameObject in TransformList.
+        /// </summary>
+        private static GameObject _selectedGO;
+        /// <summary>
+        /// Selected Component in ComponentList.
+        /// </summary>
+        private static Component _selectedComponent;
         
+        /// <summary>
+        /// Selected Transform UI entry in TransformList.
+        /// </summary>
         private static ComponentUtilUI.GenericUIListEntry _selectedTransformUIEntry;
+        /// <summary>
+        /// Selected Component UI entry in ComponentList.
+        /// </summary>
         private static ComponentUtilUI.GenericUIListEntry _selectedComponentUiEntry;
-        // selected reference type in ComponentInspector
+        /// <summary>
+        /// Selected reference type / object in ComponentInspector.
+        /// </summary>
         private static ComponentUtilUI.PropertyUIEntry _selectedReferencePropertyUiEntry;
         #endregion currently selected
 
         /// <summary>
-        /// the property and field types ComponentUtil supports
+        /// The property and field types ComponentUtil supports.
         /// </summary>
         public static readonly HashSet<Type> supportedTypes =
         [
@@ -54,7 +72,7 @@ namespace RSkoi_ComponentUtil
         ];
 
         /// <summary>
-        /// the property and field types ComponentUtil supports that should be treated as reference types
+        /// The property and field types ComponentUtil supports that should be treated as reference types.
         /// </summary>
         public static readonly HashSet<Type> supportedTypesRewireAsReference =
         [
@@ -83,12 +101,12 @@ namespace RSkoi_ComponentUtil
         ];
 
         /// <summary>
-        /// the property and field types ComponentUtil explicitly does not support (blacklist)
+        /// The property and field types ComponentUtil explicitly does not support (blacklist).
         /// </summary>
         public static readonly HashSet<Type> blacklistTypes = [ ];
 
         /// <summary>
-        /// sets selected objects to null, resets the tracker, UI pools, cache and pages
+        /// Sets selected objects to null, resets the tracker, UI pools, cache and pages.
         /// </summary>
         public void ResetState()
         {
@@ -105,11 +123,12 @@ namespace RSkoi_ComponentUtil
             ComponentUtilUI.ResetPageNumbers();
             ComponentUtilUI.ClearAllEntryPools();
             ComponentUtilCache.ClearCache();
+            ComponentUtilTimeline.ResetState();
         }
 
         /// <summary>
-        /// entry point for the core functionality, flattens transform hierarchy, 
-        /// lists all components, lists all properties, lists all addable components
+        /// Entry point for the core functionality, flattens transform hierarchy, 
+        /// lists all components, lists all properties, lists all addable components.
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>
         public void Entry(Studio.ObjectCtrlInfo input)

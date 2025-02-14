@@ -13,8 +13,8 @@ namespace RSkoi_ComponentUtil
     public partial class ComponentUtil
     {
         /// <summary>
-        /// sets up component inspector: configure delete component button, 
-        /// gets all fields of currently selected component, maps to list entries of different types
+        /// Sets up component inspector: configure delete component button, 
+        /// get all fields of currently selected component, map to list entries of different types.
         /// </summary>
         /// <param name="input">selected component to list the properties and fields of</param>
         /// <param name="inputUi">selected component ui entry</param>
@@ -63,7 +63,7 @@ namespace RSkoi_ComponentUtil
                 if (p.GetIndexParameters().Length != 0)
                     continue;
 
-                // ignore properties with private getters
+                // ignore properties with private or missing getters
                 if (p.GetGetMethod() == null)
                     continue;
 
@@ -171,37 +171,39 @@ namespace RSkoi_ComponentUtil
             bool isValidReference = !objectMode                         // don't recurse down from object inspector
                 && !typeIsSupported                                     // don't override types with custom property entries
                 && (!type.IsValueType || typeIsSupportedAndRewired);    // is reference type or rewired
-            if (isValidReference)
+            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag = isValidReference
+                ? PropertyTrackerData.PropertyTrackerDataOptions.IsReference : MapTypeToTrackerFlag(type);
+            if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsReference)
                 ConfigReference(parentUiEntry, entry, uiEntry, cInput, p, f, type, setMethodIsPublic, isProperty, value);
-            else if (type.IsEnum)
+            else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsInt)
                 ConfigDropdown(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode);
-            else if (type.Equals(typeof(bool)))
+            else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsBool)
                 ConfigToggle(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode);
-            else if (type.Equals(typeof(Vector2)) || type.Equals(typeof(Vector3))
-                  || type.Equals(typeof(Vector4)) || type.Equals(typeof(Quaternion)))
-            {
+            else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsVector)
+            { // do not remove these brackets
                 if (!ConfigVector(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode))
                 {
-                    _logger.LogWarning($"Could not configure vector property entry on {cInput.transform.name}" +
-                    $".{cInput.name} with name {propName}, destroying entry and returning");
+                    _logger.LogWarning($"Could not configure vector property entry on {cInput.transform.name}.{cInput.name} with name {propName}," +
+                        " destroying entry and returning");
                     Destroy(entry);
                     return;
                 }
             }
-            else if (type.Equals(typeof(Color)))
+            else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsColor)
                 ConfigColor(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode);
-            else if (type.Equals(typeof(AnimationCurve)))
+            // this includes string; default is input field with InputField.ContentType.IntegerNumber
+            else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsInput)
+                ConfigInput(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode,
+                    MapTypeToInputContentType(type));
+            else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.None)
             {
-                // TODO: spline editor for UnityEngine.AnimationCurve type
                 Destroy(entry);
                 return;
             }
-            else // this includes string; default is input field with InputField.ContentType.IntegerNumber
-                ConfigInput(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode,
-                    MapTypeToInputContentType(type));
 
             uiEntry.ResetBgAndChildren();
 
+            // get cache by reference
             List<ComponentUtilUI.PropertyUIEntry> uiCache = objectMode
                 ? (isProperty ? ComponentUtilUI._objectPropertyListEntries : ComponentUtilUI._objectFieldListEntries)
                 : (isProperty ? ComponentUtilUI._componentPropertyListEntries : ComponentUtilUI._componentFieldListEntries);
@@ -215,6 +217,7 @@ namespace RSkoi_ComponentUtil
 
                 //PropertyReferenceKey keyRef = new(_selectedObject, cInput.gameObject, cInput, propName);
                 ConfigResetReference(null, uiEntry, input, p, f, propName, isProperty);
+                ConfigTimelineReference(null, uiEntry, input, p, f, propName, isProperty, typeAsFlag);
             }
             else if (objectMode) // property inside reference type / the object inspector
             {
@@ -224,6 +227,7 @@ namespace RSkoi_ComponentUtil
                 CheckTrackedAndMarkAsEdited(key, uiEntry, propName, value);
 
                 ConfigResetReferenceProperty(key, uiEntry, input, p, f, propName, setMethodIsPublic, isProperty);
+                ConfigTimelineReferenceProperty(key, uiEntry, input, p, f, propName, setMethodIsPublic, isProperty, typeAsFlag);
             }
             else // property in the component inspector
             {
@@ -232,7 +236,12 @@ namespace RSkoi_ComponentUtil
                 CheckTrackedAndMarkAsEdited(key, uiEntry, propName, value);
 
                 ConfigReset(key, uiEntry, cInput, p, f, propName, setMethodIsPublic, isProperty);
+                ConfigTimeline(key, uiEntry, cInput, p, f, propName, setMethodIsPublic, isProperty, typeAsFlag);
             }
+
+            // otherwise the color picker from a color prop can produce a null ref
+            if (Studio.Studio.Instance.colorPalette.visible)
+                Studio.Studio.Instance.colorPalette.visible = false;
         }
 
         private void CheckTrackedAndMarkAsEdited(
@@ -302,7 +311,25 @@ namespace RSkoi_ComponentUtil
             else if (TypeIsFloatingPoint(type))
                 return InputField.ContentType.DecimalNumber;
             else
-                return InputField.ContentType.IntegerNumber; // trying to cram an integer into e.g. a short could lead to problems
+                return InputField.ContentType.IntegerNumber; // trying to cram an integer into e.g. a short will lead to problems
+        }
+
+        private PropertyTrackerData.PropertyTrackerDataOptions MapTypeToTrackerFlag(Type type)
+        {
+            if (type.IsEnum)
+                return PropertyTrackerData.PropertyTrackerDataOptions.IsInt;
+            else if (type.Equals(typeof(bool)))
+                return PropertyTrackerData.PropertyTrackerDataOptions.IsBool;
+            else if (type.Equals(typeof(Vector2)) || type.Equals(typeof(Vector3))
+                  || type.Equals(typeof(Vector4)) || type.Equals(typeof(Quaternion)))
+                return PropertyTrackerData.PropertyTrackerDataOptions.IsVector;
+            else if (type.Equals(typeof(Color)))
+                return PropertyTrackerData.PropertyTrackerDataOptions.IsColor;
+            else if (type.Equals(typeof(AnimationCurve)))
+                // TODO: spline editor for UnityEngine.AnimationCurve type
+                return PropertyTrackerData.PropertyTrackerDataOptions.None;
+            else // this includes string; default is input field with InputField.ContentType.IntegerNumber
+                return PropertyTrackerData.PropertyTrackerDataOptions.IsInput;
         }
 
         #region internal setters
@@ -312,7 +339,11 @@ namespace RSkoi_ComponentUtil
             {
                 p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
             }
-            catch (Exception e) { _logger.LogError(e); }
+            catch (Exception e)
+            {
+                _logger.LogError(e);
+                _logger.LogError($"Tried to set value {value} on {input}.{p.Name} 1");
+            }
         }
 
         internal void SetPropertyValueInt(PropertyInfo p, int value, object input)
@@ -321,7 +352,10 @@ namespace RSkoi_ComponentUtil
             {
                 p.SetValue(input, value, null);
             }
-            catch (Exception e) { _logger.LogError(e); }
+            catch (Exception e) {
+                _logger.LogError(e);
+                _logger.LogError($"Tried to set value {value} on {input}.{p.Name}");
+            }
         }
 
         internal void SetFieldValue(FieldInfo f, object value, object input)
@@ -330,7 +364,10 @@ namespace RSkoi_ComponentUtil
             {
                 f.SetValue(input, Convert.ChangeType(value, f.FieldType));
             }
-            catch (Exception e) { _logger.LogError(e); }
+            catch (Exception e) {
+                _logger.LogError(e);
+                _logger.LogError($"Tried to set value {value} on {input}.{f.Name}");
+            }
         }
 
         internal void SetFieldValueInt(FieldInfo f, int value, object input)
@@ -339,8 +376,73 @@ namespace RSkoi_ComponentUtil
             {
                 f.SetValue(input, value);
             }
-            catch (Exception e) { _logger.LogError(e); }
+            catch (Exception e) {
+                _logger.LogError(e);
+                _logger.LogError($"Tried to set value {value} on {input}.{f.Name}");
+            }
         }
         #endregion internal setters
+
+        #region internal helpers
+        internal static bool HasPropertyFlag(
+            PropertyTrackerData.PropertyTrackerDataOptions input,
+            PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
+        {
+            if ((input & flagToCheck) == flagToCheck)
+                return true;
+            return false;
+        }
+
+        internal static void SetValueWithFlags(
+            PropertyInfo p,
+            FieldInfo f,
+            object targetObject,
+            string valueString,
+            PropertyTrackerData.PropertyTrackerDataOptions flags)
+        {
+            if (p == null && f == null)
+            {
+                _logger.LogError("SetValueWithFlags was passed neither PropertyInfo nor FieldInfo");
+                return;
+            }
+            if (targetObject == null)
+            {
+                _logger.LogError("SetValueWithFlags was passed a null targetObject");
+                return;
+            }
+            // this shit is beyond cursed
+            // this is probably a destroyed Unity object that's not actually been set to null yet
+            if (targetObject.ToString() == "null")
+                return;
+
+            bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+            bool isInt = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+            bool isVector = !isInt && HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+            bool isColor = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+
+            if (isProperty)
+            {
+                if (isInt)
+                    _instance.SetPropertyValueInt(p, int.Parse(valueString), targetObject);
+                else if (isVector)
+                    _instance.SetVectorPropertyValue(p, valueString, targetObject);
+                else if (isColor)
+                    _instance.SetPropertyValue(p, ColorConversion.StringToColor(valueString), targetObject);
+                else
+                    _instance.SetPropertyValue(p, valueString, targetObject);
+            }
+            else
+            {
+                if (isInt)
+                    _instance.SetFieldValueInt(f, int.Parse(valueString), targetObject);
+                else if (isVector)
+                    _instance.SetVectorFieldValue(f, valueString, targetObject);
+                else if (isColor)
+                    _instance.SetFieldValue(f, ColorConversion.StringToColor(valueString), targetObject);
+                else
+                    _instance.SetFieldValue(f, valueString, targetObject);
+            }
+        }
+        #endregion internal helpers
     }
 }

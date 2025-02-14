@@ -3,17 +3,24 @@ using System.Collections.Generic;
 using UnityEngine;
 using Studio;
 
+using RSkoi_ComponentUtil.Timeline;
 using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        // keeps track of properties and fields and their default values
+        /// <summary>
+        /// Keeps track of properties and fields and their default values.
+        /// </summary>
         internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _propertyTracker = [];
-        // keeps track of properties and fields and their default values inside reference types
+        /// <summary>
+        /// Keeps track of properties and fields and their default values inside reference types.
+        /// </summary>
         internal static readonly Dictionary<PropertyReferenceKey, Dictionary<string, PropertyTrackerData>> _referencePropertyTracker = [];
-        // keeps track of which components were added to which objects
+        /// <summary>
+        /// Keeps track of which components were added to which objects.
+        /// </summary>
         internal static readonly Dictionary<ComponentAdderKey, HashSet<string>> _addedComponentsTracker = [];
 
         /// <summary>
@@ -413,7 +420,9 @@ namespace RSkoi_ComponentUtil
         #endregion private helpers
 
         #region property classes
-        // keep this one public, see comment in ComponentUtilSerializableObjects class
+        /// <summary>
+        /// Keep this one public, see comment in ComponentUtilSerializableObjects class.
+        /// </summary>
         public class PropertyTrackerData(
             string propertyName,
             PropertyTrackerDataOptions optionFlags,
@@ -421,7 +430,9 @@ namespace RSkoi_ComponentUtil
         {
             public string PropertyName = propertyName;
             public PropertyTrackerDataOptions OptionFlags = optionFlags;
-            // the default/original value of the property
+            /// <summary>
+            /// The default/original value of the property.
+            /// </summary>
             public object DefaultValue = defaultValue;
 
             public override string ToString()
@@ -429,20 +440,41 @@ namespace RSkoi_ComponentUtil
                 return $"PropertyTrackerData [ PropertyName: {PropertyName}, Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
             }
 
+            /// <summary>
+            /// These are flags, use power of two for values.
+            /// </summary>
             [Flags]
-            public enum PropertyTrackerDataOptions // these are flags, use power of two for values
+            public enum PropertyTrackerDataOptions
             {
                 None = 0,
-                // whether tracked item is a property (true) or a field (false)
+                /// <summary>
+                /// Whether tracked item is a property (true) or a field (false).
+                /// </summary>
                 IsProperty = 1,
-                // whether value of tracked item should be treated as an integer (convenient for enums)
+                /// <summary>
+                /// Whether value of tracked item should be treated as an integer (convenient for enums).
+                /// </summary>
                 IsInt = 2,
-                // whether value of tracked item is encoded vector, exclusive with IsInt
+                /// <summary>
+                /// Whether value of tracked item is an encoded vector, exclusive with IsInt.
+                /// </summary>
                 IsVector = 4,
-                // whether value of tracked item is invalid as it's only used to keep track of edited states of reference types
+                /// <summary>
+                /// Whether value of tracked item is invalid as it's only used to keep track of edited states of reference types.
+                /// </summary>
                 IsReference = 8,
-                // whether value of tracked item is UnityEngine.Color
+                /// <summary>
+                /// Whether value of tracked item is a UnityEngine.Color.
+                /// </summary>
                 IsColor = 16,
+                /// <summary>
+                /// Whether value of tracked item is a boolean.
+                /// </summary>
+                IsBool = 32,
+                /// <summary>
+                /// Whether value of tracked item is of generic input type. This could indicate a string or float, for example.
+                /// </summary>
+                IsInput = 64,
             }
         }
 
@@ -452,18 +484,23 @@ namespace RSkoi_ComponentUtil
             Component component)
             : IEquatable<PropertyKey>
         {
-            // the overarching item / ObjectCtrl (root)
+            /// <summary>
+            /// The overarching item / ObjectCtrl (root).
+            /// </summary>
             public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
-            // the GameObject the component resides in
-            // you can also get this with Component.gameObject
-            // transform is Go.transform
+            /// <summary>
+            /// The GameObject the component resides in.
+            /// You can also get this with Component.gameObject.
+            /// Transform is Go.transform.
+            /// </summary>
             public GameObject Go = go;
-            // the component the property resides in
+            /// <summary>
+            /// The component the property resides in.
+            /// </summary>
             public Component Component = component;
 
             public override int GetHashCode()
             {
-                // oh shit oh fuck
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {
@@ -501,20 +538,27 @@ namespace RSkoi_ComponentUtil
             string referencePropertyName)
             : IEquatable<PropertyReferenceKey>
         {
-            // the overarching item / ObjectCtrl (root)
+            /// <summary>
+            /// The overarching item / ObjectCtrl (root).
+            /// </summary>
             public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
-            // the GameObject the component resides in
-            // you can also get this with Component.gameObject
-            // transform is Go.transform
+            /// <summary>
+            /// The GameObject the component resides in.
+            /// You can also get this with Component.gameObject.
+            /// Transform is Go.transform.
+            /// </summary>
             public GameObject Go = go;
-            // the component the property resides in
+            /// <summary>
+            /// The component the property resides in.
+            /// </summary>
             public Component Component = component;
-            // the name of the reference type property
+            /// <summary>
+            /// The name of the reference type property.
+            /// </summary>
             public string ReferencePropertyName = referencePropertyName;
 
             public override int GetHashCode()
             {
-                // oh shit oh fuck
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {
@@ -553,15 +597,18 @@ namespace RSkoi_ComponentUtil
         internal class ComponentAdderKey(ObjectCtrlInfo objCtrlInfo, GameObject go)
             : IEquatable<ComponentAdderKey>
         {
-            // the overarching item / ObjectCtrl (root)
+            /// <summary>
+            /// The overarching item / ObjectCtrl (root).
+            /// </summary>
             public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
-            // the GameObject the component resides in
-            // transform is Go.transform
+            /// <summary>
+            /// The GameObject the component resides in.
+            /// Transform is Go.transform.
+            /// </summary>
             public GameObject Go = go;
 
             public override int GetHashCode()
             {
-                // oh shit oh fuck
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {

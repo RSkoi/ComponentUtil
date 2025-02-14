@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Timeline;
 
 namespace RSkoi_ComponentUtil
 {
@@ -156,12 +157,12 @@ namespace RSkoi_ComponentUtil
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
                             _selectedReferencePropertyUiEntry.SetBgColorEdited();
                         }
                         else
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
                         SetPropertyValue(p, value.ToString(), input);
                     });
                 else
@@ -171,12 +172,12 @@ namespace RSkoi_ComponentUtil
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.None);
+                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
                             _selectedReferencePropertyUiEntry.SetBgColorEdited();
                         }
                         else
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.None);
+                                PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
                         SetFieldValue(f, value.ToString(), input);
                     });
                 toggleField.onValueChanged.AddListener(_ =>
@@ -227,12 +228,12 @@ namespace RSkoi_ComponentUtil
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
                             _selectedReferencePropertyUiEntry.SetBgColorEdited();
                         }
                         else
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
                         SetPropertyValue(p, value, input);
                     });
                 else
@@ -242,12 +243,12 @@ namespace RSkoi_ComponentUtil
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.None);
+                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
                             _selectedReferencePropertyUiEntry.SetBgColorEdited();
                         }
                         else
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.None);
+                                PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
                         SetFieldValue(f, value, input);
                     });
                 inputField.onValueChanged.AddListener(_ =>
@@ -271,6 +272,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.ParentUiEntry = parentUiEntry;
         }
 
+        #region reset button
         private void ConfigReset(
             PropertyKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
@@ -347,5 +349,75 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI.TraverseAndSetEditedParents();
             });
         }
+        #endregion reset button
+
+        #region timeline button
+        private void ConfigTimeline(
+            PropertyKey key,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            Component input,
+            PropertyInfo p,
+            FieldInfo f,
+            string propName,
+            bool setMethodIsPublic,
+            bool isProperty,
+            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag)
+        {
+            if (!ComponentUtilTimeline.IsTimelineAvailable())
+            {
+                uiEntry.TimelineButton.gameObject.SetActive(false);
+                return;
+            }
+
+            PropertyTrackerData.PropertyTrackerDataOptions options = typeAsFlag;
+            if (isProperty)
+                options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
+            uiEntry.TimelineButton.interactable = setMethodIsPublic;
+            uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, p, f, propName, options));
+        }
+
+        private void ConfigTimelineReference(
+            PropertyReferenceKey key,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            object input,
+            PropertyInfo p,
+            FieldInfo f,
+            string propName,
+            bool isProperty,
+            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag)
+        {
+            if (!ComponentUtilTimeline.IsTimelineAvailable())
+            {
+                uiEntry.TimelineButton.gameObject.SetActive(false);
+                return;
+            }
+
+            uiEntry.TimelineButton.interactable = false;
+        }
+
+        private void ConfigTimelineReferenceProperty(
+            PropertyReferenceKey key,
+            ComponentUtilUI.PropertyUIEntry uiEntry,
+            object input,
+            PropertyInfo p,
+            FieldInfo f,
+            string propName,
+            bool setMethodIsPublic,
+            bool isProperty,
+            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag)
+        {
+            if (!ComponentUtilTimeline.IsTimelineAvailable())
+            {
+                uiEntry.TimelineButton.gameObject.SetActive(false);
+                return;
+            }
+
+            PropertyTrackerData.PropertyTrackerDataOptions options = typeAsFlag;
+            if (isProperty)
+                options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
+            uiEntry.TimelineButton.interactable = setMethodIsPublic;
+            uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, input, p, f, propName, options));
+        }
+        #endregion timeline button
     }
 }

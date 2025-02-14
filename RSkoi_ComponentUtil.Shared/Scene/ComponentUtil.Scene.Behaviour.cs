@@ -11,6 +11,7 @@ using KKAPI.Studio.SaveLoad;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
+using RSkoi_ComponentUtil.Timeline;
 using static RSkoi_ComponentUtil.ComponentUtil;
 using static RSkoi_ComponentUtil.Scene.ComponentUtilSerializableObjects;
 
@@ -213,29 +214,7 @@ namespace RSkoi_ComponentUtil.Scene
                         if (isReference)
                             continue;
 
-                        // no
-                        if (isProperty)
-                        {
-                            if (isInt)
-                                _instance.SetPropertyValueInt(p, int.Parse(propEditValueString), component);
-                            else if (isVector)
-                                _instance.SetVectorPropertyValue(p, propEditValueString, component);
-                            else if (isColor)
-                                _instance.SetPropertyValue(p, ColorConversion.StringToColor(propEditValueString), component);
-                            else
-                                _instance.SetPropertyValue(p, propEditValueString, component);
-                        }
-                        else
-                        {
-                            if (isInt)
-                                _instance.SetFieldValueInt(f, int.Parse(propEditValueString), component);
-                            else if (isVector)
-                                _instance.SetVectorFieldValue(f, propEditValueString, component);
-                            else if (isColor)
-                                _instance.SetFieldValue(f, ColorConversion.StringToColor(propEditValueString), component);
-                            else
-                                _instance.SetFieldValue(f, propEditValueString, component);
-                        }
+                        SetValueWithFlags(p, f, component, propEditValueString, propEdit.propertyFlags);
                     }
                 }
             }
@@ -342,29 +321,7 @@ namespace RSkoi_ComponentUtil.Scene
                             value,
                             propEdit.propertyFlags);
 
-                        // no
-                        if (isProperty)
-                        {
-                            if (isInt)
-                                _instance.SetPropertyValueInt(p, int.Parse(propEditValueString), referenceObject);
-                            else if (isVector)
-                                _instance.SetVectorPropertyValue(p, propEditValueString, referenceObject);
-                            else if (isColor)
-                                _instance.SetPropertyValue(p, ColorConversion.StringToColor(propEditValueString), referenceObject);
-                            else
-                                _instance.SetPropertyValue(p, propEditValueString, referenceObject);
-                        }
-                        else
-                        {
-                            if (isInt)
-                                _instance.SetFieldValueInt(f, int.Parse(propEditValueString), referenceObject);
-                            else if (isVector)
-                                _instance.SetVectorFieldValue(f, propEditValueString, referenceObject);
-                            else if (isColor)
-                                _instance.SetFieldValue(f, ColorConversion.StringToColor(propEditValueString), referenceObject);
-                            else
-                                _instance.SetFieldValue(f, propEditValueString, referenceObject);
-                        }
+                        SetValueWithFlags(p, f, referenceObject, propEditValueString, propEdit.propertyFlags);
                     }
                 }
             }
@@ -555,6 +512,8 @@ namespace RSkoi_ComponentUtil.Scene
             if (ComponentUtilUI.CanvasIsActive && _selectedObject == objectCtrlInfo)
                 ComponentUtilUI.HideWindow();
 
+            ComponentUtilTimeline.DeleteOciFromCache(objectCtrlInfo);
+
             base.OnObjectDeleted(objectCtrlInfo);
         }
 
@@ -588,22 +547,9 @@ namespace RSkoi_ComponentUtil.Scene
         }
         #endregion override
 
-        #region private helpers
-        private bool TypeIsSupportedRedirector(Type type)
+        #region internal helpers
+        internal static string GetGameObjectPathToRoot(Transform transform, Transform root)
         {
-            return redirectorTypes.ContainsValue(type);
-        }
-
-        private bool HasPropertyFlag(
-            PropertyTrackerData.PropertyTrackerDataOptions input,
-            PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
-        {
-            if ((input & flagToCheck) == flagToCheck)
-                return true;
-            return false;
-        }
-
-        private string GetGameObjectPathToRoot(Transform transform, Transform root) {
             // notice that transform.Find already accounts for the root
             // -> do not include it in the path
 
@@ -617,6 +563,13 @@ namespace RSkoi_ComponentUtil.Scene
                 path = $"{transform.name}/{path}";
             }
             return path;
+        }
+        #endregion internal helpers
+
+        #region private helpers
+        private bool TypeIsSupportedRedirector(Type type)
+        {
+            return redirectorTypes.ContainsValue(type);
         }
 
         private void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)

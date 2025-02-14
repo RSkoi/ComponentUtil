@@ -100,7 +100,10 @@ namespace RSkoi_ComponentUtil
                 object vector = VectorConversion.FloatValuesToVectorByType(p.PropertyType, values);
                 p.SetValue(input, vector, null);
             }
-            catch (Exception e) { _logger.LogError(e); }
+            catch (Exception e) {
+                _logger.LogError(e);
+                _logger.LogError($"Tried to set value {value} on {input}.{p.Name}");
+            }
         }
 
         internal void SetVectorFieldValue(FieldInfo f, string value, object input)
@@ -111,7 +114,10 @@ namespace RSkoi_ComponentUtil
                 object vector = VectorConversion.FloatValuesToVectorByType(f.FieldType, values);
                 f.SetValue(input, vector);
             }
-            catch (Exception e) { _logger.LogError(e); }
+            catch (Exception e) {
+                _logger.LogError(e);
+                _logger.LogError($"Tried to set value {value} on {input}.{f.Name}");
+            }
         }
         #endregion internal setters
 

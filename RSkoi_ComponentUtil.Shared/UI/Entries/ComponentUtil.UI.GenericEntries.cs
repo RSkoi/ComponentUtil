@@ -10,10 +10,11 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static PropertyUIEntry PreConfigureNewUiEntry(GameObject entry, GameObject usedPrefab)
         {
+            Button timelineButton = entry.transform.Find("TimelineButton").GetComponent<Button>();
             Button resetButton = entry.transform.Find("ResetButton").GetComponent<Button>();
             Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
             Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
-            return new(resetButton, entryname, bgImage, null, entry, usedPrefab, null);
+            return new(timelineButton, resetButton, entryname, bgImage, null, entry, usedPrefab, null);
         }
 
         internal static GenericUIListEntry PreConfigureNewGenericUIListEntry(GameObject entry)
@@ -92,6 +93,7 @@ namespace RSkoi_ComponentUtil.UI
         /// <param name="usedPrefab">used prefab when instantiating</param>
         /// <param name="uiComponentSetValueResetDelegate">this delegate is used by the reset button to reset the ui value, return effective value</param>
         internal class PropertyUIEntry(
+            Button timelineButton,
             Button resetButton,
             Text propertyName,
             Image bgImage,
@@ -100,6 +102,7 @@ namespace RSkoi_ComponentUtil.UI
             GameObject usedPrefab,
             Func<object, object> uiComponentSetValueResetDelegate)
         {
+            public Button TimelineButton = timelineButton;
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
             public string PropertyNameValue

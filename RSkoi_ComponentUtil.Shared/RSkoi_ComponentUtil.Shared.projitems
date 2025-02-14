@@ -28,6 +28,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ComponentList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.ObjectInspector.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\Modules\ComponentUtil.Core.TransformList.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtill.Core.Timeline.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.Behaviour.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scene\ComponentUtil.Scene.SerializableObjects.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Scripts\ComponentUtil.Scripts.LightmapSettingsRedirector.cs" />

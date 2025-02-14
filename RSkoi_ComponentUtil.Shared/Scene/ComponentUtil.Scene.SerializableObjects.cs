@@ -5,7 +5,9 @@ using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil.Scene
 {
-    // keep all of these public, otherwise MessagePack throws MethodAccessException because of PropertyTrackerDataOptions
+    /// <summary>
+    /// Keep all of the classes in here public, otherwise MessagePack throws MethodAccessException because of PropertyTrackerDataOptions.
+    /// </summary>
     public static class ComponentUtilSerializableObjects
     {
         [Serializable]

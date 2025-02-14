@@ -9,6 +9,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static PropertyUIVectorEntry PreConfigureNewUiVectorEntry(PropertyUIEntry prop)
         {
             return new(
+                prop.TimelineButton,
                 prop.ResetButton,
                 prop.PropertyName,
                 prop.BgImage,
@@ -19,7 +20,9 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         // this is essentially a cursed wrapper
-        internal class PropertyUIVectorEntry(Button resetButton,
+        internal class PropertyUIVectorEntry(
+            Button timelineButton,
+            Button resetButton,
             Text propertyName,
             Image bgImage,
             GenericUIListEntry parentUiEntry,
@@ -27,7 +30,7 @@ namespace RSkoi_ComponentUtil.UI
             GameObject usedPrefab,
             Func<object, object> uiComponentSetValueDelegateForReset)
             // TODO: make this an actual wrapper, set Wrapper in PropertyUIEntry
-            : PropertyUIEntry(resetButton, propertyName, bgImage, parentUiEntry, instantiatedUiGo, usedPrefab, uiComponentSetValueDelegateForReset)
+            : PropertyUIEntry(timelineButton, resetButton, propertyName, bgImage, parentUiEntry, instantiatedUiGo, usedPrefab, uiComponentSetValueDelegateForReset)
         {
             // 'just use primary constructor bro'
             private readonly InputField _input4 = instantiatedUiGo.transform.Find("Input4").GetComponent<InputField>(); // rightmost
