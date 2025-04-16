@@ -137,7 +137,7 @@ namespace RSkoi_ComponentUtil
                 return;
 
             _currentPageTransformList = 0;
-            ComponentUtilUI.ResetPageNumberTransform();
+            ComponentUtilUI.ResetPageNumberTransformList();
 
             _selectedObject = input;
             FlattenTransformHierarchy(input.guideObject.transformTarget.gameObject);

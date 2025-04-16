@@ -161,11 +161,11 @@ namespace RSkoi_ComponentUtil.Scene
 
                     foreach (var propEdit in propEntry.properties)
                     {
-                        bool isReference = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                        bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                        bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                        bool isColor = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                        bool isReference    = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                        bool isProperty     = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                        bool isInt          = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                        bool isVector       = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                        bool isColor        = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                         PropertyInfo p = (isReference || isProperty) ? componentType.GetProperty(propEdit.propertyName) : null;
                         FieldInfo f = (isReference || !isProperty) ? componentType.GetField(propEdit.propertyName) : null;
@@ -273,9 +273,9 @@ namespace RSkoi_ComponentUtil.Scene
                             continue;
 
                         bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                        bool isInt = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        bool isVector = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                        bool isColor = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                        bool isInt      = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                        bool isVector   = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                        bool isColor    = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                         PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEdit.propertyName) : null;
                         FieldInfo f = !isProperty ? referenceObjectType.GetField(propEdit.propertyName) : null;
@@ -347,11 +347,11 @@ namespace RSkoi_ComponentUtil.Scene
                 List<TrackerDataPropertySO> properties = [];
                 foreach (var propEntry in entry.Value)
                 {
-                    bool isReference = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                    bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                    bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                    bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                    bool isColor = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                    bool isReference    = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                    bool isProperty     = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                    bool isInt          = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                    bool isVector       = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                    bool isColor        = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                     object value = 0;
                     if (!isReference)
@@ -408,9 +408,9 @@ namespace RSkoi_ComponentUtil.Scene
                         continue;
 
                     bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                    bool isInt = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                    bool isVector = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                    bool isColor = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                    bool isInt      = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                    bool isVector   = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                    bool isColor    = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
                     PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEntry.Key) : null;
                     FieldInfo f = !isProperty ? referenceObjectType.GetField(propEntry.Key) : null;

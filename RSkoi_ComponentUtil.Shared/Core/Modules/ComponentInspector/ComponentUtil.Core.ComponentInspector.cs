@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Reflection;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -45,9 +44,7 @@ namespace RSkoi_ComponentUtil
             }
             #endregion component delete button
 
-            // destroying UI objects is really bad for performance
-            // TODO: implement pooling for property/field elements, remember to remove onClick listeners
-            ComponentUtilUI.ClearInspectorEntryPools();
+            ComponentUtilUI.ResetAndDisablePropertyEntries();
 
             ComponentUtilUI.UpdateUISelectedText(
                 ComponentUtilUI._componentPropertyListSelectedComponentText,
@@ -57,6 +54,15 @@ namespace RSkoi_ComponentUtil
                 "None");
             _selectedReferencePropertyUiEntry = null;
 
+            // otherwise the color picker from a color prop can produce a null ref
+            if (Studio.Studio.Instance.colorPalette.visible)
+                Studio.Studio.Instance.colorPalette.visible = false;
+
+            // otherwise changing value in ObjectInspector will fail with exception
+            if (ComponentUtilUI._objectInspectorWindow.gameObject.activeSelf)
+                ComponentUtilUI._objectInspectorWindow.gameObject.SetActive(false);
+
+            string filter = ComponentUtilUI.PageSearchComponentInspectorInputValue.ToLower();
             foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfos(input))
             {
                 // indexed properties are annoying
@@ -72,6 +78,10 @@ namespace RSkoi_ComponentUtil
                     && !supportedTypes.Contains(p.PropertyType))
                     continue;
 
+                // filter string
+                if (filter != "" && !p.Name.ToLower().Contains(filter))
+                    continue;
+
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null);
             }
 
@@ -80,6 +90,10 @@ namespace RSkoi_ComponentUtil
                 // collections are annoying
                 if (typeof(IEnumerable).IsAssignableFrom(f.FieldType)
                     && !supportedTypes.Contains(f.FieldType))
+                    continue;
+
+                // filter string
+                if (filter != "" && !f.Name.ToLower().Contains(filter))
                     continue;
 
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f);
@@ -162,10 +176,9 @@ namespace RSkoi_ComponentUtil
             }
 
             GameObject entryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(type);
-            Transform propertyListContainer = objectMode
-                ? ComponentUtilUI._objectPropertyListContainer : ComponentUtilUI._componentPropertyListContainer;
-            GameObject entry = Instantiate(entryPrefab, propertyListContainer);
-            ComponentUtilUI.PropertyUIEntry uiEntry = ComponentUtilUI.PreConfigureNewUiEntry(entry, entryPrefab);
+
+            ComponentUtilUI.PropertyUIEntry uiEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(entryPrefab, objectMode);
+            GameObject entry = uiEntry.UiGO;
             uiEntry.PropertyName.text = isProperty ? $"[Property] {propName}" : $"[Field] {propName}";
 
             bool isValidReference = !objectMode                         // don't recurse down from object inspector
@@ -200,14 +213,6 @@ namespace RSkoi_ComponentUtil
                 Destroy(entry);
                 return;
             }
-
-            uiEntry.ResetBgAndChildren();
-
-            // get cache by reference
-            List<ComponentUtilUI.PropertyUIEntry> uiCache = objectMode
-                ? (isProperty ? ComponentUtilUI._objectPropertyListEntries : ComponentUtilUI._objectFieldListEntries)
-                : (isProperty ? ComponentUtilUI._componentPropertyListEntries : ComponentUtilUI._componentFieldListEntries);
-            uiCache.Add(uiEntry);
             
             if (isValidReference) // reference type
             {
@@ -239,9 +244,7 @@ namespace RSkoi_ComponentUtil
                 ConfigTimeline(key, uiEntry, cInput, p, f, propName, setMethodIsPublic, isProperty, typeAsFlag);
             }
 
-            // otherwise the color picker from a color prop can produce a null ref
-            if (Studio.Studio.Instance.colorPalette.visible)
-                Studio.Studio.Instance.colorPalette.visible = false;
+            uiEntry.UiGO.SetActive(true);
         }
 
         private void CheckTrackedAndMarkAsEdited(
@@ -342,7 +345,7 @@ namespace RSkoi_ComponentUtil
             catch (Exception e)
             {
                 _logger.LogError(e);
-                _logger.LogError($"Tried to set value {value} on {input}.{p.Name} 1");
+                _logger.LogError($"Tried to set value {value} on {input}.{p.Name}");
             }
         }
 
@@ -416,9 +419,9 @@ namespace RSkoi_ComponentUtil
                 return;
 
             bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-            bool isInt = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-            bool isVector = !isInt && HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-            bool isColor = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+            bool isInt      = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+            bool isVector   = !isInt && HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+            bool isColor    = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
             if (isProperty)
             {
@@ -444,5 +447,17 @@ namespace RSkoi_ComponentUtil
             }
         }
         #endregion internal helpers
+
+        #region filter
+        internal void OnFilterComponentInspector()
+        {
+            if (_selectedComponent == null)
+                return;
+
+            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+        #endregion filter
     }
 }

@@ -141,9 +141,9 @@ namespace RSkoi_ComponentUtil.UI
                 bool defaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
                 bool tracked = trackedTransforms.Contains((Transform)entry.UiTarget);
                 if (defaultColor && tracked)
-                    entry.SetBgColorEdited(null);
+                    entry.SetBgColorEdited();
                 else if (!defaultColor && !tracked)
-                    entry.SetBgColorDefault(null);
+                    entry.SetBgColorDefault();
             }
 
             foreach (var entry in ComponentListEntries)
@@ -154,9 +154,9 @@ namespace RSkoi_ComponentUtil.UI
                 bool defaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
                 bool tracked = trackedComponents.Contains((Component)entry.UiTarget);
                 if (defaultColor && tracked)
-                    entry.SetBgColorEdited(null);
+                    entry.SetBgColorEdited();
                 else if (!defaultColor && !tracked)
-                    entry.SetBgColorDefault(null);
+                    entry.SetBgColorDefault();
             }
         }
 
@@ -170,8 +170,8 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static void ResetPageNumbers()
         {
-            ResetPageNumberTransform();
-            ResetPageNumberComponent();
+            ResetPageNumberTransformList();
+            ResetPageNumberComponentList();
         }
 
         internal static void SetRectTransformSizeDelta(RectTransform rect, Vector2 originalSize, Vector2 mulSize)
@@ -257,24 +257,24 @@ namespace RSkoi_ComponentUtil.UI
 
             // page buttons
             Transform page = _transformWindow.Find("TransformList/PageContainer");
-            _pageSearchTransformInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchTransformInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterTransform());
-            _currentPageTransformText = page.Find("PageCurrentLabel").GetComponent<Text>();
-            ResetPageNumberTransform();
-            _pageLastTransformButton = page.Find("PageLast").GetComponent<Button>();
-            _pageLastTransformButton.onClick.AddListener(ComponentUtil._instance.OnLastTransformPage);
-            _pageNextTransformButton = page.Find("PageNext").GetComponent<Button>();
-            _pageNextTransformButton.onClick.AddListener(ComponentUtil._instance.OnNextTransformPage);
+            _pageSearchTransformListInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchTransformListInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterTransform());
+            _currentPageTransformListText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            ResetPageNumberTransformList();
+            _pageLastTransformListButton = page.Find("PageLast").GetComponent<Button>();
+            _pageLastTransformListButton.onClick.AddListener(ComponentUtil._instance.OnLastTransformPage);
+            _pageNextTransformListButton = page.Find("PageNext").GetComponent<Button>();
+            _pageNextTransformListButton.onClick.AddListener(ComponentUtil._instance.OnNextTransformPage);
 
             page = _componentWindow.Find("ComponentList/PageContainer");
-            _pageSearchComponentInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchComponentInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponent());
-            _currentPageComponentText = page.Find("PageCurrentLabel").GetComponent<Text>();
-            ResetPageNumberComponent();
-            _pageLastComponentButton = page.Find("PageLast").GetComponent<Button>();
-            _pageLastComponentButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentPage);
-            _pageNextComponentButton = page.Find("PageNext").GetComponent<Button>();
-            _pageNextComponentButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentPage);
+            _pageSearchComponentListInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchComponentListInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponent());
+            _currentPageComponentListText = page.Find("PageCurrentLabel").GetComponent<Text>();
+            ResetPageNumberComponentList();
+            _pageLastComponentListButton = page.Find("PageLast").GetComponent<Button>();
+            _pageLastComponentListButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentPage);
+            _pageNextComponentListButton = page.Find("PageNext").GetComponent<Button>();
+            _pageNextComponentListButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentPage);
 
             page = _componentAdderWindow.Find("ComponentAddList/PageContainer");
             _pageSearchComponentAdderInput = page.Find("SearchInput").GetComponent<InputField>();
@@ -285,6 +285,14 @@ namespace RSkoi_ComponentUtil.UI
             _pageLastComponentAdderButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentAdderPage);
             _pageNextComponentAdderButton = page.Find("PageNext").GetComponent<Button>();
             _pageNextComponentAdderButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentAdderPage);
+
+            page = _inspectorWindow.Find("ComponentPropertyList/PageContainer");
+            _pageSearchComponentInspectorInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchComponentInspectorInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponentInspector());
+
+            page = _objectInspectorWindow.Find("ObjectPropertyList/PageContainer");
+            _pageSearchObjectInspectorInput = page.Find("SearchInput").GetComponent<InputField>();
+            _pageSearchObjectInspectorInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterObjectInspector());
 
             // prepare pools
             int itemsPerPage = ComponentUtil.ItemsPerPageValue;
@@ -319,10 +327,7 @@ namespace RSkoi_ComponentUtil.UI
 
         private static void ToggleSubWindow(Transform container)
         {
-            if (container.gameObject.activeSelf)
-                container.gameObject.SetActive(false);
-            else
-                container.gameObject.SetActive(true);
+            container.gameObject.SetActive(!container.gameObject.activeSelf);
         }
         #endregion private - loading and instantiating
     }

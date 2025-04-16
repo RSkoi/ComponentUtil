@@ -24,24 +24,24 @@ namespace RSkoi_ComponentUtil
             if (input == null)
                 return;
 
-            List<Transform> list = [.. ComponentUtilCache.GetOrCacheTransforms(input)];
+            List<Transform> transformList = [.. ComponentUtilCache.GetOrCacheTransforms(input)];
 
             // filter string
-            string filter = ComponentUtilUI.PageSearchTransformInputValue.ToLower();
+            string filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
             if (filter != "")
-                list = list.Where(t => t.name.ToLower().Contains(filter)).ToList();
+                transformList = transformList.Where(t => t.name.ToLower().Contains(filter)).ToList();
 
             // paging
             int itemsPerPage = ItemsPerPageValue;
             int startIndex = _currentPageTransformList * itemsPerPage;
-            int n = (list.Count - startIndex) <= itemsPerPage ? list.Count - startIndex : itemsPerPage;
-            if (list.Count != 0)
-                list = list.GetRange(startIndex, n);
+            int n = (transformList.Count - startIndex) <= itemsPerPage ? transformList.Count - startIndex : itemsPerPage;
+            if (transformList.Count != 0)
+                transformList = transformList.GetRange(startIndex, n);
 
-            ComponentUtilUI.PrepareTransformPool(list.Count);
-            for (int poolIndex = 0; poolIndex < list.Count; poolIndex++)
+            ComponentUtilUI.PrepareTransformPool(transformList.Count);
+            for (int poolIndex = 0; poolIndex < transformList.Count; poolIndex++)
             {
-                Transform t = list[poolIndex];
+                Transform t = transformList[poolIndex];
 
                 ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.TransformListEntries[poolIndex];
                 uiEntry.EntryName.text = t.name;
@@ -51,11 +51,11 @@ namespace RSkoi_ComponentUtil
                 // transform ui entries have no parent entry
                 uiEntry.ParentUiEntry = null;
                 uiEntry.UiTarget = t;
-                uiEntry.ResetBgAndChildren();
+                uiEntry.ResetBg();
                 uiEntry.UiGO.SetActive(true);
             }
 
-            SetSelectedTransform(setsSelected, list);
+            SetSelectedTransform(setsSelected, transformList);
         }
 
         private void ChangeSelectedGO(GameObject target, ComponentUtilUI.GenericUIListEntry uiEntry)
@@ -64,7 +64,7 @@ namespace RSkoi_ComponentUtil
             _selectedTransformUIEntry = uiEntry;
 
             _currentPageComponentList = 0;
-            ComponentUtilUI.ResetPageNumberComponent();
+            ComponentUtilUI.ResetPageNumberComponentList();
 
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
@@ -83,8 +83,8 @@ namespace RSkoi_ComponentUtil
             //Entry(_selectedObject);
 
             _currentPageTransformList = 0;
-            ComponentUtilUI.UpdatePageNumberTransform(_currentPageTransformList);
-
+            ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
+            
             FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
@@ -103,7 +103,7 @@ namespace RSkoi_ComponentUtil
                 return;
 
             _currentPageTransformList--;
-            ComponentUtilUI.UpdatePageNumberTransform(_currentPageTransformList);
+            ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
             FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
@@ -120,14 +120,14 @@ namespace RSkoi_ComponentUtil
                 return;
 
             // if filter string reduces length of transform list
-            string filter = ComponentUtilUI.PageSearchTransformInputValue.ToLower();
+            string filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
             if (filter != "" && (toBeStartIndex >= cached
                 .Where(t => t.name.ToLower().Contains(filter))
                 .ToArray().Length))
                 return;
 
             _currentPageTransformList++;
-            ComponentUtilUI.UpdatePageNumberTransform(_currentPageTransformList);
+            ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
             FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
@@ -142,7 +142,7 @@ namespace RSkoi_ComponentUtil
                 return;
 
             _currentPageComponentList = 0;
-            ComponentUtilUI.ResetPageNumberComponent();
+            ComponentUtilUI.ResetPageNumberComponentList();
 
             if (cacheList.Count == 0)
                 return;

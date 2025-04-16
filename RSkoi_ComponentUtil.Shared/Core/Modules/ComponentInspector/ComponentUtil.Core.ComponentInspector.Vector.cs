@@ -25,11 +25,13 @@ namespace RSkoi_ComponentUtil
             if (valueString.IsNullOrEmpty())
                 return false;
 
-            ComponentUtilUI.PropertyUIVectorEntry vectorEntry = ComponentUtilUI.PreConfigureNewUiVectorEntry(uiEntry);
+            ComponentUtilUI.PropertyUIVectorEntry vectorEntry = new(uiEntry);
             vectorEntry.SetInteractable(setMethodIsPublic);
+            vectorEntry.RemoveAllInputEvents();
             // this is already set on the prefab so this is redundant
             //vectorEntry.SetContentType(InputField.ContentType.DecimalNumber);
             vectorEntry.SetUIVectorValues(valueString);
+
             vectorEntry.RegisterInputEvents();
 
             void ValueChangedEvents(string v)

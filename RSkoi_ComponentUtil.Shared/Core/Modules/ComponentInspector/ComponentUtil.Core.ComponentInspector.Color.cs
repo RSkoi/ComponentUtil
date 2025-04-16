@@ -23,13 +23,17 @@ namespace RSkoi_ComponentUtil
             object value,
             bool objectMode)
         {
+            if (uiEntry.UiSelectable == null)
+                uiEntry.UiSelectable = entry.transform.Find("ColorButton").GetComponentInChildren<Button>();
+            Button colorButton = (Button)uiEntry.UiSelectable;
+            colorButton.onClick.RemoveAllListeners();
+
             Studio.ColorPalette colorPalette = Studio.Studio.Instance.colorPalette;
             Color GetCurColor()
             {
                 return (Color)(isProperty ? p.GetValue(input, null) : f.GetValue(input));
             };
 
-            Button colorButton = entry.transform.Find("ColorButton").GetComponentInChildren<Button>();
             colorButton.interactable = setMethodIsPublic;
             SetButtonColor(colorButton, GetCurColor());
 

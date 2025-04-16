@@ -13,5 +13,17 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _objectPropertyListContainer;
         // specific to ObjectInspector window
         internal static Text _objectPropertyListSelectedText;
+
+        // pages
+        private static InputField _pageSearchObjectInspectorInput;
+        internal static string PageSearchObjectInspectorInputValue
+        {
+            get
+            {
+                if (_pageSearchObjectInspectorInput == null)
+                    return "";
+                return _pageSearchObjectInspectorInput.text;
+            }
+        }
     }
 }

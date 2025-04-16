@@ -17,29 +17,29 @@ namespace RSkoi_ComponentUtil.UI
         internal static Text _componentListSelectedGOText;
 
         // pages
-        private static InputField _pageSearchComponentInput;
-        internal static string PageSearchComponentInputValue
+        private static InputField _pageSearchComponentListInput;
+        internal static string PageSearchComponentListInputValue
         {
             get
             {
-                if (_pageSearchComponentInput == null)
+                if (_pageSearchComponentListInput == null)
                     return "";
-                return _pageSearchComponentInput.text;
+                return _pageSearchComponentListInput.text;
             }
         }
-        private static Text _currentPageComponentText;
-        private static Button _pageLastComponentButton;
-        private static Button _pageNextComponentButton;
+        private static Text _currentPageComponentListText;
+        private static Button _pageLastComponentListButton;
+        private static Button _pageNextComponentListButton;
 
-        internal static void UpdatePageNumberComponent(int pageNumber)
+        internal static void UpdatePageNumberComponentList(int pageNumber)
         {
             // +1 because pages are zero-indexed
-            _currentPageComponentText.text = (pageNumber + 1).ToString();
+            _currentPageComponentListText.text = (pageNumber + 1).ToString();
         }
 
-        internal static void ResetPageNumberComponent()
+        internal static void ResetPageNumberComponentList()
         {
-            _currentPageComponentText.text = "1";
+            _currentPageComponentListText.text = "1";
         }
     }
 }

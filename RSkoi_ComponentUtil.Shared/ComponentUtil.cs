@@ -18,7 +18,7 @@ namespace RSkoi_ComponentUtil
     {
         internal const string PLUGIN_GUID = "RSkoi_ComponentUtil";
         internal const string PLUGIN_NAME = "RSkoi_ComponentUtil";
-        internal const string PLUGIN_VERSION = "1.4.0";
+        internal const string PLUGIN_VERSION = "1.4.1";
 
         internal static ComponentUtil _instance;
         internal static ManualLogSource _logger;

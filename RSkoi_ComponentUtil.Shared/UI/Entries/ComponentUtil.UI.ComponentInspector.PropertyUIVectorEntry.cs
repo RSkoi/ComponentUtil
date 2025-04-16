@@ -1,42 +1,17 @@
 ﻿using System;
-using UnityEngine;
 using UnityEngine.UI;
 
 namespace RSkoi_ComponentUtil.UI
 {
     internal static partial class ComponentUtilUI
     {
-        internal static PropertyUIVectorEntry PreConfigureNewUiVectorEntry(PropertyUIEntry prop)
+        internal class PropertyUIVectorEntry(PropertyUIEntry entry)
         {
-            return new(
-                prop.TimelineButton,
-                prop.ResetButton,
-                prop.PropertyName,
-                prop.BgImage,
-                prop.ParentUiEntry,
-                prop.UiGO,
-                prop.UsedPrefab,
-                prop.UiComponentSetValueResetDelegate);
-        }
-
-        // this is essentially a cursed wrapper
-        internal class PropertyUIVectorEntry(
-            Button timelineButton,
-            Button resetButton,
-            Text propertyName,
-            Image bgImage,
-            GenericUIListEntry parentUiEntry,
-            GameObject instantiatedUiGo,
-            GameObject usedPrefab,
-            Func<object, object> uiComponentSetValueDelegateForReset)
-            // TODO: make this an actual wrapper, set Wrapper in PropertyUIEntry
-            : PropertyUIEntry(timelineButton, resetButton, propertyName, bgImage, parentUiEntry, instantiatedUiGo, usedPrefab, uiComponentSetValueDelegateForReset)
-        {
-            // 'just use primary constructor bro'
-            private readonly InputField _input4 = instantiatedUiGo.transform.Find("Input4").GetComponent<InputField>(); // rightmost
-            private readonly InputField _input3 = instantiatedUiGo.transform.Find("Input3").GetComponent<InputField>();
-            private readonly InputField _input2 = instantiatedUiGo.transform.Find("Input2").GetComponent<InputField>();
-            private readonly InputField _input1 = instantiatedUiGo.transform.Find("Input1").GetComponent<InputField>(); // leftmost
+            private PropertyUIEntry _wrappedEntry = entry;
+            private readonly InputField _input4 = entry.UiGO.transform.Find("Input4").GetComponent<InputField>(); // rightmost
+            private readonly InputField _input3 = entry.UiGO.transform.Find("Input3").GetComponent<InputField>();
+            private readonly InputField _input2 = entry.UiGO.transform.Find("Input2").GetComponent<InputField>();
+            private readonly InputField _input1 = entry.UiGO.transform.Find("Input1").GetComponent<InputField>(); // leftmost
 
             /// <summary>
             /// event that fires when one input of the vector entry changes

@@ -26,6 +26,18 @@ namespace RSkoi_ComponentUtil.UI
         internal static Button _componentDeleteButton;
         internal static Text _componentPropertyListSelectedComponentText;
 
+        // pages
+        private static InputField _pageSearchComponentInspectorInput;
+        internal static string PageSearchComponentInspectorInputValue
+        {
+            get
+            {
+                if (_pageSearchComponentInspectorInput == null)
+                    return "";
+                return _pageSearchComponentInspectorInput.text;
+            }
+        }
+
         internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
         {
             if (t.IsEnum)

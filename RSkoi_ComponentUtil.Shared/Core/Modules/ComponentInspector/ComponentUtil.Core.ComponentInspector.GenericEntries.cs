@@ -23,7 +23,11 @@ namespace RSkoi_ComponentUtil
             bool isProperty,
             object value)
         {
-            Button button = entry.GetComponentInChildren<Button>();
+            if (uiEntry.UiSelectable == null)
+                uiEntry.UiSelectable = entry.GetComponentInChildren<Button>();
+            Button button = (Button)uiEntry.UiSelectable;
+            button.onClick.RemoveAllListeners();
+
             // setMethodIsPublic is irrelevant here because values will be set with reflection
             button.interactable = true;
 
@@ -53,7 +57,10 @@ namespace RSkoi_ComponentUtil
             object value,
             bool objectMode)
         {
-            Dropdown dropdownField = entry.GetComponentInChildren<Dropdown>();
+            if (uiEntry.UiSelectable == null)
+                uiEntry.UiSelectable = entry.GetComponentInChildren<Dropdown>();
+            Dropdown dropdownField = (Dropdown)uiEntry.UiSelectable;
+            dropdownField.onValueChanged.RemoveAllListeners();
 
             // configure options
             List<Dropdown.OptionData> options = [];
@@ -144,10 +151,13 @@ namespace RSkoi_ComponentUtil
             object value,
             bool objectMode)
         {
-            Toggle toggleField = entry.GetComponentInChildren<Toggle>();
+            if (uiEntry.UiSelectable == null)
+                uiEntry.UiSelectable = entry.GetComponentInChildren<Toggle>();
+            Toggle toggleField = (Toggle)uiEntry.UiSelectable;
+            toggleField.onValueChanged.RemoveAllListeners();
+
             toggleField.isOn = (bool)value;
             toggleField.interactable = setMethodIsPublic;
-
             void registerMyEvents()
             {
                 if (isProperty)
@@ -214,7 +224,11 @@ namespace RSkoi_ComponentUtil
             bool objectMode,
             InputField.ContentType contentType)
         {
-            InputField inputField = entry.GetComponentInChildren<InputField>();
+            if (uiEntry.UiSelectable == null)
+                uiEntry.UiSelectable = entry.GetComponentInChildren<InputField>();
+            InputField inputField = (InputField)uiEntry.UiSelectable;
+            inputField.onValueChanged.RemoveAllListeners();
+
             inputField.contentType = contentType;
             inputField.text = value.ToString();
             inputField.interactable = setMethodIsPublic;
@@ -284,6 +298,7 @@ namespace RSkoi_ComponentUtil
             bool isProperty)
         {
             uiEntry.ResetButton.interactable = setMethodIsPublic;
+            uiEntry.ResetButton.onClick.RemoveAllListeners();
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
                 if (!PropertyIsTracked(key, propName))
@@ -328,6 +343,7 @@ namespace RSkoi_ComponentUtil
             bool isProperty)
         {
             uiEntry.ResetButton.interactable = setMethodIsPublic;
+            uiEntry.ResetButton.onClick.RemoveAllListeners();
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
                 if (!PropertyIsTracked(key, propName))
@@ -373,6 +389,7 @@ namespace RSkoi_ComponentUtil
             if (isProperty)
                 options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
             uiEntry.TimelineButton.interactable = setMethodIsPublic;
+            uiEntry.TimelineButton.onClick.RemoveAllListeners();
             uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, p, f, propName, options));
         }
 
@@ -416,6 +433,7 @@ namespace RSkoi_ComponentUtil
             if (isProperty)
                 options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
             uiEntry.TimelineButton.interactable = setMethodIsPublic;
+            uiEntry.TimelineButton.onClick.RemoveAllListeners();
             uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, input, p, f, propName, options));
         }
         #endregion timeline button

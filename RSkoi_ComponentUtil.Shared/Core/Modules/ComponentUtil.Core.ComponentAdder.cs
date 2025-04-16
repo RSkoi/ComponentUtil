@@ -24,25 +24,25 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentAdderListSelectedGOText, input.name);
 
-            List<Type> list = ComponentUtilCache.GetOrCacheComponentAdders();
+            List<Type> componentList = ComponentUtilCache.GetOrCacheComponentAdders();
 
             // filter string
             string filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
             if (filter != "")
-                list = list.Where(t => t.FullName.ToLower().Contains(filter)).ToList();
+                componentList = componentList.Where(t => t.FullName.ToLower().Contains(filter)).ToList();
 
             // paging
             int itemsPerPage = ItemsPerPageValue;
             int startIndex = _currentPageComponentAdderList * itemsPerPage;
-            int n = (list.Count - startIndex) <= itemsPerPage ? list.Count - startIndex : itemsPerPage;
+            int n = (componentList.Count - startIndex) <= itemsPerPage ? componentList.Count - startIndex : itemsPerPage;
 
-            if (list.Count != 0)
-                list = list.GetRange(startIndex, n);
+            if (componentList.Count != 0)
+                componentList = componentList.GetRange(startIndex, n);
 
-            ComponentUtilUI.PrepareComponentAdderPool(list.Count);
-            for (int poolIndex = 0; poolIndex < list.Count; poolIndex++)
+            ComponentUtilUI.PrepareComponentAdderPool(componentList.Count);
+            for (int poolIndex = 0; poolIndex < componentList.Count; poolIndex++)
             {
-                Type t = list[poolIndex];
+                Type t = componentList[poolIndex];
 
                 ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.ComponentAdderListEntries[poolIndex];
                 uiEntry.EntryName.text = t.Name;
@@ -66,7 +66,7 @@ namespace RSkoi_ComponentUtil
                     ComponentUtilUI.TraverseAndSetEditedParents();
                 });
                 uiEntry.UiTarget = t;
-                uiEntry.ResetBgAndChildren();
+                uiEntry.ResetBg();
                 uiEntry.UiGO.SetActive(true);
             }
         }

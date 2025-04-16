@@ -26,25 +26,25 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
 
-            List<Component> list = [.. ComponentUtilCache.GetOrCacheComponents(input)];
+            List<Component> componentList = [.. ComponentUtilCache.GetOrCacheComponents(input)];
 
             // filter string
-            string filter = ComponentUtilUI.PageSearchComponentInputValue.ToLower();
+            string filter = ComponentUtilUI.PageSearchComponentListInputValue.ToLower();
             if (filter != "")
-                list = list.Where(c => c.GetType().Name.ToLower().Contains(filter)).ToList();
+                componentList = componentList.Where(c => c.GetType().Name.ToLower().Contains(filter)).ToList();
 
             // paging
             int itemsPerPage = ItemsPerPageValue;
             int startIndex = _currentPageComponentList * itemsPerPage;
-            int n = (list.Count - startIndex) <= itemsPerPage ? list.Count - startIndex : itemsPerPage;
+            int n = (componentList.Count - startIndex) <= itemsPerPage ? componentList.Count - startIndex : itemsPerPage;
 
-            if (list.Count != 0)
-                list = list.GetRange(startIndex, n);
+            if (componentList.Count != 0)
+                componentList = componentList.GetRange(startIndex, n);
 
-            ComponentUtilUI.PrepareComponentPool(list.Count);
-            for (int poolIndex = 0; poolIndex < list.Count; poolIndex++)
+            ComponentUtilUI.PrepareComponentPool(componentList.Count);
+            for (int poolIndex = 0; poolIndex < componentList.Count; poolIndex++)
             {
-                Component c = list[poolIndex];
+                Component c = componentList[poolIndex];
 
                 ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.ComponentListEntries[poolIndex];
                 uiEntry.EntryName.text = c.GetType().Name;
@@ -53,11 +53,11 @@ namespace RSkoi_ComponentUtil
                 uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedComponent(c, uiEntry));
                 uiEntry.ParentUiEntry = inputUi;
                 uiEntry.UiTarget = c;
-                uiEntry.ResetBgAndChildren();
+                uiEntry.ResetBg();
                 uiEntry.UiGO.SetActive(true);
             }
 
-            SetSelectedComponent(setsSelected, list);
+            SetSelectedComponent(setsSelected, componentList);
         }
 
         private void ChangeSelectedComponent(Component target, ComponentUtilUI.GenericUIListEntry uiEntry)
@@ -65,7 +65,7 @@ namespace RSkoi_ComponentUtil
             _selectedComponent = target;
             _selectedComponentUiEntry = uiEntry;
 
-            uiEntry.ResetBgAndChildren();
+            uiEntry.ResetBg();
 
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
@@ -79,7 +79,7 @@ namespace RSkoi_ComponentUtil
                 return;
 
             _currentPageComponentList = 0;
-            ComponentUtilUI.ResetPageNumberComponent();
+            ComponentUtilUI.ResetPageNumberComponentList();
 
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
@@ -97,7 +97,7 @@ namespace RSkoi_ComponentUtil
                 return;
 
             _currentPageComponentList--;
-            ComponentUtilUI.UpdatePageNumberComponent(_currentPageComponentList);
+            ComponentUtilUI.UpdatePageNumberComponentList(_currentPageComponentList);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
@@ -114,14 +114,14 @@ namespace RSkoi_ComponentUtil
                 return;
 
             // if filter string reduces length of transform list
-            string filter = ComponentUtilUI.PageSearchComponentInputValue.ToLower();
+            string filter = ComponentUtilUI.PageSearchComponentListInputValue.ToLower();
             if (filter != "" && (toBeStartIndex >= cached
                 .Where(c => c.GetType().Name.ToLower().Contains(filter))
                 .ToArray().Length))
                 return;
 
             _currentPageComponentList++;
-            ComponentUtilUI.UpdatePageNumberComponent(_currentPageComponentList);
+            ComponentUtilUI.UpdatePageNumberComponentList(_currentPageComponentList);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }

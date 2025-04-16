@@ -51,34 +51,19 @@ namespace RSkoi_ComponentUtil.UI
             public object UiTarget = uiTarget;
             public GenericUIListEntry ParentUiEntry = parentUiEntry;
 
-            public void SetBgColorEdited(GenericUIListEntry _ /*child*/)
+            public void SetBgColorEdited()
             {
-                /*if (child != null)
-                    editedChildren.Add(child); // hashset has no duplicates
-
-                if (BgImage.color == ENTRY_BG_COLOR_EDITED)
-                    return;*/
-
                 BgImage.color = ENTRY_BG_COLOR_EDITED;
-                //ParentUiEntry?.SetBgColorEdited(this);
             }
 
-            public void SetBgColorDefault(GenericUIListEntry _ /*child*/)
+            public void SetBgColorDefault()
             {
-                /*if (child != null)
-                    editedChildren.Remove(child);
-
-                if (editedChildren.Count > 0)
-                    return;*/
-
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                //ParentUiEntry?.SetBgColorDefault(this);
             }
 
-            public void ResetBgAndChildren()
+            public void ResetBg()
             {
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                //editedChildren.Clear();
             }
         }
 
@@ -112,69 +97,39 @@ namespace RSkoi_ComponentUtil.UI
             public Image BgImage = bgImage;
             public GameObject UiGO = instantiatedUiGo;
             /// <summary>
-            /// the parent ui list entry, here a component entry
+            /// The parent ui list entry, here a component entry
             /// </summary>
             public GenericUIListEntry ParentUiEntry = parentUiEntry;
             /// <summary>
-            /// could be useful in determining what kind of property entry we are dealing with
+            /// Original prefab this entry was instantiated from
             /// </summary>
             public GameObject UsedPrefab = usedPrefab;
             /// <summary>
-            /// this delegate is used by the reset button to reset the ui value, return effective value
+            /// This delegate is used by the reset button to reset the ui value, return effective value
             /// </summary>
             public Func<object, object> UiComponentSetValueResetDelegate = uiComponentSetValueResetDelegate;
             /// <summary>
-            /// if this delegate is not null it will be used by the reset button
+            /// If this delegate is not null it will be used by the reset button
             /// </summary>
             public Func<object, object> ResetOverrideDelegate;
+            /// <summary>
+            /// The singular Selectable inside the UI entry, for example an InputField or Toggle
+            /// </summary>
+            public Selectable UiSelectable;
 
             /// <summary>
-            /// reference to the wrapper object if one is provided, currently unused
+            /// Currently unused
             /// </summary>
             public object Wrapper;
-
-            /* Originally a value change of a property would trigger SetBgColorEdited and call the same on its parent,
-             * i.e. GenericUIListEntry, and propagate all the way to a transform ui entry (transform list).
-             * This removes the necessity to traverse all visible list entries, but makes the whole thing way too annoying
-             * when pages and filter strings come into play. See comment in ComponentUtilUI.TraverseAndSetEditedParents
-             */
-
-            /*public PropertyUIEntry(PropertyUIEntry prop, object wrapper)
-                : this(prop.ResetButton,
-                       prop.PropertyName,
-                       prop.BgImage,
-                       prop.ParentUiEntry,
-                       prop.UiGO,
-                       prop.UsedPrefab,
-                       prop.UiComponentSetValueDelegateForReset)
-            {
-                Wrapper = wrapper;
-            }*/
 
             public void SetBgColorEdited()
             {
                 BgImage.color = ENTRY_BG_COLOR_EDITED;
-
-                // this must never be the case for property/field entries
-                /*if (ParentUiEntry == null)
-                {
-                    ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
-                    return;
-                }
-                ParentUiEntry.SetBgColorEdited(this);*/
             }
 
             public void SetBgColorDefault()
             {
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-
-                // this must never be the case for property/field entries
-                /*if (ParentUiEntry == null)
-                {
-                    ComponentUtil.logger.LogError($"Property/field PropertyUIEntry with name {PropertyName} has null as ParentUiEntry");
-                    return;
-                }
-                ParentUiEntry.SetBgColorDefault(this);*/
             }
 
             public void SetUiComponentTargetValue(object value)
@@ -182,10 +137,9 @@ namespace RSkoi_ComponentUtil.UI
                 UiComponentSetValueResetDelegate?.Invoke(value);
             }
 
-            public void ResetBgAndChildren()
+            public void ResetBg()
             {
                 BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-                //editedChildren.Clear();
             }
         }
     }

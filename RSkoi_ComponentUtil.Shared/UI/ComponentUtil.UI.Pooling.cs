@@ -5,19 +5,18 @@ namespace RSkoi_ComponentUtil.UI
 {
     internal static partial class ComponentUtilUI
     {
-        #region list entry pools
+        #region pools
+        // generic button / list entries
         internal readonly static List<GenericUIListEntry> TransformListEntries = [];
         internal readonly static List<GenericUIListEntry> ComponentListEntries = [];
         internal readonly static List<GenericUIListEntry> ComponentAdderListEntries = [];
-        // TODO: these are not pooled yet
-        internal readonly static List<PropertyUIEntry> _componentPropertyListEntries = [];
-        internal readonly static List<PropertyUIEntry> _componentFieldListEntries = [];
-        internal readonly static List<PropertyUIEntry> _objectPropertyListEntries = [];
-        internal readonly static List<PropertyUIEntry> _objectFieldListEntries = [];
-        #endregion list entry pools
+        // properties and fields
+        internal readonly static Dictionary<GameObject, List<PropertyUIEntry>> _componentInspectorPropertyBuckets = [];
+        internal readonly static Dictionary<GameObject, List<PropertyUIEntry>> _objectInspectorPropertyBuckets = [];
+        #endregion pools
 
         /// <summary>
-        /// clears the pooled ui components, use sparingly (only when scene is reset)
+        /// destroys the pooled ui components and clears pools, use sparingly (only when scene is reset)
         /// </summary>
         public static void ClearAllEntryPools()
         {
@@ -25,19 +24,59 @@ namespace RSkoi_ComponentUtil.UI
             ClearEntryListData(ComponentListEntries);
             ClearEntryListData(ComponentAdderListEntries);
 
-            ClearInspectorEntryPools();
+            ClearEntryBucketPool(_componentInspectorPropertyBuckets);
+            ClearEntryBucketPool(_objectInspectorPropertyBuckets);
         }
 
-        /// <summary>
-        /// clears the non-pooled inspector ui components, use sparingly
-        /// </summary>
-        public static void ClearInspectorEntryPools()
+        #region property pool
+        internal static PropertyUIEntry GetOrInstantiatePropEntryFromPool(GameObject entryPrefab, bool objectMode = false)
         {
-            ClearEntryListGO(_componentPropertyListEntries);
-            ClearEntryListGO(_componentFieldListEntries);
-            ClearEntryListGO(_objectPropertyListEntries);
-            ClearEntryListGO(_objectFieldListEntries);
+            Dictionary<GameObject, List<PropertyUIEntry>> pool = objectMode ?
+                _objectInspectorPropertyBuckets : _componentInspectorPropertyBuckets;
+            Transform container = objectMode ?
+                _objectPropertyListContainer : _componentPropertyListContainer;
+
+            if (pool.TryGetValue(entryPrefab, out var bucket))
+            {
+                foreach (var entry in bucket)
+                    if (!entry.UiGO.activeSelf)
+                        return entry;
+            }
+            else
+            {
+                bucket = [];
+                pool.Add(entryPrefab, bucket);
+            }
+
+            GameObject entryGO = GameObject.Instantiate(entryPrefab, container);
+            entryGO.SetActive(false);
+            PropertyUIEntry uiEntry = PreConfigureNewUiEntry(entryGO, entryPrefab);
+            bucket.Add(uiEntry);
+
+            return uiEntry;
         }
+
+        internal static void ResetAndDisablePropertyEntries(bool objectMode = false)
+        {
+            Dictionary<GameObject, List<PropertyUIEntry>> pool = objectMode ?
+                _objectInspectorPropertyBuckets : _componentInspectorPropertyBuckets;
+
+            foreach (var bucket in pool.Values)
+                foreach (var entry in bucket)
+                {
+                    entry.UiGO.SetActive(false);
+
+                    // events will be reset on configuring specific entry type
+
+                    entry.ParentUiEntry = null;
+                    entry.ResetOverrideDelegate = null;
+                    entry.UiComponentSetValueResetDelegate = null;
+                    entry.Wrapper = null;
+
+                    entry.ResetBg();
+                }
+        }
+        #endregion property pool
 
         #region transform pool
         internal static void PrepareTransformPool(int newEntriesCount)
@@ -58,7 +97,7 @@ namespace RSkoi_ComponentUtil.UI
             foreach (var entry in TransformListEntries)
             {
                 entry.UiGO.SetActive(false);
-                entry.ResetBgAndChildren();
+                entry.ResetBg();
             }
         }
         #endregion transform pool
@@ -82,7 +121,7 @@ namespace RSkoi_ComponentUtil.UI
             foreach (var entry in ComponentListEntries)
             {
                 entry.UiGO.SetActive(false);
-                entry.ResetBgAndChildren();
+                entry.ResetBg();
             }
         }
         #endregion component pool
@@ -106,7 +145,7 @@ namespace RSkoi_ComponentUtil.UI
             foreach (var entry in ComponentAdderListEntries)
             {
                 entry.UiGO.SetActive(false);
-                entry.ResetBgAndChildren();
+                entry.ResetBg();
             }
         }
         #endregion component adder pool
@@ -136,11 +175,15 @@ namespace RSkoi_ComponentUtil.UI
             list.Clear();
         }
 
-        internal static void ClearEntryListGO(List<PropertyUIEntry> list)
+        internal static void ClearEntryBucketPool(Dictionary<GameObject, List<PropertyUIEntry>> pool)
         {
-            foreach (var t in list)
-                GameObject.Destroy(t.UiGO);
-            list.Clear();
+            foreach (var bucket in pool.Values)
+            {
+                foreach (var entry in bucket)
+                    GameObject.Destroy(entry.UiGO);
+                bucket.Clear();
+            }
+            pool.Clear();
         }
         #endregion generic
     }

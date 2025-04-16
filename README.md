@@ -71,9 +71,8 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 ### Explicitly NOT supported types
 
-- indexed reference types
 - properties without a public `get` method
-- `IEnumerable`s
+- indexed reference types, `IEnumerable`s, lists, collections and so on
 
 ### Types to be supported in the future (probably) (maybe)
 

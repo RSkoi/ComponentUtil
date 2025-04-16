@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 using Studio;
 
 using RSkoi_ComponentUtil.UI;
@@ -45,16 +46,14 @@ namespace RSkoi_ComponentUtil
             if (input == null || inputUi == null)
                 return;
 
-            // destroying UI objects is really bad for performance
-            // TODO: implement pooling for property/field elements, remember to remove onClick listeners
-            ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._objectPropertyListEntries);
-            ComponentUtilUI.ClearEntryListGO(ComponentUtilUI._objectFieldListEntries);
+            ComponentUtilUI.ResetAndDisablePropertyEntries(true);
 
             Component cParent = (Component)inputUi.UiTarget;
             ComponentUtilUI.UpdateUISelectedText(
                 ComponentUtilUI._objectPropertyListSelectedText,
                 $"{cParent.gameObject.name}.{cParent.GetType().Name}.{propName} ({type.Name})");
 
+            string filter = ComponentUtilUI.PageSearchObjectInspectorInputValue.ToLower();
             foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfosObject(input))
             {
                 // ignore properties with private getters
@@ -64,6 +63,10 @@ namespace RSkoi_ComponentUtil
                 // no recursing in the object inspector else it could lead to circular hell
                 // this includes collections
                 if (!p.PropertyType.IsValueType && !supportedTypes.Contains(p.PropertyType))
+                    continue;
+
+                // filter string
+                if (filter != "" && !p.Name.ToLower().Contains(filter))
                     continue;
 
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null, true);
@@ -76,8 +79,24 @@ namespace RSkoi_ComponentUtil
                 if (!f.FieldType.IsValueType && !f.FieldType.Equals(typeof(string)))
                     continue;
 
+                // filter string
+                if (filter != "" && !f.Name.ToLower().Contains(filter))
+                    continue;
+
                 ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f, true);
             }
         }
+
+        #region filter
+        internal void OnFilterObjectInspector()
+        {
+            if (_selectedReferencePropertyUiEntry == null)
+                return;
+
+            ((Button)_selectedReferencePropertyUiEntry.UiSelectable).onClick.Invoke();
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+        #endregion filter
     }
 }

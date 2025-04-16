@@ -13,29 +13,29 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _transformListContainer;
 
         // pages
-        private static InputField _pageSearchTransformInput;
-        internal static string PageSearchTransformInputValue
+        private static InputField _pageSearchTransformListInput;
+        internal static string PageSearchTransformListInputValue
         {
             get
             {
-                if (_pageSearchTransformInput == null)
+                if (_pageSearchTransformListInput == null)
                     return "";
-                return _pageSearchTransformInput.text;
+                return _pageSearchTransformListInput.text;
             }
         }
-        private static Text _currentPageTransformText;
-        private static Button _pageLastTransformButton;
-        private static Button _pageNextTransformButton;
+        private static Text _currentPageTransformListText;
+        private static Button _pageLastTransformListButton;
+        private static Button _pageNextTransformListButton;
 
-        internal static void UpdatePageNumberTransform(int pageNumber)
+        internal static void UpdatePageNumberTransformList(int pageNumber)
         {
             // +1 because pages are zero-indexed
-            _currentPageTransformText.text = (pageNumber + 1).ToString();
+            _currentPageTransformListText.text = (pageNumber + 1).ToString();
         }
 
-        internal static void ResetPageNumberTransform()
+        internal static void ResetPageNumberTransformList()
         {
-            _currentPageTransformText.text = "1";
+            _currentPageTransformListText.text = "1";
         }
     }
 }

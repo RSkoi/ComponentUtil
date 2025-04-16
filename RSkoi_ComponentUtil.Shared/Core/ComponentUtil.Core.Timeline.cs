@@ -84,6 +84,8 @@ namespace RSkoi_ComponentUtil.Timeline
                 propertyName,
                 options);
             RefreshInterpolablesList();
+
+            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{propertyName} to Timeline");
         }
 
         internal static void SelectTimelineModelTarget(
@@ -105,6 +107,8 @@ namespace RSkoi_ComponentUtil.Timeline
                 propertyName,
                 options | PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
             RefreshInterpolablesList();
+
+            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.ReferencePropertyName}.{propertyName} to Timeline");
         }
         #endregion selection
 
@@ -166,11 +170,11 @@ namespace RSkoi_ComponentUtil.Timeline
         #region set value
         private static void SetPropValue(TimelinePropertyParameter param, string leftValue, string rightValue, float factor)
         {
-            bool isInt = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-            bool isVector = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-            bool isColor = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+            bool isInt      = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+            bool isVector   = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+            bool isColor    = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
-            object castLeft = CastStringValueToType(leftValue, isInt, isVector, isColor, param.Type);
+            object castLeft  = CastStringValueToType(leftValue, isInt, isVector, isColor, param.Type);
             object castRight = CastStringValueToType(rightValue, isInt, isVector, isColor, param.Type);
             if (castLeft == null || castRight == null)
                 return;
@@ -215,9 +219,9 @@ namespace RSkoi_ComponentUtil.Timeline
         private static string GetPropValue(TimelinePropertyParameter param)
         {
             bool isProperty = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-            bool isInt = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-            bool isVector = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-            bool isColor = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+            bool isInt      = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+            bool isVector   = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+            bool isColor    = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
             object value = isProperty ? param.P.GetValue(param.Target, null) : param.F.GetValue(param.Target);
             if (isInt)
