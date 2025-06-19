@@ -1,4 +1,4 @@
-![cu_screen](https://github.com/user-attachments/assets/1cc0da79-e7fd-4184-89ec-be767197458b)
+![screen](https://github.com/user-attachments/assets/ab886e09-8f6a-47b6-96df-a3d529fb068a)
 
 # ComponentUtil
 
