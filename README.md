@@ -81,7 +81,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 ## Known Quirks
 
-- Properties or fields with a null value will not be listed.
+- Properties or fields with a null value will be listed, but are non-interactable / read-only. Re-toggle the UI or refresh the cache (circular arrow button) if the value changed. ComponentUtil will not save null values into the scene.
 - Properties of Redirector scripts will sometimes not be marked as edited on scene load. This is because the tracker interprets the current value of variables on scene load as the default values. For 'normal' `Component`s, ComponentUtil will discard saved values if they equal the default values. For Redirectors, values will always be added to the tracker, meaning they will always be saved to and loaded from the scene.
 - Not all properties expose a public `set` method. These entries are marked as read-only / non-interactable. Properties without a public `get` method will not be listed at all.
 - Performance is affected by the **Items per page** config setting. The more UI items per page, the more hiccups and stutters you may notice when toggling or interacting with the UI. All must bow to the garbage collector.

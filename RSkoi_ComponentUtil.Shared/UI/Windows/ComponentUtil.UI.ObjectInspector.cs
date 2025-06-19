@@ -15,6 +15,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Text _objectPropertyListSelectedText;
 
         // pages
+        private static Button _refreshObjectInspectorButton;
         private static InputField _pageSearchObjectInspectorInput;
         internal static string PageSearchObjectInspectorInputValue
         {

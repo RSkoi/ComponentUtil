@@ -170,8 +170,7 @@ namespace RSkoi_ComponentUtil
             object value = GetValueFieldOrProperty(objectMode ? input : cInput, p, f);
             if (value == null)
             {
-                _logger.LogWarning($"Value of property or field on {(objectMode ? input : cInput).GetType().Name}" +
-                    $" with name {propName} is null, returning");
+                SetupNullEntry(isProperty, propName, objectMode);
                 return;
             }
 
@@ -245,6 +244,18 @@ namespace RSkoi_ComponentUtil
             }
 
             uiEntry.UiGO.SetActive(true);
+        }
+
+        private void SetupNullEntry(bool isProperty, string propName, bool objectMode)
+        {
+            GameObject nullEntryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(null);
+            ComponentUtilUI.PropertyUIEntry uiNullEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(nullEntryPrefab, objectMode);
+
+            uiNullEntry.PropertyName.text = isProperty ? $"[Property] {propName}" : $"[Field] {propName}";
+            uiNullEntry.ResetButton.interactable = false;
+            uiNullEntry.TimelineButton.interactable = false;
+
+            uiNullEntry.UiGO.SetActive(true);
         }
 
         private void CheckTrackedAndMarkAsEdited(
@@ -448,7 +459,7 @@ namespace RSkoi_ComponentUtil
         }
         #endregion internal helpers
 
-        #region filter
+        #region pages
         internal void OnFilterComponentInspector()
         {
             if (_selectedComponent == null)
@@ -458,6 +469,20 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
-        #endregion filter
+
+        internal void OnRefreshComponentInspector()
+        {
+            if (_selectedComponent == null)
+                return;
+
+            ComponentUtilCache.GetOrCachePropertyInfos(_selectedComponent, true);
+            ComponentUtilCache.GetOrCacheFieldInfos(_selectedComponent, true);
+            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+
+            _logger.LogMessage("Force refreshed ComponentInspector cache");
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+        #endregion pages
     }
 }

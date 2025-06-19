@@ -4,7 +4,7 @@
     <TargetFramework>net35</TargetFramework>
     <AssemblyName>RSkoi_ComponentUtil.KK</AssemblyName>
     <Description>Allows for inspection and editing of primitive types on components within a scene. KK version.</Description>
-    <Version>1.4.1</Version>
+    <Version>1.4.2</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RepositoryUrl>https://github.com/RSkoi/ComponentUtil/</RepositoryUrl>

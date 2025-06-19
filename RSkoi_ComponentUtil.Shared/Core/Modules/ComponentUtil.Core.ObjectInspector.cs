@@ -23,6 +23,7 @@ namespace RSkoi_ComponentUtil
                 return;
             }
 
+            uiEntry.Wrapper = value;
             _selectedReferencePropertyUiEntry = uiEntry;
 
             ColorPalette colorPalette = Studio.Studio.Instance.colorPalette;
@@ -87,7 +88,7 @@ namespace RSkoi_ComponentUtil
             }
         }
 
-        #region filter
+        #region pages
         internal void OnFilterObjectInspector()
         {
             if (_selectedReferencePropertyUiEntry == null)
@@ -97,6 +98,21 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
-        #endregion filter
+
+        internal void OnRefreshObjectInspector()
+        {
+            if (_selectedReferencePropertyUiEntry == null)
+                return;
+
+            object input = _selectedReferencePropertyUiEntry.Wrapper;
+            ComponentUtilCache.GetOrCachePropertyInfosObject(input, true);
+            ComponentUtilCache.GetOrCacheFieldInfosObject(input, true);
+            ((Button)_selectedReferencePropertyUiEntry.UiSelectable).onClick.Invoke();
+
+            _logger.LogMessage("Force refreshed ObjectInspector cache");
+
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+        #endregion pages
     }
 }

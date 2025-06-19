@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using Studio;
 
-using RSkoi_ComponentUtil.Timeline;
 using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil
@@ -52,6 +52,37 @@ namespace RSkoi_ComponentUtil
         }
 
         #region internal
+        internal void CopyEditsForSelectedComponent(
+            out Dictionary<string, PropertyTrackerData> props,
+            out Dictionary<string, PropertyTrackerData> propsInRefs)
+        {
+            props = [ ];
+            propsInRefs = [ ];
+
+            foreach (var pair in _propertyTracker)
+            {
+                if (pair.Key.ObjCtrlInfo    != _selectedObject
+                    || pair.Key.Go          != _selectedGO
+                    || pair.Key.Component   != _selectedComponent)
+                    continue;
+
+                props = pair.Value.ToDictionary(
+                    e => e.Key, e => new PropertyTrackerData(e.Value.PropertyName, e.Value.OptionFlags, e.Value.DefaultValue));
+            }
+
+            foreach (var pair in _referencePropertyTracker)
+            {
+                if (pair.Key.ObjCtrlInfo                != _selectedObject
+                    || pair.Key.Go                      != _selectedGO
+                    || pair.Key.Component               != _selectedComponent
+                    || pair.Key.ReferencePropertyName   != _selectedReferencePropertyUiEntry.PropertyNameValue)
+                    continue;
+
+                propsInRefs = pair.Value.ToDictionary(
+                    e => e.Key, e => new PropertyTrackerData(e.Value.PropertyName, e.Value.OptionFlags, e.Value.DefaultValue));
+            }
+        }
+
         internal void ClearTracker()
         {
             _propertyTracker.Clear();

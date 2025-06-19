@@ -197,6 +197,7 @@ namespace RSkoi_ComponentUtil.UI
             _componentPropertyVector4EntryPrefab    = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Vector4");
             _componentPropertyReferenceEntryPrefab  = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Reference");
             _componentPropertyColorEntryPrefab      = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Color");
+            _componentPropertyNullEntryPrefab       = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Null");
 
             stream.Close();
         }
@@ -289,10 +290,14 @@ namespace RSkoi_ComponentUtil.UI
             page = _inspectorWindow.Find("ComponentPropertyList/PageContainer");
             _pageSearchComponentInspectorInput = page.Find("SearchInput").GetComponent<InputField>();
             _pageSearchComponentInspectorInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponentInspector());
+            _refreshComponentInspectorButton = page.Find("RefreshButton").GetComponent<Button>();
+            _refreshComponentInspectorButton.onClick.AddListener(ComponentUtil._instance.OnRefreshComponentInspector);
 
             page = _objectInspectorWindow.Find("ObjectPropertyList/PageContainer");
             _pageSearchObjectInspectorInput = page.Find("SearchInput").GetComponent<InputField>();
             _pageSearchObjectInspectorInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterObjectInspector());
+            _refreshObjectInspectorButton = page.Find("RefreshButton").GetComponent<Button>();
+            _refreshObjectInspectorButton.onClick.AddListener(ComponentUtil._instance.OnRefreshObjectInspector);
 
             // prepare pools
             int itemsPerPage = ComponentUtil.ItemsPerPageValue;

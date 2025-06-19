@@ -173,7 +173,7 @@ namespace RSkoi_ComponentUtil.Scene
                         object value = _instance.GetValueFieldOrProperty(component, p, f);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Could not find property or field on {loadedItemEditTransform.name}" +
+                            _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
                                 $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
                             continue;
                         }
@@ -185,7 +185,7 @@ namespace RSkoi_ComponentUtil.Scene
                             string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
                             if (vectorString.IsNullOrEmpty())
                             {
-                                _logger.LogError($"Failed to convert vector property or field on {loadedItemEditTransform.name}" +
+                                _logger.LogError($"Failed to convert vector {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
                                     $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
                                 continue;
                             }
@@ -259,7 +259,7 @@ namespace RSkoi_ComponentUtil.Scene
                     object referenceObject = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
                     if (referenceObject == null)
                     {
-                        _logger.LogWarning($"Could not find reference on {loadedItemEditTransform.name}" +
+                        _logger.LogWarning($"Could not find non-null reference on {loadedItemEditTransform.name}" +
                             $".{componentType.Name} with name {propEntry.referencePropertyName}, ignoring");
                         continue;
                     }
@@ -283,7 +283,7 @@ namespace RSkoi_ComponentUtil.Scene
                         object value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Could not find reference property or field on {loadedItemEditTransform.name}" +
+                            _logger.LogWarning($"Could not find non-null reference {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
                                 $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}, ignoring");
                             continue;
                         }
@@ -295,7 +295,7 @@ namespace RSkoi_ComponentUtil.Scene
                             string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
                             if (vectorString.IsNullOrEmpty())
                             {
-                                _logger.LogError($"Failed to convert vector property or field on {loadedItemEditTransform.name}" +
+                                _logger.LogError($"Failed to convert vector {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
                                     $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}, ignoring");
                                 continue;
                             }
@@ -339,7 +339,7 @@ namespace RSkoi_ComponentUtil.Scene
                 SetExtendedData(data);
                 return;
             }
-            
+
             SortedDictionary<int, List<TrackerDataSO>> propertySavedDict = [];
             foreach (var entry in _propertyTracker)
             {
@@ -361,6 +361,12 @@ namespace RSkoi_ComponentUtil.Scene
                         else
                             entry.Key.Component.GetFieldValue(propEntry.Key, out value);
 
+                        if (value == null)
+                        {
+                            _logger.LogWarning($"Tried to save null value for {(isProperty ? "property" : "field")} {entry.Key.Component.name}.{propEntry.Key}, ignoring");
+                            continue;
+                        }
+
                         if (isInt)
                             value = (int)value;
                         else if (isVector)
@@ -372,7 +378,7 @@ namespace RSkoi_ComponentUtil.Scene
                     TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
                     properties.Add(prop);
                 }
-                
+
                 TrackerDataSO container = new(
                     key,
                     GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
@@ -397,6 +403,12 @@ namespace RSkoi_ComponentUtil.Scene
                 FieldInfo fieldReferenceType = componentType.GetField(entry.Key.ReferencePropertyName,
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 object referenceObject = _instance.GetValueFieldOrProperty(entry.Key.Component, propReferenceType, fieldReferenceType);
+                if (referenceObject == null)
+                {
+                    _logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.ReferencePropertyName}, ignoring");
+                    continue;
+                }
+
                 Type referenceObjectType = referenceObject.GetType();
 
                 List<TrackerDataPropertySO> properties = [];
@@ -418,7 +430,7 @@ namespace RSkoi_ComponentUtil.Scene
                     object value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
                     if (value == null)
                     {
-                        _logger.LogWarning($"Could not find property or field on {entry.Key.Go.name}.{componentType.Name}" +
+                        _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {entry.Key.Go.name}.{componentType.Name}" +
                             $".{entry.Key.ReferencePropertyName} with name {propEntry.Key}, ignoring");
                         continue;
                     }

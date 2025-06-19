@@ -118,7 +118,7 @@ namespace RSkoi_ComponentUtil.UI
             public Selectable UiSelectable;
 
             /// <summary>
-            /// Currently unused
+            /// Currently only used for saving a reference to the referenced object inside ObjectInspector
             /// </summary>
             public object Wrapper;
 

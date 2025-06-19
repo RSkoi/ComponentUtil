@@ -13,6 +13,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static GameObject _componentPropertyVector4EntryPrefab;
         internal static GameObject _componentPropertyReferenceEntryPrefab;
         internal static GameObject _componentPropertyColorEntryPrefab;
+        internal static GameObject _componentPropertyNullEntryPrefab;
         #endregion entry prefabs
 
         // overarching window container
@@ -27,6 +28,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Text _componentPropertyListSelectedComponentText;
 
         // pages
+        private static Button _refreshComponentInspectorButton;
         private static InputField _pageSearchComponentInspectorInput;
         internal static string PageSearchComponentInspectorInputValue
         {
@@ -40,7 +42,9 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
         {
-            if (t.IsEnum)
+            if (t == null)
+                return _componentPropertyNullEntryPrefab;
+            else if (t.IsEnum)
                 return _componentPropertyEnumEntryPrefab;
             else if (t.Equals(typeof(bool)))
                 return _componentPropertyBoolEntryPrefab;
