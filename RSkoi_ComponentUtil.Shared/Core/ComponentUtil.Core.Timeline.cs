@@ -272,6 +272,7 @@ namespace RSkoi_ComponentUtil.Timeline
             writer.WriteAttributeString("propertyName", param.PropertyName);
             writer.WriteAttributeString("options", param.Options.ToString());
         }
+
         private static TimelinePropertyParameter ReadPropertyParamXml(ObjectCtrlInfo oci, XmlNode node)
         {
             string goPath = node.Attributes["goPath"].Value;
@@ -327,10 +328,6 @@ namespace RSkoi_ComponentUtil.Timeline
         {
             // why does this happen?
             if (oci == null)
-                return false;
-
-            // folders are not supported
-            if (oci.kind == 3)
                 return false;
 
             // no timeline button of a property was clicked yet

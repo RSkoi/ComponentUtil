@@ -180,6 +180,7 @@ namespace RSkoi_ComponentUtil.Core
                 )
             );
             // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransformers
+            // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransforms
             return [.. allChildTransforms];
         }
 
