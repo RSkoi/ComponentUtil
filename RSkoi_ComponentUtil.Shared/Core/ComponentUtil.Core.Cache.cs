@@ -173,12 +173,16 @@ namespace RSkoi_ComponentUtil.Core
         private static HashSet<Transform> GetOrCacheChildrenTransformsOfTno(TreeNodeObject tnoRoot)
         {
             List<Transform> allChildTransforms = [];
-            tnoRoot.child.ForEach(
-                t => allChildTransforms.AddRange(
+            foreach (var child in tnoRoot.child)
+            {
+                if (!Studio.Studio.Instance.dicInfo.ContainsKey(child))
+                    continue;
+
+                allChildTransforms.AddRange(
                     // using different bucket as GetComponentsInChildren will pick up further children
-                    GetOrCacheTransforms(_transformSearchChildrenCache, Studio.Studio.Instance.dicInfo[t].guideObject.transformTarget.gameObject)
-                )
-            );
+                    GetOrCacheTransforms(_transformSearchChildrenCache, Studio.Studio.Instance.dicInfo[child].guideObject.transformTarget.gameObject)
+                );
+            }
             // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransforms
             return [.. allChildTransforms];
         }
