@@ -90,6 +90,20 @@ namespace RSkoi_ComponentUtil
             _addedComponentsTracker.Clear();
         }
 
+        internal void ClearInvalidEntriesFromTracker(ObjectCtrlInfo objCtrlInfoToDelete = null)
+        {
+            // copy keys into separate list to avoid System.InvalidOperationException: out of sync
+            foreach (var key in new List<PropertyKey>(_propertyTracker.Keys))
+                if (!key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete)
+                    _propertyTracker.Remove(key);
+            foreach (var key in new List<PropertyReferenceKey>(_referencePropertyTracker.Keys))
+                if (!key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete)
+                    _referencePropertyTracker.Remove(key);
+            foreach (var key in new List<ComponentAdderKey>(_addedComponentsTracker.Keys))
+                if (!key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete)
+                    _addedComponentsTracker.Remove(key);
+        }
+
         #region added component tracker
         internal bool AddComponentToTracker(
             ObjectCtrlInfo objCtrlInfo,
@@ -556,6 +570,11 @@ namespace RSkoi_ComponentUtil
                    && Component     == other.Component;
             }
 
+            public bool IsValid()
+            {
+                return ObjCtrlInfo != null && Go != null && Component != null;
+            }
+
             public override string ToString()
             {
                 return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component} ]";
@@ -616,6 +635,11 @@ namespace RSkoi_ComponentUtil
                    && ReferencePropertyName == other.ReferencePropertyName;
             }
 
+            public bool IsValid()
+            {
+                return ObjCtrlInfo != null && Go != null && Component != null;
+            }
+
             public override string ToString()
             {
                 return $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component}, " +
@@ -660,6 +684,11 @@ namespace RSkoi_ComponentUtil
                 return other != null
                    && ObjCtrlInfo   == other.ObjCtrlInfo
                    && Go            == other.Go;
+            }
+
+            public bool IsValid()
+            {
+                return ObjCtrlInfo != null && Go != null;
             }
 
             public override string ToString()

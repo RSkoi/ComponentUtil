@@ -340,6 +340,8 @@ namespace RSkoi_ComponentUtil.Scene
                 return;
             }
 
+            _instance.ClearInvalidEntriesFromTracker();
+
             SortedDictionary<int, List<TrackerDataSO>> propertySavedDict = [];
             foreach (var entry in _propertyTracker)
             {
@@ -510,16 +512,7 @@ namespace RSkoi_ComponentUtil.Scene
 
         protected override void OnObjectDeleted(ObjectCtrlInfo objectCtrlInfo)
         {
-            // copy keys into separate list to avoid System.InvalidOperationException: out of sync
-            foreach (var key in new List<PropertyKey>(_propertyTracker.Keys))
-                if (key.ObjCtrlInfo == objectCtrlInfo)
-                    _propertyTracker.Remove(key);
-            foreach (var key in new List<PropertyReferenceKey>(_referencePropertyTracker.Keys))
-                if (key.ObjCtrlInfo == objectCtrlInfo)
-                    _referencePropertyTracker.Remove(key);
-            foreach (var key in new List<ComponentAdderKey>(_addedComponentsTracker.Keys))
-                if (key.ObjCtrlInfo == objectCtrlInfo)
-                    _addedComponentsTracker.Remove(key);
+            _instance.ClearInvalidEntriesFromTracker(objectCtrlInfo);
 
             if (ComponentUtilUI.CanvasIsActive && _selectedObject == objectCtrlInfo)
             {
