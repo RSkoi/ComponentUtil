@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using Studio;
@@ -24,7 +23,7 @@ namespace RSkoi_ComponentUtil
         internal static readonly Dictionary<ComponentAdderKey, HashSet<string>> _addedComponentsTracker = [];
 
         /// <summary>
-        /// compiles a HashSet of all tracked transforms (from the PropertyKeys)
+        /// Compiles a HashSet of all tracked transforms (from the PropertyKeys).
         /// </summary>
         internal static HashSet<Transform> TrackedTransforms
         {
@@ -38,7 +37,7 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <summary>
-        /// compiles a HashSet of all tracked components (from the PropertyKeys)
+        /// Compiles a HashSet of all tracked components (from the PropertyKeys).
         /// </summary>
         internal static HashSet<Component> TrackedComponents
         {
@@ -53,7 +52,7 @@ namespace RSkoi_ComponentUtil
 
         #region internal
         /// <summary>
-        /// Clears the tracker of all data
+        /// Clears the tracker of all data.
         /// </summary>
         internal void ClearTracker()
         {
@@ -63,7 +62,7 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <summary>
-        /// Deletes entries from the tracker that have been previously freed and are now null
+        /// Deletes entries from the tracker that have been previously freed and are now null.
         /// </summary>
         /// <param name="objCtrlInfoToDelete">pass this obj to delete it from the tracker if present</param>
         internal void ClearInvalidEntriesFromTracker(ObjectCtrlInfo objCtrlInfoToDelete = null)
@@ -553,7 +552,7 @@ namespace RSkoi_ComponentUtil
 
             public override string ToString()
             {
-                return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component} ]";
+                return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, Component: {Component} ]";
             }
         }
 
@@ -618,8 +617,8 @@ namespace RSkoi_ComponentUtil
 
             public override string ToString()
             {
-                return $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go}, Component: {Component}, " +
-                    $"ReferencePropertyName: {ReferencePropertyName} ]";
+                return $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, " +
+                    $"Component: {Component}, ReferencePropertyName: {ReferencePropertyName} ]";
             }
         }
         #endregion property classes
@@ -669,7 +668,7 @@ namespace RSkoi_ComponentUtil
 
             public override string ToString()
             {
-                return $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo}, GameObject: {Go} ]";
+                return $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go} ]";
             }
         }
         #endregion component classes

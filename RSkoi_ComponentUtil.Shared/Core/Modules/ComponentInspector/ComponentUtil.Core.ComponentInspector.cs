@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using KKAPI.Utilities;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
@@ -483,5 +486,176 @@ namespace RSkoi_ComponentUtil
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion pages
+
+        #region copy / pasting edits
+        internal void OnCopyEdits(bool objectMode = false)
+        {
+            if (!objectMode)
+            {
+                PropertyKey key = new(_selectedObject, _selectedGO, _selectedComponent);
+                if (!_propertyTracker.TryGetValue(key, out var propEdits))
+                {
+                    _logger.LogMessage("No property or field edits to copy");
+                    return;
+                }
+
+                var values = GetPropValuesOfObj(_selectedComponent, propEdits);
+                _currentCopiedEdits = new(values);
+
+                ComponentUtilUI._componentPropertyPasteButton.interactable = true;
+                ComponentUtilUI._objectPropertyPasteButton.interactable = true;
+
+                _logger.LogMessage($"Copied property and field edits of {_selectedGO.name}.{_selectedComponent.GetType().Name}");
+            }
+            else
+            {
+                PropertyReferenceKey refKey = new(_selectedObject, _selectedGO, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue);
+                if (!_referencePropertyTracker.TryGetValue(refKey, out var propEdits))
+                {
+                    _logger.LogMessage("No property or field edits to copy");
+                    return;
+                }
+
+                var values = GetPropValuesOfObj(_selectedReferencePropertyUiEntry.Wrapper, propEdits);
+                _currentCopiedEdits = new(values);
+
+                ComponentUtilUI._componentPropertyPasteButton.interactable = true;
+                ComponentUtilUI._objectPropertyPasteButton.interactable = true;
+
+                _logger.LogMessage($"Copied property and field edits of {_selectedGO.name}.{_selectedComponent.GetType().Name}.{_selectedReferencePropertyUiEntry.PropertyNameValue}");
+            }
+        }
+
+        private Dictionary<string, CopiedEditValueTuple> GetPropValuesOfObj(object obj, Dictionary<string, PropertyTrackerData> trackerData)
+        {
+            Dictionary<string, CopiedEditValueTuple> values = [];
+            foreach (var pair in trackerData)
+            {
+                bool isReference = HasPropertyFlag(pair.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                if (isReference)
+                    continue;
+
+                bool isProperty = HasPropertyFlag(pair.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                bool isInt = HasPropertyFlag(pair.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
+                bool isVector = !isInt && HasPropertyFlag(pair.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
+                bool isColor = HasPropertyFlag(pair.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+
+                object value;
+                if (isProperty)
+                    obj.GetPropertyValue(pair.Key, out value);
+                else
+                    obj.GetFieldValue(pair.Key, out value);
+
+                if (value == null)
+                    continue;
+
+                if (isInt)
+                    value = (int)value;
+                else if (isVector)
+                    value = VectorConversion.VectorToStringByType(value.GetType(), value);
+                else if (isColor)
+                    value = ColorConversion.ColorToString((Color)value);
+
+                values.Add(pair.Key, new(value, pair.Value.OptionFlags));
+            }
+            return values;
+        }
+
+        internal void OnPasteEdits(bool objectMode = false)
+        {
+            if (_currentCopiedEdits == null)
+            {
+                ComponentUtilUI._componentPropertyPasteButton.interactable = false;
+                ComponentUtilUI._objectPropertyPasteButton.interactable = false;
+                return;
+            }
+
+            if (objectMode)
+                OnPasteEditsObject(new(_selectedObject, _selectedGO, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue));
+            else
+                OnPasteEditsComponent(new(_selectedObject, _selectedGO, _selectedComponent));
+
+            OnRefreshComponentInspector();
+        }
+
+        private void OnPasteEditsComponent(PropertyKey key)
+        {
+            Component target = _selectedComponent;
+
+            var propsInfosTarget = ComponentUtilCache.GetOrCachePropertyInfos(target).ToDictionary(p => p.Name, p => p);
+            var fieldInfosTarget = ComponentUtilCache.GetOrCacheFieldInfos(target).ToDictionary(f => f.Name, f => f);
+
+            foreach (var pair in _currentCopiedEdits.PropEdits)
+            {
+                string editedPropName = pair.Key;
+                object value = pair.Value.Value;
+
+                if (propsInfosTarget.TryGetValue(editedPropName, out var targetProp))
+                {
+                    target.GetPropertyValue(editedPropName, out var defaultValue);
+                    AddPropertyToTracker(key, editedPropName, defaultValue, pair.Value.OptionFlags);
+                    SetValueWithFlags(targetProp, null, target, value.ToString(), pair.Value.OptionFlags);
+                }
+                else if (fieldInfosTarget.TryGetValue(editedPropName, out var targetField))
+                {
+                    target.GetFieldValue(editedPropName, out var defaultValue);
+                    AddPropertyToTracker(key, editedPropName, defaultValue, pair.Value.OptionFlags);
+                    SetValueWithFlags(null, targetField, target, value.ToString(), pair.Value.OptionFlags);
+                }
+            }
+        }
+
+        private void OnPasteEditsObject(PropertyReferenceKey refKey)
+        {
+            object target = _selectedReferencePropertyUiEntry.Wrapper;
+
+            var propsInfosTarget = ComponentUtilCache.GetOrCachePropertyInfosObject(target).ToDictionary(p => p.Name, p => p);
+            var fieldInfosTarget = ComponentUtilCache.GetOrCacheFieldInfosObject(target).ToDictionary(f => f.Name, f => f);
+
+            foreach (var pair in _currentCopiedEdits.PropEdits)
+            {
+                string editedPropName = pair.Key;
+                object value = pair.Value.Value;
+
+                if (propsInfosTarget.TryGetValue(editedPropName, out var targetProp))
+                {
+                    target.GetPropertyValue(editedPropName, out var defaultValue);
+                    AddPropertyToTracker(
+                        _selectedObject,
+                        _selectedGO,
+                        _selectedComponent,
+                        _selectedReferencePropertyUiEntry.PropertyNameValue,
+                        editedPropName,
+                        defaultValue,
+                        pair.Value.OptionFlags);
+                    SetValueWithFlags(targetProp, null, target, value.ToString(), pair.Value.OptionFlags);
+                }
+                else if (fieldInfosTarget.TryGetValue(editedPropName, out var targetField))
+                {
+                    target.GetFieldValue(editedPropName, out var defaultValue);
+                    AddPropertyToTracker(
+                        _selectedObject,
+                        _selectedGO,
+                        _selectedComponent,
+                        _selectedReferencePropertyUiEntry.PropertyNameValue,
+                        editedPropName,
+                        defaultValue,
+                        pair.Value.OptionFlags);
+                    SetValueWithFlags(null, targetField, target, value.ToString(), pair.Value.OptionFlags);
+                }
+            }
+        }
+
+        internal struct CopiedEditValueTuple(object value, PropertyTrackerData.PropertyTrackerDataOptions flags)
+        {
+            public object Value = value;
+            public PropertyTrackerData.PropertyTrackerDataOptions OptionFlags = flags;
+        }
+
+        internal class CopiedEdits(Dictionary<string, CopiedEditValueTuple> propEdits)
+        {
+            public Dictionary<string, CopiedEditValueTuple> PropEdits = propEdits;
+        }
+        #endregion copy / pasting edits
     }
 }

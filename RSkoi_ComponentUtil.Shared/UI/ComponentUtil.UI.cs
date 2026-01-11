@@ -295,6 +295,19 @@ namespace RSkoi_ComponentUtil.UI
             _refreshObjectInspectorButton = page.Find("RefreshButton").GetComponent<Button>();
             _refreshObjectInspectorButton.onClick.AddListener(ComponentUtil._instance.OnRefreshObjectInspector);
 
+            // copy paste buttons
+            _componentPropertyCopyButton = _inspectorWindow.Find("ComponentPropertyList/CopyEditsButton").GetComponent<Button>();
+            _componentPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(false));
+            _componentPropertyPasteButton = _inspectorWindow.Find("ComponentPropertyList/PasteEditsButton").GetComponent<Button>();
+            _componentPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(false));
+            _componentPropertyPasteButton.interactable = false;
+
+            _objectPropertyCopyButton = _objectInspectorWindow.Find("ObjectPropertyList/CopyEditsButton").GetComponent<Button>();
+            _objectPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(true));
+            _objectPropertyPasteButton = _objectInspectorWindow.Find("ObjectPropertyList/PasteEditsButton").GetComponent<Button>();
+            _objectPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(true));
+            _objectPropertyPasteButton.interactable = false;
+
             // prepare pools
             int itemsPerPage = ComponentUtil.ItemsPerPageValue;
             PrepareTransformPool(itemsPerPage);

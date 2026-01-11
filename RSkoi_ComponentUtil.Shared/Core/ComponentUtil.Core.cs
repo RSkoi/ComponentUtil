@@ -29,7 +29,7 @@ namespace RSkoi_ComponentUtil
         /// Selected Component in ComponentList.
         /// </summary>
         internal static Component _selectedComponent;
-        
+
         /// <summary>
         /// Selected Transform UI entry in TransformList.
         /// </summary>
@@ -43,6 +43,13 @@ namespace RSkoi_ComponentUtil
         /// </summary>
         private static ComponentUtilUI.PropertyUIEntry _selectedReferencePropertyUiEntry;
         #endregion currently selected
+
+        #region currently copied
+        /// <summary>
+        /// References to tracker data objects with property name as key (copy button in inspector).
+        /// </summary>
+        internal static CopiedEdits _currentCopiedEdits;
+        #endregion currently copied
 
         /// <summary>
         /// The property and field types ComponentUtil supports.
@@ -106,7 +113,7 @@ namespace RSkoi_ComponentUtil
         public static readonly HashSet<Type> blacklistTypes = [ ];
 
         /// <summary>
-        /// Sets selected objects to null, resets the tracker, UI pools, cache and pages.
+        /// Sets selected objects to null, resets the tracker, UI pools, cache, edit copies and pages.
         /// </summary>
         public void ResetState()
         {

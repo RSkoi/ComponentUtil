@@ -26,6 +26,8 @@ namespace RSkoi_ComponentUtil.UI
         private static Button _hideComponentListButton;
         internal static Button _componentDeleteButton;
         internal static Text _componentPropertyListSelectedComponentText;
+        internal static Button _componentPropertyCopyButton;
+        internal static Button _componentPropertyPasteButton;
 
         // pages
         private static Button _refreshComponentInspectorButton;

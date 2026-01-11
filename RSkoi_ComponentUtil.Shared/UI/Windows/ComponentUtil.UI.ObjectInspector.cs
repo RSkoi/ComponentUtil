@@ -13,6 +13,8 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _objectPropertyListContainer;
         // specific to ObjectInspector window
         internal static Text _objectPropertyListSelectedText;
+        internal static Button _objectPropertyCopyButton;
+        internal static Button _objectPropertyPasteButton;
 
         // pages
         private static Button _refreshObjectInspectorButton;

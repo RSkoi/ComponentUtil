@@ -179,7 +179,6 @@ namespace RSkoi_ComponentUtil.Core
                     GetOrCacheTransforms(_transformSearchChildrenCache, Studio.Studio.Instance.dicInfo[t].guideObject.transformTarget.gameObject)
                 )
             );
-            // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransformers
             // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransforms
             return [.. allChildTransforms];
         }
