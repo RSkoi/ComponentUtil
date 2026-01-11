@@ -31,7 +31,7 @@ namespace RSkoi_ComponentUtil
             // filter string
             string filter = ComponentUtilUI.PageSearchComponentListInputValue.ToLower();
             if (filter != "")
-                componentList = componentList.Where(c => c.GetType().Name.ToLower().Contains(filter)).ToList();
+                componentList = [.. componentList.Where(c => c.GetType().Name.ToLower().Contains(filter))];
 
             // paging
             int itemsPerPage = ItemsPerPageValue;

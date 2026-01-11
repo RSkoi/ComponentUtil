@@ -19,12 +19,11 @@ namespace RSkoi_ComponentUtil
         /// <param name="inputUi">selected component ui entry</param>
         internal void GetAllFieldsAndProperties(Component input, ComponentUtilUI.GenericUIListEntry inputUi)
         {
+            ComponentUtilUI._componentDeleteButton.interactable = false;
             if (input == null || inputUi == null)
                 return;
 
             #region component delete button
-            // delete component button is only interactable if the component is tracked
-            ComponentUtilUI._componentDeleteButton.interactable = false;
             ComponentUtilUI._componentDeleteButton.onClick.RemoveAllListeners();
             if (ComponentIsTracked(_selectedObject, input.gameObject, input.GetType().FullName))
             {

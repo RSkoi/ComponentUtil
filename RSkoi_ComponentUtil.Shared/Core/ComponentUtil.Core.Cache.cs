@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
+using Studio;
 
 namespace RSkoi_ComponentUtil.Core
 {
@@ -14,6 +15,7 @@ namespace RSkoi_ComponentUtil.Core
         // keys are objects the GetXYZ call is made on, only valid for current scene
         // cache is used to circumvent repeated GetComponentsInChildren, GetComponent calls
         internal static readonly Dictionary<GameObject, Transform[]> _transformSearchCache = [];
+        internal static readonly Dictionary<GameObject, Transform[]> _transformSearchChildrenCache = [];
         internal static readonly Dictionary<GameObject, Component[]> _componentSearchCache = [];
         // cache is used to circumvent repeated GetFields, GetProperties calls (reflection)
         internal static readonly Dictionary<Component, PropertyInfo[]> _propertyInfoSearchCache = [];
@@ -28,6 +30,7 @@ namespace RSkoi_ComponentUtil.Core
         internal static void ClearCache()
         {
             _transformSearchCache.Clear();
+            _transformSearchChildrenCache.Clear();
             _componentSearchCache.Clear();
             //_componentAdderSearchCache.Clear();
             _propertyInfoSearchCache.Clear();
@@ -79,16 +82,22 @@ namespace RSkoi_ComponentUtil.Core
             return [ .._componentAdderSearchCache.Values ];
         }
 
-        internal static Transform[] GetOrCacheTransforms(GameObject input, bool forceRefresh = false)
+        internal static Transform[] GetOrCacheTransforms(ObjectCtrlInfo inputCtrl, bool forceRefresh = false)
         {
+            GameObject input = inputCtrl.guideObject.transformTarget.gameObject;
+
+            // this should only return cached transforms of input w/o children transforms
             if (!forceRefresh && _transformSearchCache.TryGetValue(input, out Transform[] value) && value != null)
                 return value;
-            if (forceRefresh)
-                _transformSearchCache.Clear();
 
-            Transform[] res = input.GetComponentsInChildren<Transform>();
-            _transformSearchCache.Add(input, res);
-            return res;
+            Transform[] transforms = GetOrCacheTransforms(_transformSearchCache, input, forceRefresh);
+
+            HashSet<Transform> allTnoChildrenTransforms = GetOrCacheChildrenTransformsOfTno(inputCtrl.treeNodeObject);
+            transforms = [.. transforms.Where(t => !allTnoChildrenTransforms.Contains(t))];
+
+            // overwrite cache with filtered list w/o children transforms
+            _transformSearchCache[input] = transforms;
+            return transforms;
         }
 
         internal static Component[] GetOrCacheComponents(GameObject input, bool forceRefresh = false)
@@ -159,6 +168,33 @@ namespace RSkoi_ComponentUtil.Core
             return res;
         }
         #endregion internal
+
+        #region private
+        private static HashSet<Transform> GetOrCacheChildrenTransformsOfTno(TreeNodeObject tnoRoot)
+        {
+            List<Transform> allChildTransforms = [];
+            tnoRoot.child.ForEach(
+                t => allChildTransforms.AddRange(
+                    // using different bucket as GetComponentsInChildren will pick up further children
+                    GetOrCacheTransforms(_transformSearchChildrenCache, Studio.Studio.Instance.dicInfo[t].guideObject.transformTarget.gameObject)
+                )
+            );
+            // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransformers
+            return [.. allChildTransforms];
+        }
+
+        private static Transform[] GetOrCacheTransforms(Dictionary<GameObject, Transform[]> cacheBucket, GameObject input, bool forceRefresh = false)
+        {
+            if (!forceRefresh && cacheBucket.TryGetValue(input, out Transform[] value) && value != null)
+                return value;
+            if (forceRefresh)
+                cacheBucket.Clear();
+
+            Transform[] res = input.GetComponentsInChildren<Transform>();
+            cacheBucket.Add(input, res);
+            return res;
+        }
+        #endregion private
 
         #region internal helper
         internal static void PrintCache()

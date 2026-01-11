@@ -499,7 +499,7 @@ namespace RSkoi_ComponentUtil.Scene
 
         protected override void OnObjectsSelected(List<ObjectCtrlInfo> objectCtrlInfo)
         {
-            if (!ComponentUtilUI.CanOpenWindowOnSelectedObject(objectCtrlInfo))
+            if (!ComponentUtilUI.IsValidSelection(objectCtrlInfo))
                 return;
 
             if (ComponentUtilUI.CanvasIsActive)
@@ -522,7 +522,12 @@ namespace RSkoi_ComponentUtil.Scene
                     _addedComponentsTracker.Remove(key);
 
             if (ComponentUtilUI.CanvasIsActive && _selectedObject == objectCtrlInfo)
+            {
                 ComponentUtilUI.HideWindow();
+                _selectedObject = null;
+                _selectedGO = null;
+                _selectedComponent = null;
+            }
 
             ComponentUtilTimeline.DeleteOciFromCache(objectCtrlInfo);
 

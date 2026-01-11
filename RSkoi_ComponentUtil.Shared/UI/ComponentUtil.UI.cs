@@ -63,10 +63,12 @@ namespace RSkoi_ComponentUtil.UI
                 HideWindow();
             else
             {
-                ShowWindow();
                 var selected = KKAPI.Studio.StudioAPI.GetSelectedObjects();
-                if (CanOpenWindowOnSelectedObject(selected))
+                if (IsValidSelection(selected))
+                {
                     ComponentUtil._instance.Entry(selected.First());
+                    ShowWindow();
+                }
             }
         }
 
@@ -101,16 +103,10 @@ namespace RSkoi_ComponentUtil.UI
         /// </summary>
         /// <param name="objectCtrlInfo">currently selected objects within the workspace</param>
         /// <returns>true if window can be opened, else false</returns>
-        public static bool CanOpenWindowOnSelectedObject(IEnumerable<ObjectCtrlInfo> objectCtrlInfo)
+        public static bool IsValidSelection(IEnumerable<ObjectCtrlInfo> objectCtrlInfo)
         {
-            List<ObjectCtrlInfo> selectedObjects = objectCtrlInfo.ToList();
-
             // force singular selection
-            if (selectedObjects.Count != 1)
-                return false;
-
-            // folders are not a valid selection
-            if (selectedObjects[0].kind == 3)
+            if (objectCtrlInfo.Count() != 1)
                 return false;
 
             return true;

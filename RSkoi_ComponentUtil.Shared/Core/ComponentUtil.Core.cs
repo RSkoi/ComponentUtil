@@ -24,11 +24,11 @@ namespace RSkoi_ComponentUtil
         /// <summary>
         /// Selected GameObject in TransformList.
         /// </summary>
-        private static GameObject _selectedGO;
+        internal static GameObject _selectedGO;
         /// <summary>
         /// Selected Component in ComponentList.
         /// </summary>
-        private static Component _selectedComponent;
+        internal static Component _selectedComponent;
         
         /// <summary>
         /// Selected Transform UI entry in TransformList.
@@ -140,7 +140,7 @@ namespace RSkoi_ComponentUtil
             ComponentUtilUI.ResetPageNumberTransformList();
 
             _selectedObject = input;
-            FlattenTransformHierarchy(input.guideObject.transformTarget.gameObject);
+            FlattenTransformHierarchy(_selectedObject);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);

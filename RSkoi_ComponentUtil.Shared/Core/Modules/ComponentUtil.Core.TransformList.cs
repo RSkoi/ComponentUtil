@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using Studio;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
@@ -15,21 +16,22 @@ namespace RSkoi_ComponentUtil
         /// flattens transform hierarchy of input to list entries
         /// , selects first list entry
         /// </summary>
-        /// <param name="input">selected item/object to traverse</param>
+        /// <param name="inputCtrl">selected item/object to traverse</param>
         /// <param name="setsSelected">whether _selectedGO and _selectedTransformUIEntry
         /// should be set to first item in flattened transform hiararchy
         /// ; also whether to reset current component page number</param>
-        internal void FlattenTransformHierarchy(GameObject input, bool setsSelected = true)
+        internal void FlattenTransformHierarchy(ObjectCtrlInfo inputCtrl, bool setsSelected = true)
         {
-            if (input == null)
+            if (inputCtrl == null)
                 return;
 
-            List<Transform> transformList = [.. ComponentUtilCache.GetOrCacheTransforms(input)];
+            GameObject input = inputCtrl.guideObject.transformTarget.gameObject;
+            List<Transform> transformList = [.. ComponentUtilCache.GetOrCacheTransforms(inputCtrl)];
 
             // filter string
             string filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
             if (filter != "")
-                transformList = transformList.Where(t => t.name.ToLower().Contains(filter)).ToList();
+                transformList = [.. transformList.Where(t => t.name.ToLower().Contains(filter))];
 
             // paging
             int itemsPerPage = ItemsPerPageValue;
@@ -85,7 +87,7 @@ namespace RSkoi_ComponentUtil
             _currentPageTransformList = 0;
             ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
             
-            FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject);
+            FlattenTransformHierarchy(_selectedObject);
             GetAllComponents(_selectedGO, _selectedTransformUIEntry);
             GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
@@ -104,7 +106,7 @@ namespace RSkoi_ComponentUtil
 
             _currentPageTransformList--;
             ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
-            FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject, false);
+            FlattenTransformHierarchy(_selectedObject, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
@@ -128,7 +130,7 @@ namespace RSkoi_ComponentUtil
 
             _currentPageTransformList++;
             ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
-            FlattenTransformHierarchy(_selectedObject.guideObject.transformTarget.gameObject, false);
+            FlattenTransformHierarchy(_selectedObject, false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion pages
