@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
@@ -24,7 +23,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Canvas _canvas;
         internal static CanvasScaler _canvasScaler;
         /// <summary>
-        /// use this to determine whether the UI is visible
+        /// Use this to determine whether the UI is visible
         /// </summary>
         public static bool CanvasIsActive
         {
@@ -46,7 +45,7 @@ namespace RSkoi_ComponentUtil.UI
         static float _baseCanvasReferenceResolutionY = 600f;
 
         /// <summary>
-        /// initializes the UI, call only once
+        /// Initializes the UI, call only once
         /// </summary>
         public static void Init()
         {
@@ -55,7 +54,7 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// toggles the UI, uses first selected object in workspace as input for entry point
+        /// Toggles the UI, uses first selected object in workspace as input for entry point
         /// </summary>
         public static void ToggleWindow()
         {
@@ -73,7 +72,7 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// shows the ui, sets referenceResolution of CanvasScaler, sets sizeDelta of windows
+        /// Shows the ui, sets referenceResolution of CanvasScaler, sets sizeDelta of windows
         /// </summary>
         public static void ShowWindow()
         {
@@ -91,26 +90,17 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// hides the ui
+        /// Hides the ui
         /// </summary>
-        public static void HideWindow()
-        {
-            _canvas.enabled = false;
-        }
+        public static void HideWindow() => _canvas.enabled = false;
 
         /// <summary>
-        /// checks whether ComponentUtil UI window can be opened
+        /// Checks whether ComponentUtil UI window can be opened
         /// </summary>
         /// <param name="objectCtrlInfo">currently selected objects within the workspace</param>
         /// <returns>true if window can be opened, else false</returns>
         public static bool IsValidSelection(IEnumerable<ObjectCtrlInfo> objectCtrlInfo)
-        {
-            // force singular selection
-            if (objectCtrlInfo.Count() != 1)
-                return false;
-
-            return true;
-        }
+            => objectCtrlInfo.Count() == 1; // force singular selection
 
         #region internal
         internal static void TraverseAndSetEditedParents()
@@ -340,9 +330,7 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         static void ToggleSubWindow(Transform container)
-        {
-            container.gameObject.SetActive(!container.gameObject.activeSelf);
-        }
+            => container.gameObject.SetActive(!container.gameObject.activeSelf);
         #endregion private - loading and instantiating
     }
 }

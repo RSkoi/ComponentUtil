@@ -15,12 +15,12 @@ namespace RSkoi_ComponentUtil.Core
             => int.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// This is a Convert.ChangeType with invariant culture, use for floats as it accepts both decimal comma and point
+        /// This is a Convert.ChangeType with invariant culture
         /// </summary>
         internal static object ChangeType(object value, Type type)
         {
-            if (value is string s && IsFloatingPoint(type))
-                value = NormalizeDecimalSeparator(s);
+            if (value is string valueString && IsFloatingPoint(type))
+                value = NormalizeDecimalSeparator(valueString);
             return Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
         }
 

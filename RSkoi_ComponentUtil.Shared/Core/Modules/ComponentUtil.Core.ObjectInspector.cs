@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,18 +9,9 @@ namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        internal void OpenObjectInspector(PropertyInfo p, FieldInfo f, Type type, object value,
+        internal void OpenObjectInspector(Member member, object value,
             ComponentUtilUI.PropertyUIEntry uiEntry, ComponentUtilUI.GenericUIListEntry parentUiEntry)
         {
-            bool isProperty = p != null;
-            bool isField = f != null;
-            // this should never be the case
-            if ((!isProperty && !isField) || (isProperty && isField))
-            {
-                _logger.LogError("OpenObjectInspector: pass either PropertyInfo (X)OR FieldInfo as arguments");
-                return;
-            }
-
             uiEntry.Wrapper = value;
             _selectedReferencePropertyUiEntry = uiEntry;
 
@@ -32,8 +22,7 @@ namespace RSkoi_ComponentUtil
             if (!ComponentUtilUI._objectInspectorWindow.gameObject.activeSelf)
                 ComponentUtilUI._objectInspectorWindow.gameObject.SetActive(true);
 
-            var propName = isProperty ? p.Name : f.Name;
-            GetAllFieldsAndPropertiesOfObject(propName, type, value, parentUiEntry);
+            GetAllFieldsAndPropertiesOfObject(member.Name, member.MemberType, value, parentUiEntry);
         }
 
         /// <summary>
@@ -69,7 +58,7 @@ namespace RSkoi_ComponentUtil
                 if (!string.IsNullOrEmpty(filter) && !p.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null, objectMode: true);
+                ConfigurePropertyEntry(_selectedComponentUiEntry, input, Member.Of(p), objectMode: true);
             }
 
             foreach (var f in ComponentUtilCache.GetOrCacheFieldInfosObject(input))
@@ -83,7 +72,7 @@ namespace RSkoi_ComponentUtil
                 if (!string.IsNullOrEmpty(filter) && !f.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f, objectMode: true);
+                ConfigurePropertyEntry(_selectedComponentUiEntry, input, Member.Of(f), objectMode: true);
             }
         }
 

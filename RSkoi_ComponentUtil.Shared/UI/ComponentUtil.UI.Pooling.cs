@@ -31,10 +31,8 @@ namespace RSkoi_ComponentUtil.UI
         #region property pool
         internal static PropertyUIEntry GetOrInstantiatePropEntryFromPool(GameObject entryPrefab, bool objectMode = false)
         {
-            var pool = objectMode ?
-                _objectInspectorPropertyBuckets : _componentInspectorPropertyBuckets;
-            var container = objectMode ?
-                _objectPropertyListContainer : _componentPropertyListContainer;
+            var pool        = objectMode ? _objectInspectorPropertyBuckets  : _componentInspectorPropertyBuckets;
+            var container   = objectMode ? _objectPropertyListContainer     : _componentPropertyListContainer;
 
             if (pool.TryGetValue(entryPrefab, out var bucket))
             {
@@ -58,8 +56,7 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static void ResetAndDisablePropertyEntries(bool objectMode = false)
         {
-            var pool = objectMode ?
-                _objectInspectorPropertyBuckets : _componentInspectorPropertyBuckets;
+            var pool        = objectMode ? _objectInspectorPropertyBuckets  : _componentInspectorPropertyBuckets;
 
             foreach (var bucket in pool.Values)
                 foreach (var entry in bucket)
@@ -69,7 +66,6 @@ namespace RSkoi_ComponentUtil.UI
                     // events will be reset on configuring specific entry type
 
                     entry.ParentUiEntry = null;
-                    entry.ResetOverrideDelegate = null;
                     entry.UiComponentSetValueResetDelegate = null;
                     entry.Wrapper = null;
 

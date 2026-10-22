@@ -134,7 +134,7 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <summary>
-        /// Entry point for the core functionality, flattens transform hierarchy, 
+        /// Entry point for the core functionality, flattens transform hierarchy,
         /// lists all components, lists all properties, lists all addable components.
         /// </summary>
         /// <param name="input">selected item/object to traverse</param>

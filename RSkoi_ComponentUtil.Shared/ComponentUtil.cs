@@ -31,10 +31,7 @@ namespace RSkoi_ComponentUtil
             SetupConfig();
         }
 
-        void Update()
-        {
-            UpdateConfig();
-        }
+        void Update() => UpdateConfig();
 
         void OnEnable()
         {

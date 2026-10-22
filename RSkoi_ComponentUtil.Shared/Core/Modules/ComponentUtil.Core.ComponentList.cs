@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
@@ -12,13 +11,16 @@ namespace RSkoi_ComponentUtil
         internal static int _currentPageComponentList = 0;
 
         /// <summary>
-        /// gets all components on currently selected transform, maps to list entries
-        /// , selects first list entry
+        /// Name of a component in the ComponentList, used for display and search
+        /// </summary>
+        static string ComponentListName(Component c) => c.GetType().Name;
+
+        /// <summary>
+        /// Gets all components on currently selected transform, maps to list entries, selects first list entry
         /// </summary>
         /// <param name="input">selected object to find all components in</param>
         /// <param name="inputUi">selected transform ui entry</param>
-        /// <param name="setsSelected">whether _selectedComponent and _selectedComponentUiEntry
-        /// should be set to first item in component list</param>
+        /// <param name="setsSelected">whether _selectedComponent and _selectedComponentUiEntry should be set to first item in component list</param>
         internal void GetAllComponents(GameObject input, ComponentUtilUI.GenericUIListEntry inputUi, bool setsSelected = true)
         {
             if (input == null || inputUi == null)
@@ -26,20 +28,12 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentListSelectedGOText, input.name);
 
-            var componentList = ComponentUtilCache.GetOrCacheComponents(input).ToList();
-
-            // filter string
-            var filter = ComponentUtilUI.PageSearchComponentListInputValue.ToLower();
-            if (!string.IsNullOrEmpty(filter))
-                componentList = [.. componentList.Where(c => c.GetType().Name.ToLower().Contains(filter))];
-
-            // paging
-            var itemsPerPage = ItemsPerPageValue;
-            var startIndex = _currentPageComponentList * itemsPerPage;
-            var n = (componentList.Count - startIndex) <= itemsPerPage ? componentList.Count - startIndex : itemsPerPage;
-
-            if (componentList.Count != 0)
-                componentList = componentList.GetRange(startIndex, n);
+            var componentList = Paging.GetPage(
+                ComponentUtilCache.GetOrCacheComponents(input),
+                ComponentUtilUI.PageSearchComponentListInputValue,
+                ComponentListName,
+                _currentPageComponentList,
+                ItemsPerPageValue);
 
             ComponentUtilUI.PrepareComponentPool(componentList.Count);
             for (var poolIndex = 0; poolIndex < componentList.Count; poolIndex++)
@@ -47,7 +41,7 @@ namespace RSkoi_ComponentUtil
                 var c = componentList[poolIndex];
 
                 var uiEntry = ComponentUtilUI.ComponentListEntries[poolIndex];
-                uiEntry.EntryName.text = c.GetType().Name;
+                uiEntry.EntryName.text = ComponentListName(c);
                 // remove all (non-persistent) listeners
                 uiEntry.SelfButton.onClick.RemoveAllListeners();
                 uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedComponent(c, uiEntry));
@@ -106,18 +100,12 @@ namespace RSkoi_ComponentUtil
         {
             if (_selectedGO == null)
                 return;
-            var toBeStartIndex = (_currentPageComponentList + 1) * ItemsPerPageValue;
-            // page switch can only occur after the _selectedGO has been scanned for components
-            var cached = ComponentUtilCache._componentSearchCache[_selectedGO];
-            // out of bounds start index
-            if (toBeStartIndex >= cached.Length)
-                return;
-
-            // if filter string reduces length of transform list
-            var filter = ComponentUtilUI.PageSearchComponentListInputValue.ToLower();
-            if (!string.IsNullOrEmpty(filter) && (toBeStartIndex >= cached
-                .Where(c => c.GetType().Name.ToLower().Contains(filter))
-                .ToArray().Length))
+            if (!Paging.PageExists(
+                ComponentUtilCache.GetOrCacheComponents(_selectedGO),
+                ComponentUtilUI.PageSearchComponentListInputValue,
+                ComponentListName,
+                _currentPageComponentList + 1,
+                ItemsPerPageValue))
                 return;
 
             _currentPageComponentList++;

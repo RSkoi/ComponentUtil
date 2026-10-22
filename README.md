@@ -45,29 +45,7 @@ ComponentUtil comes with a few custom scripts that redirect certain static class
 
 ### Explicitly supported types
 
-- Enums
-- `string`
-- `float`
-- `double`
-- `decimal`
-- `bool`
-- `int`
-- `uint`
-- `short`
-- `ushort`
-- `long`
-- `ulong`
-- `byte`
-- `sbyte`
-- `nint`
-- `nuint`
-- `Vector2`
-- `Vector3`
-- `Vector4`
-- `Quaternion`
-- `UnityEngine.Color`
-- non-indexed reference types
-- ParticleSystem modules
+Enums, `string`, `float`, `double`, `decimal`, `bool`, `int`, `uint`, `short`, `ushort`, `long`, `ulong`, `byte`, `sbyte`, `nint`, `nuint`, `Vector2`, `Vector3`, `Vector4`, `Quaternion`, `UnityEngine.Color`, non-indexed reference types, ParticleSystem modules
 
 ### Explicitly NOT supported types
 

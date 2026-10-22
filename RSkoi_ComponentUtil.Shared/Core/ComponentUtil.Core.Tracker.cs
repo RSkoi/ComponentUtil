@@ -227,12 +227,7 @@ namespace RSkoi_ComponentUtil
             return TransformObjectAndComponentIsTracked(key);
         }
 
-        internal bool TransformObjectAndComponentIsTracked(PropertyKey key)
-        {
-            if (!_propertyTracker.ContainsKey(key))
-                return false;
-            return true;
-        }
+        internal bool TransformObjectAndComponentIsTracked(PropertyKey key) => _propertyTracker.ContainsKey(key);
 
         internal object GetTrackedDefaultValue(
             ObjectCtrlInfo objCtrlInfo,
@@ -456,9 +451,7 @@ namespace RSkoi_ComponentUtil
             public object DefaultValue = defaultValue;
 
             public override string ToString()
-            {
-                return $"PropertyTrackerData [ PropertyName: {PropertyName}, Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
-            }
+                => $"PropertyTrackerData [ PropertyName: {PropertyName}, Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
 
             /// <summary>
             /// These are flags, use power of two for values.
@@ -532,10 +525,7 @@ namespace RSkoi_ComponentUtil
                 }
             }
 
-            public override bool Equals(object obj)
-            {
-                return Equals(obj as PropertyKey);
-            }
+            public override bool Equals(object obj) => Equals(obj as PropertyKey);
 
             public bool Equals(PropertyKey other)
             {
@@ -545,15 +535,10 @@ namespace RSkoi_ComponentUtil
                    && Component     == other.Component;
             }
 
-            public bool IsValid()
-            {
-                return ObjCtrlInfo != null && Go != null && Component != null;
-            }
+            public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
 
             public override string ToString()
-            {
-                return $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, Component: {Component} ]";
-            }
+                => $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, Component: {Component} ]";
         }
 
         internal class PropertyReferenceKey(
@@ -596,10 +581,7 @@ namespace RSkoi_ComponentUtil
                 }
             }
 
-            public override bool Equals(object obj)
-            {
-                return Equals(obj as PropertyReferenceKey);
-            }
+            public override bool Equals(object obj) => Equals(obj as PropertyReferenceKey);
 
             public bool Equals(PropertyReferenceKey other)
             {
@@ -610,16 +592,11 @@ namespace RSkoi_ComponentUtil
                    && ReferencePropertyName == other.ReferencePropertyName;
             }
 
-            public bool IsValid()
-            {
-                return ObjCtrlInfo != null && Go != null && Component != null;
-            }
+            public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
 
             public override string ToString()
-            {
-                return $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, " +
+                => $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, " +
                     $"Component: {Component}, ReferencePropertyName: {ReferencePropertyName} ]";
-            }
         }
         #endregion property classes
 
@@ -649,10 +626,7 @@ namespace RSkoi_ComponentUtil
                 }
             }
 
-            public override bool Equals(object obj)
-            {
-                return Equals(obj as ComponentAdderKey);
-            }
+            public override bool Equals(object obj) => Equals(obj as ComponentAdderKey);
 
             public bool Equals(ComponentAdderKey other)
             {
@@ -661,15 +635,10 @@ namespace RSkoi_ComponentUtil
                    && Go            == other.Go;
             }
 
-            public bool IsValid()
-            {
-                return ObjCtrlInfo != null && Go != null;
-            }
+            public bool IsValid() => ObjCtrlInfo != null && Go != null;
 
             public override string ToString()
-            {
-                return $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go} ]";
-            }
+                => $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go} ]";
         }
         #endregion component classes
     }

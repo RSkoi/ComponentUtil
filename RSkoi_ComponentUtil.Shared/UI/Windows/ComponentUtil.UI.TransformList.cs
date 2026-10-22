@@ -28,14 +28,8 @@ namespace RSkoi_ComponentUtil.UI
         static Button _pageNextTransformListButton;
 
         internal static void UpdatePageNumberTransformList(int pageNumber)
-        {
-            // +1 because pages are zero-indexed
-            _currentPageTransformListText.text = (pageNumber + 1).ToString();
-        }
+            => _currentPageTransformListText.text = (pageNumber + 1).ToString(); // +1 because pages are zero-indexed
 
-        internal static void ResetPageNumberTransformList()
-        {
-            _currentPageTransformListText.text = "1";
-        }
+        internal static void ResetPageNumberTransformList() => _currentPageTransformListText.text = "1";
     }
 }

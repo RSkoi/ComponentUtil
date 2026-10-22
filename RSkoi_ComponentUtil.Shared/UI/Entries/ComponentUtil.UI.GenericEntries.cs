@@ -51,20 +51,9 @@ namespace RSkoi_ComponentUtil.UI
             public object UiTarget = uiTarget;
             public GenericUIListEntry ParentUiEntry = parentUiEntry;
 
-            public void SetBgColorEdited()
-            {
-                BgImage.color = ENTRY_BG_COLOR_EDITED;
-            }
-
-            public void SetBgColorDefault()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-            }
-
-            public void ResetBg()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-            }
+            public void SetBgColorEdited()  => BgImage.color = ENTRY_BG_COLOR_EDITED;
+            public void SetBgColorDefault() => BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+            public void ResetBg()           => BgImage.color = ENTRY_BG_COLOR_DEFAULT;
         }
 
         /// <summary>
@@ -90,10 +79,10 @@ namespace RSkoi_ComponentUtil.UI
             public Button TimelineButton = timelineButton;
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
-            public string PropertyNameValue
-            {
-                get { return PropertyName.text.Split(' ')[1]; }
-            }
+            /// <summary>
+            /// Name of the property / field this entry shows
+            /// </summary>
+            public string MemberName;
             public Image BgImage = bgImage;
             public GameObject UiGO = instantiatedUiGo;
             /// <summary>
@@ -109,10 +98,6 @@ namespace RSkoi_ComponentUtil.UI
             /// </summary>
             public Func<object, object> UiComponentSetValueResetDelegate = uiComponentSetValueResetDelegate;
             /// <summary>
-            /// If this delegate is not null it will be used by the reset button
-            /// </summary>
-            public Func<object, object> ResetOverrideDelegate;
-            /// <summary>
             /// The singular Selectable inside the UI entry, for example an InputField or Toggle
             /// </summary>
             public Selectable UiSelectable;
@@ -122,25 +107,11 @@ namespace RSkoi_ComponentUtil.UI
             /// </summary>
             public object Wrapper;
 
-            public void SetBgColorEdited()
-            {
-                BgImage.color = ENTRY_BG_COLOR_EDITED;
-            }
+            public void SetBgColorEdited()  => BgImage.color = ENTRY_BG_COLOR_EDITED;
+            public void SetBgColorDefault() => BgImage.color = ENTRY_BG_COLOR_DEFAULT;
+            public void ResetBg()           => BgImage.color = ENTRY_BG_COLOR_DEFAULT;
 
-            public void SetBgColorDefault()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-            }
-
-            public void SetUiComponentTargetValue(object value)
-            {
-                UiComponentSetValueResetDelegate?.Invoke(value);
-            }
-
-            public void ResetBg()
-            {
-                BgImage.color = ENTRY_BG_COLOR_DEFAULT;
-            }
+            public void SetUiComponentTargetValue(object value) => UiComponentSetValueResetDelegate?.Invoke(value);
         }
     }
 }

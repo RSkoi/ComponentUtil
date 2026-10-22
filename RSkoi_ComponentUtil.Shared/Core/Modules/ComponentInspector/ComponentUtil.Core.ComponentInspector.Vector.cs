@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Reflection;
 using System.Globalization;
 using UnityEngine;
 
@@ -11,66 +10,21 @@ namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        bool ConfigVector(ComponentUtilUI.GenericUIListEntry parentUiEntry,
-            GameObject entry,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
-            bool setMethodIsPublic,
-            bool isProperty,
-            object value,
-            bool objectMode)
+        bool ConfigVector(PropertyEntryContext ctx)
         {
-            var valueString = VectorConversion.VectorToStringByType(type, value);
+            var valueString = VectorConversion.VectorToStringByType(ctx.Member.MemberType, ctx.Value);
             if (valueString.IsNullOrEmpty())
                 return false;
 
+            var uiEntry = ctx.UiEntry;
             var vectorEntry = new ComponentUtilUI.PropertyUIVectorEntry(uiEntry);
-            vectorEntry.SetInteractable(setMethodIsPublic);
+            vectorEntry.SetInteractable(ctx.Interactable);
             vectorEntry.RemoveAllInputEvents();
-            // this is already set on the prefab so this is redundant
-            //vectorEntry.SetContentType(InputField.ContentType.DecimalNumber);
+            // content type is set on the prefab
             vectorEntry.SetUIVectorValues(valueString);
 
             vectorEntry.RegisterInputEvents();
-
-            void ValueChangedEvents(string v)
-            {
-                if (isProperty)
-                {
-                    var defaultValue = VectorConversion.VectorToStringByType(p.PropertyType, p.GetValue(input, null));
-                    if (objectMode)
-                    {
-                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                            p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                        _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                    }
-                    else
-                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
-                            PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                    SetVectorPropertyValue(p, v, input);
-                }
-                else
-                {
-                    var defaultValue = VectorConversion.VectorToStringByType(f.FieldType, f.GetValue(input));
-                    if (objectMode)
-                    {
-                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                            f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                        _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                    }
-                    else
-                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
-                            PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                    SetVectorFieldValue(f, v, input);
-                }
-
-                uiEntry.SetBgColorEdited();
-                ComponentUtilUI.TraverseAndSetEditedParents();
-            }
-            vectorEntry.OnValueChanged += ValueChangedEvents;
+            vectorEntry.OnValueChanged += v => ApplyEdit(ctx, v);
 
             uiEntry.UiComponentSetValueResetDelegate = (v) =>
             {
@@ -81,57 +35,24 @@ namespace RSkoi_ComponentUtil
                 vectorEntry.RegisterInputEvents();
                 return v;
             };
-            uiEntry.ResetOverrideDelegate = (v) =>
-            {
-                if (isProperty)
-                    SetVectorPropertyValue(p, (string)v, input);
-                else
-                    SetVectorFieldValue(f, (string)v, input);
-
-                return v;
-            };
-            uiEntry.ParentUiEntry = parentUiEntry;
+            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
 
             return true;
         }
 
-        #region internal setters
-        internal void SetVectorPropertyValue(PropertyInfo p, string value, object input)
-        {
-            try
-            {
-                var values = VectorConversion.StringToVectorValues(value);
-                var vector = VectorConversion.FloatValuesToVectorByType(p.PropertyType, values);
-                p.SetValue(input, vector, null);
-            }
-            catch (Exception e) {
-                _logger.LogError(e);
-                _logger.LogError($"Tried to set value {value} on {input}.{p.Name}");
-            }
-        }
-
-        internal void SetVectorFieldValue(FieldInfo f, string value, object input)
-        {
-            try
-            {
-                var values = VectorConversion.StringToVectorValues(value);
-                var vector = VectorConversion.FloatValuesToVectorByType(f.FieldType, values);
-                f.SetValue(input, vector);
-            }
-            catch (Exception e) {
-                _logger.LogError(e);
-                _logger.LogError($"Tried to set value {value} on {input}.{f.Name}");
-            }
-        }
-        #endregion internal setters
-
         /// <summary>
-        /// provides methods to parse vectors to ComponentUtil format and back
+        /// Provides methods to parse vectors to ComponentUtil format and back.
         /// </summary>
         public static class VectorConversion
         {
             /// <summary>
-            /// tries to convert a vector string value to a typed new vector object
+            /// Whether the type is one of the vector types ComponentUtil supports (Vector2, Vector3, Vector4, Quaternion).
+            /// </summary>
+            public static bool IsVectorType(Type t)
+                => t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4) || t == typeof(Quaternion);
+
+            /// <summary>
+            /// Tries to convert a vector string value to a typed new vector object.
             /// </summary>
             /// <param name="t">the vector type</param>
             /// <param name="value">vector string value with # as separator</param>
@@ -153,9 +74,8 @@ namespace RSkoi_ComponentUtil
             }
 
             /// <summary>
-            /// converts a vector string value to values in a float array<br />
-            /// parsing to float can throw exceptions, exception handling is the 
-            /// responsibility of the user
+            /// Converts a vector string value to values in a float array.<br />
+            /// Parsing to float can throw exceptions, exception handling is the responsibility of the user.
             /// </summary>
             /// <param name="value">vector string value with # as separator</param>
             /// <returns>values of vector parsed to floats</returns>
@@ -181,7 +101,7 @@ namespace RSkoi_ComponentUtil
             }
 
             /// <summary>
-            /// converts vector values to new vector object
+            /// Converts vector values to new vector object.
             /// </summary>
             /// <param name="t">the vector type</param>
             /// <param name="values">the vector values</param>
@@ -202,7 +122,7 @@ namespace RSkoi_ComponentUtil
             }
 
             /// <summary>
-            /// converts a vector to its string format by its type
+            /// Converts a vector to its string format by its type.
             /// </summary>
             /// <param name="t">the vector type</param>
             /// <param name="v">the vector object</param>

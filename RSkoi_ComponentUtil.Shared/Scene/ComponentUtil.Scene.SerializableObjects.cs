@@ -25,9 +25,7 @@ namespace RSkoi_ComponentUtil.Scene
             public PropertyTrackerDataOptions propertyFlags = propertyFlags;
 
             public override string ToString()
-            {
-                return $"TrackerDataPropertySO [ propertyName: {propertyName}, propertyValue: {propertyValue}, propertyFlags: {propertyFlags} ]";
-            }
+                => $"TrackerDataPropertySO [ propertyName: {propertyName}, propertyValue: {propertyValue}, propertyFlags: {propertyFlags} ]";
         }
 
         [Serializable]
@@ -54,10 +52,8 @@ namespace RSkoi_ComponentUtil.Scene
             public TrackerDataPropertySO[] properties = properties;
 
             public override string ToString()
-            {
-                return $"TrackerDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
+                => $"TrackerDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
                     $"siblingIndex: {siblingIndex}, componentName: {componentName}, properties.Length: {properties.Length} ]";
-            }
         }
 
         [Serializable]
@@ -87,11 +83,9 @@ namespace RSkoi_ComponentUtil.Scene
             public TrackerDataPropertySO[] properties = properties;
 
             public override string ToString()
-            {
-                return $"TrackerReferenceDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
+                => $"TrackerReferenceDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
                     $"siblingIndex: {siblingIndex}, componentName: {componentName}, referencePropertyName: {referencePropertyName}, " +
                     $"properties.Length: {properties.Length} ]";
-            }
         }
 
         [Serializable]
@@ -102,9 +96,7 @@ namespace RSkoi_ComponentUtil.Scene
             public string componentName = componentName;
 
             public override string ToString()
-            {
-                return $"TrackerDataComponentSO [ componentName: {componentName} ]";
-            }
+                => $"TrackerDataComponentSO [ componentName: {componentName} ]";
         }
 
         [Serializable]
@@ -128,10 +120,8 @@ namespace RSkoi_ComponentUtil.Scene
             public TrackerAddedComponentDataSO[] addedComponents = addedComponents;
 
             public override string ToString()
-            {
-                return $"TrackerComponentDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
+                => $"TrackerComponentDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
                     $"siblingIndex: {siblingIndex}, addedComponents.Length: {addedComponents.Length} ]";
-            }
         }
     }
 }

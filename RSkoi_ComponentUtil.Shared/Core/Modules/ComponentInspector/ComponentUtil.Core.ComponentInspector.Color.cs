@@ -1,42 +1,27 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
+﻿using System.Linq;
 using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 
-using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        void ConfigColor(
-            ComponentUtilUI.GenericUIListEntry parentUiEntry,
-            GameObject entry,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
-            bool setMethodIsPublic,
-            bool isProperty,
-            object value,
-            bool objectMode)
+        void ConfigColor(PropertyEntryContext ctx)
         {
+            var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
-                uiEntry.UiSelectable = entry.transform.Find("ColorButton").GetComponentInChildren<Button>();
+                uiEntry.UiSelectable = ctx.EntryGO.transform.Find("ColorButton").GetComponentInChildren<Button>();
             var colorButton = (Button)uiEntry.UiSelectable;
             colorButton.onClick.RemoveAllListeners();
 
             var colorPalette = Studio.Studio.Instance.colorPalette;
-            Color GetCurrenntColor() => (Color)(isProperty ? p.GetValue(input, null) : f.GetValue(input));
+            Color GetCurrentColor() => (Color)ctx.Member.GetValue(ctx.Target);
 
-            colorButton.interactable = setMethodIsPublic;
-            SetButtonColor(colorButton, GetCurrenntColor());
-
-            var propName = isProperty ? p.Name : f.Name;
+            colorButton.interactable = ctx.Interactable;
+            SetButtonColor(colorButton, GetCurrentColor());
 
             colorButton.onClick.AddListener(() =>
             {
@@ -46,35 +31,10 @@ namespace RSkoi_ComponentUtil
                     return;
                 }
 
-                var currentColor = GetCurrenntColor();
-                colorPalette.Setup($"ComponentUtil: {propName} Color", currentColor, (c) => 
+                colorPalette.Setup($"ComponentUtil: {ctx.Member.Name} Color", GetCurrentColor(), (c) =>
                 {
-                    currentColor = GetCurrenntColor();
-                    var colorValueString = ColorConversion.ColorToString(currentColor);
-
                     SetButtonColor(colorButton, c);
-
-                    object defaultValue = colorValueString; 
-                    var options = PropertyTrackerData.PropertyTrackerDataOptions.IsColor;
-                    if (isProperty)
-                        options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
-
-                    if (objectMode)
-                    {
-                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent,
-                            _selectedReferencePropertyUiEntry.PropertyNameValue, propName, defaultValue, options);
-                        _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                    }
-                    else
-                        AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, propName, defaultValue, options);
-
-                    if (isProperty)
-                        SetPropertyValue(p, c, input);
-                    else
-                        SetFieldValue(f, c, input);
-
-                    uiEntry.SetBgColorEdited();
-                    ComponentUtilUI.TraverseAndSetEditedParents();
+                    ApplyEdit(ctx, c);
                 }, _useAlpha: true);
                 colorPalette.visible = true;
             });
@@ -85,16 +45,7 @@ namespace RSkoi_ComponentUtil
                 SetButtonColor(colorButton, valColor);
                 return valColor;
             };
-            uiEntry.ResetOverrideDelegate = (value) =>
-            {
-                var valColor = ColorConversion.StringToColor((string)value);
-                if (isProperty)
-                    SetPropertyValue(p, valColor, input);
-                else
-                    SetFieldValue(f, valColor, input);
-                return valColor;
-            };
-            uiEntry.ParentUiEntry = parentUiEntry;
+            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
         void SetButtonColor(Button button, Color color)
@@ -112,14 +63,13 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <summary>
-        /// provides methods to parse colors to ComponentUtil format and back
+        /// Provides methods to parse colors to ComponentUtil encoded format and back
         /// </summary>
         public static class ColorConversion
         {
             /// <summary>
-            /// converts a color string value to color<br />
-            /// parsing to float can throw exceptions, exception handling is the 
-            /// responsibility of the user
+            /// Converts a color string value to color<br />
+            /// Parsing to float can throw exceptions, exception handling is the responsibility of the user
             /// </summary>
             /// <param name="value">color string value with # as separator</param>
             /// <returns>values parsed to color</returns>
@@ -150,9 +100,7 @@ namespace RSkoi_ComponentUtil
             }
 
             public static string ColorToString(Color c)
-            {
-                return string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", c.r, c.g, c.b, c.a);
-            }
+                => string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", c.r, c.g, c.b, c.a);
         }
     }
 }

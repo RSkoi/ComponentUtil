@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -163,60 +162,51 @@ namespace RSkoi_ComponentUtil.Scene
 
                     foreach (var propEdit in propEntry.properties)
                     {
-                        bool isReference    = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                        bool isProperty     = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                        bool isInt          = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        bool isVector       = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                        bool isColor        = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                        var flags = propEdit.propertyFlags;
+                        bool isReference = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                        bool isProperty  = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
 
-                        var p = (isReference || isProperty) ? componentType.GetProperty(propEdit.propertyName) : null;
-                        var f = (isReference || !isProperty) ? componentType.GetField(propEdit.propertyName) : null;
+                        // dummy reference entries can be a property or a field
+                        var member = isReference
+                            ? Member.FindAny(componentType, propEdit.propertyName)
+                            : Member.Find(componentType, propEdit.propertyName, isProperty);
+                        var memberDescription = $"{(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}.{componentType.Name} with name {propEdit.propertyName}";
 
-                        var value = _instance.GetValueFieldOrProperty(component, p, f);
+                        var value = member?.TryGetValue(component);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
-                                $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
+                            _logger.LogWarning($"Could not find non-null {memberDescription}, ignoring");
                             continue;
                         }
 
-                        if (isInt)
-                            value = Convert.ToInt32(value);
-                        else if (isVector)
+                        var encodedValue = ValueConversion.Encode(value, flags);
+                        if (encodedValue == null)
                         {
-                            var vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
-                            if (vectorString.IsNullOrEmpty())
-                            {
-                                _logger.LogError($"Failed to convert vector {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
-                                    $".{componentType.Name} with name {propEdit.propertyName}, ignoring");
-                                continue;
-                            }
-                            value = vectorString;
+                            _logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
+                            continue;
                         }
-                        else if (isColor)
-                            value = ColorConversion.ColorToString((Color)value);
 
-                        var propEditValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
+                        var savedValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
                         // a default value was saved -> can be discarded
                         // redirector values are always set
-                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(value) == propEditValueString)
+                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(encodedValue) == savedValueString)
                             continue;
 
-                        // adding to tracker must not be done by Setter methods such as SetPropertyValue
+                        // adding to tracker must not be done by ApplyEdit
                         // on loading scene as we need to track loadedItem, not _selectedObject
                         _instance.AddPropertyToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,
                             component,
                             propEdit.propertyName,
-                            value,
-                            propEdit.propertyFlags);
+                            encodedValue,
+                            flags);
 
                         // dummy properties for reference types don't have a valid value to be set
                         if (isReference)
                             continue;
 
-                        SetValueWithFlags(p, f, component, propEditValueString, propEdit.propertyFlags);
+                        SetValueWithFlags(member, component, savedValueString, flags);
                     }
                 }
             }
@@ -255,11 +245,7 @@ namespace RSkoi_ComponentUtil.Scene
                     var componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
-                    var propReferenceType = componentType.GetProperty(propEntry.referencePropertyName,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    var fieldReferenceType = componentType.GetField(propEntry.referencePropertyName,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    var referenceObject = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
+                    var referenceObject = Member.FindAny(componentType, propEntry.referencePropertyName)?.TryGetValue(component);
                     if (referenceObject == null)
                     {
                         _logger.LogWarning($"Could not find non-null reference on {loadedItemEditTransform.name}" +
@@ -270,50 +256,37 @@ namespace RSkoi_ComponentUtil.Scene
 
                     foreach (var propEdit in propEntry.properties)
                     {
+                        var flags = propEdit.propertyFlags;
                         // reference properties are not allowed in object inspector
-                        var isReference = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                        if (isReference)
+                        if (HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                             continue;
 
-                        bool isProperty = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                        bool isInt      = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        bool isVector   = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                        bool isColor    = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                        bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                        var member = Member.Find(referenceObjectType, propEdit.propertyName, isProperty);
+                        var memberDescription = $"{(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
+                            $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}";
 
-                        var p = isProperty ? referenceObjectType.GetProperty(propEdit.propertyName) : null;
-                        var f = !isProperty ? referenceObjectType.GetField(propEdit.propertyName) : null;
-
-                        var value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
+                        var value = member?.TryGetValue(referenceObject);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Could not find non-null reference {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
-                                $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}, ignoring");
+                            _logger.LogWarning($"Could not find non-null reference {memberDescription}, ignoring");
                             continue;
                         }
 
-                        if (isInt)
-                            value = Convert.ToInt32(value);
-                        else if (isVector)
+                        var encodedValue = ValueConversion.Encode(value, flags);
+                        if (encodedValue == null)
                         {
-                            var vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
-                            if (vectorString.IsNullOrEmpty())
-                            {
-                                _logger.LogError($"Failed to convert vector {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
-                                    $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}, ignoring");
-                                continue;
-                            }
-                            value = vectorString;
+                            _logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
+                            continue;
                         }
-                        else if (isColor)
-                            value = ColorConversion.ColorToString((Color)value);
 
-                        var propEditValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
+                        var savedValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
                         // a default value was saved -> can be discarded
                         // redirector values are always set
-                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(value) == propEditValueString)
+                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(encodedValue) == savedValueString)
                             continue;
 
-                        // adding to tracker must not be done by Setter methods such as SetPropertyValue
+                        // adding to tracker must not be done by ApplyEdit
                         // on loading scene as we need to track loadedItem, not _selectedObject
                         _instance.AddPropertyToTracker(
                             loadedItem,
@@ -321,10 +294,10 @@ namespace RSkoi_ComponentUtil.Scene
                             component,
                             propEntry.referencePropertyName,
                             propEdit.propertyName,
-                            value,
-                            propEdit.propertyFlags);
+                            encodedValue,
+                            flags);
 
-                        SetValueWithFlags(p, f, referenceObject, propEditValueString, propEdit.propertyFlags);
+                        SetValueWithFlags(member, referenceObject, savedValueString, flags);
                     }
                 }
             }
@@ -349,39 +322,27 @@ namespace RSkoi_ComponentUtil.Scene
             foreach (var entry in _propertyTracker)
             {
                 var key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
+                var componentType = entry.Key.Component.GetType();
                 var properties = new List<TrackerDataPropertySO>();
                 foreach (var propEntry in entry.Value)
                 {
-                    bool isReference    = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                    bool isProperty     = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                    bool isInt          = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                    bool isVector       = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                    bool isColor        = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
+                    var flags = propEntry.Value.OptionFlags;
 
+                    // dummy reference entries don't have a value
                     object value = 0;
-                    if (!isReference)
+                    if (!HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                     {
-                        if (isProperty)
-                            entry.Key.Component.GetPropertyValue(propEntry.Key, out value);
-                        else
-                            entry.Key.Component.GetFieldValue(propEntry.Key, out value);
-
+                        var isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                        var member = Member.Find(componentType, propEntry.Key, isProperty);
+                        value = ValueConversion.Encode(member?.TryGetValue(entry.Key.Component), flags);
                         if (value == null)
                         {
                             _logger.LogWarning($"Tried to save null value for {(isProperty ? "property" : "field")} {entry.Key.Component.name}.{propEntry.Key}, ignoring");
                             continue;
                         }
-
-                        if (isInt)
-                            value = Convert.ToInt32(value);
-                        else if (isVector)
-                            value = VectorConversion.VectorToStringByType(value.GetType(), value);
-                        else if (isColor)
-                            value = ColorConversion.ColorToString((Color)value);
                     }
 
-                    var prop = new TrackerDataPropertySO(propEntry.Key, value, propEntry.Value.OptionFlags);
-                    properties.Add(prop);
+                    properties.Add(new TrackerDataPropertySO(propEntry.Key, value, flags));
                 }
 
                 var container = new TrackerDataSO(
@@ -389,7 +350,7 @@ namespace RSkoi_ComponentUtil.Scene
                     GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
                     entry.Key.Go.transform.name,
                     entry.Key.Go.transform.GetSiblingIndex(),
-                    entry.Key.Component.GetType().Name,
+                    componentType.Name,
                     [ ..properties ]);
 
                 if (propertySavedDict.ContainsKey(key))
@@ -403,11 +364,7 @@ namespace RSkoi_ComponentUtil.Scene
             {
                 var key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
                 var componentType = entry.Key.Component.GetType();
-                var propReferenceType = componentType.GetProperty(entry.Key.ReferencePropertyName,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var fieldReferenceType = componentType.GetField(entry.Key.ReferencePropertyName,
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var referenceObject = _instance.GetValueFieldOrProperty(entry.Key.Component, propReferenceType, fieldReferenceType);
+                var referenceObject = Member.FindAny(componentType, entry.Key.ReferencePropertyName)?.TryGetValue(entry.Key.Component);
                 if (referenceObject == null)
                 {
                     _logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.ReferencePropertyName}, ignoring");
@@ -419,19 +376,14 @@ namespace RSkoi_ComponentUtil.Scene
                 var properties = new List<TrackerDataPropertySO>();
                 foreach (var propEntry in entry.Value)
                 {
+                    var flags = propEntry.Value.OptionFlags;
                     // reference properties are not allowed in object inspector
-                    var isReference = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                    if (isReference) continue;
+                    if (HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
+                        continue;
 
-                    bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                    bool isInt      = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                    bool isVector   = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-                    bool isColor    = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
-
-                    var p = isProperty ? referenceObjectType.GetProperty(propEntry.Key) : null;
-                    var f = !isProperty ? referenceObjectType.GetField(propEntry.Key) : null;
-
-                    var value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
+                    bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                    var member = Member.Find(referenceObjectType, propEntry.Key, isProperty);
+                    var value = ValueConversion.Encode(member?.TryGetValue(referenceObject), flags);
                     if (value == null)
                     {
                         _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {entry.Key.Go.name}.{componentType.Name}" +
@@ -439,15 +391,7 @@ namespace RSkoi_ComponentUtil.Scene
                         continue;
                     }
 
-                    if (isInt)
-                        value = Convert.ToInt32(value);
-                    else if (isVector)
-                        value = VectorConversion.VectorToStringByType(value.GetType(), value);
-                    else if (isColor)
-                        value = ColorConversion.ColorToString((Color)value);
-
-                    var prop = new TrackerDataPropertySO(propEntry.Key, value, propEntry.Value.OptionFlags);
-                    properties.Add(prop);
+                    properties.Add(new TrackerDataPropertySO(propEntry.Key, value, flags));
                 }
 
                 var container = new TrackerReferenceDataSO(
@@ -564,7 +508,6 @@ namespace RSkoi_ComponentUtil.Scene
         {
             // notice that transform.Find already accounts for the root
             // -> do not include it in the path
-
             if (transform == root) return "";
 
             var path = transform.name;
@@ -578,10 +521,7 @@ namespace RSkoi_ComponentUtil.Scene
         #endregion internal helpers
 
         #region private helpers
-        bool TypeIsSupportedRedirector(Type type)
-        {
-            return redirectorTypes.ContainsValue(type);
-        }
+        bool TypeIsSupportedRedirector(Type type) => redirectorTypes.ContainsValue(type);
 
         void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
         {

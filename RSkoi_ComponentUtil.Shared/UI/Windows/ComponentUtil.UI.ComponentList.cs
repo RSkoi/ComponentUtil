@@ -32,14 +32,8 @@ namespace RSkoi_ComponentUtil.UI
         static Button _pageNextComponentListButton;
 
         internal static void UpdatePageNumberComponentList(int pageNumber)
-        {
-            // +1 because pages are zero-indexed
-            _currentPageComponentListText.text = (pageNumber + 1).ToString();
-        }
+            => _currentPageComponentListText.text = (pageNumber + 1).ToString(); // +1 because pages are zero-indexed
 
-        internal static void ResetPageNumberComponentList()
-        {
-            _currentPageComponentListText.text = "1";
-        }
+        internal static void ResetPageNumberComponentList() => _currentPageComponentListText.text = "1";
     }
 }

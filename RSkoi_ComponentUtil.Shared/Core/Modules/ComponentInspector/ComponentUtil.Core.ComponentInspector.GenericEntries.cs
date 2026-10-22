@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,61 +11,108 @@ namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        void ConfigReference(
+        /// <summary>
+        /// Everything a property entry in the Component- or ObjectInspector needs to know about the member it edits.
+        /// </summary>
+        internal sealed class PropertyEntryContext(
             ComponentUtilUI.GenericUIListEntry parentUiEntry,
-            GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
-            Component input,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
-            bool setMethodIsPublic,
-            bool isProperty,
-            object value)
+            object target,
+            Member member,
+            object value,
+            PropertyTrackerData.PropertyTrackerDataOptions flags,
+            bool objectMode)
         {
+            /// <summary>
+            /// The selected component entry.
+            /// </summary>
+            public readonly ComponentUtilUI.GenericUIListEntry ParentUiEntry = parentUiEntry;
+            /// <summary>
+            /// The property / field entry.
+            /// </summary>
+            public readonly ComponentUtilUI.PropertyUIEntry UiEntry = uiEntry;
+            /// <summary>
+            /// The selected component (ComponentInspector) or the referenced object (ObjectInspector) the member belongs to.
+            /// </summary>
+            public readonly object Target = target;
+            /// <summary>
+            /// The concrete member behind the property / field entry.
+            /// </summary>
+            public readonly Member Member = member;
+            /// <summary>
+            /// Value of the member when the entry was configured.
+            /// </summary>
+            public readonly object Value = value;
+            /// <summary>
+            /// Tracker flags of the member: entry kind flag, plus IsProperty for properties.
+            /// </summary>
+            public readonly PropertyTrackerData.PropertyTrackerDataOptions Flags = flags;
+            /// <summary>
+            /// Whether the entry is in the ObjectInspector (true) or ComponentInspector (false).
+            /// </summary>
+            public readonly bool ObjectMode = objectMode;
+
+            public bool Interactable => Member.HasPublicSetter;
+            public GameObject EntryGO => UiEntry.UiGO;
+        }
+
+        /// <summary>
+        /// Adds the edit to the tracker (keeping the first default value), sets the new value, marks the entry as edited.
+        /// </summary>
+        /// <param name="newValue">the new value, either of the member type or encoded (see ValueConversion)</param>
+        void ApplyEdit(PropertyEntryContext ctx, object newValue)
+        {
+            var defaultValue = ValueConversion.Encode(ctx.Member.TryGetValue(ctx.Target), ctx.Flags);
+            if (ctx.ObjectMode)
+            {
+                AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent,
+                    _selectedReferencePropertyUiEntry.MemberName, ctx.Member.Name, defaultValue, ctx.Flags);
+                _selectedReferencePropertyUiEntry.SetBgColorEdited();
+            }
+            else
+                AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, ctx.Member.Name, defaultValue, ctx.Flags);
+
+            SetValueWithFlags(ctx.Member, ctx.Target, newValue, ctx.Flags);
+
+            ctx.UiEntry.SetBgColorEdited();
+            ComponentUtilUI.TraverseAndSetEditedParents();
+        }
+
+        void ConfigReference(PropertyEntryContext ctx)
+        {
+            var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
-                uiEntry.UiSelectable = entry.GetComponentInChildren<Button>();
+                uiEntry.UiSelectable = ctx.EntryGO.GetComponentInChildren<Button>();
             var button = (Button)uiEntry.UiSelectable;
             button.onClick.RemoveAllListeners();
 
-            // setMethodIsPublic is irrelevant here because values will be set with reflection
+            // whether the member has a setter is irrelevant here because values inside the reference will be set with reflection
             button.interactable = true;
-
-            void registerMyEvents()
-            {
-                if (isProperty)
-                    button.onClick.AddListener(() => OpenObjectInspector(p, null, type, value, uiEntry, parentUiEntry));
-                else
-                    button.onClick.AddListener(() => OpenObjectInspector(null, f, type, value, uiEntry, parentUiEntry));
-            }
-            registerMyEvents();
+            button.onClick.AddListener(() => OpenObjectInspector(ctx.Member, ctx.Value, uiEntry, ctx.ParentUiEntry));
 
             uiEntry.UiComponentSetValueResetDelegate = null;
-            uiEntry.ParentUiEntry = parentUiEntry;
+            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
+
+            // resetting or animating a reference as a whole is not supported, only the values inside it
+            uiEntry.ResetButton.interactable = false;
+            if (ComponentUtilTimeline.IsTimelineAvailable())
+                uiEntry.TimelineButton.interactable = false;
+            else
+                uiEntry.TimelineButton.gameObject.SetActive(false);
         }
 
-        void ConfigDropdown(
-            ComponentUtilUI.GenericUIListEntry parentUiEntry,
-            GameObject entry,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
-            bool setMethodIsPublic,
-            bool isProperty,
-            object value,
-            bool objectMode)
+        void ConfigDropdown(PropertyEntryContext ctx)
         {
+            var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
-                uiEntry.UiSelectable = entry.GetComponentInChildren<Dropdown>();
+                uiEntry.UiSelectable = ctx.EntryGO.GetComponentInChildren<Dropdown>();
             var dropdownField = (Dropdown)uiEntry.UiSelectable;
             dropdownField.onValueChanged.RemoveAllListeners();
 
             // configure options
             // dropdown works with option indices, which are not the same as enum values
             // (e.g. flag enums 0, 1, 2, 4 or enums containing negative values) -> map between them
-            var enumValues = Enum.GetValues(type);
+            var enumValues = Enum.GetValues(ctx.Member.MemberType);
             var options = new List<Dropdown.OptionData>();
             var selectedOption = 0;
             for (var i = 0; i < enumValues.Length; i++)
@@ -75,7 +121,7 @@ namespace RSkoi_ComponentUtil
                 options.Add(new() { text = enumValue.ToString() });
 
                 // option that's currently selected
-                if (enumValue.Equals(value))
+                if (enumValue.Equals(ctx.Value))
                     selectedOption = i;
             }
             int EnumValueOfOption(int optionIndex) => Convert.ToInt32(enumValues.GetValue(optionIndex));
@@ -88,59 +134,13 @@ namespace RSkoi_ComponentUtil
             }
             dropdownField.ClearOptions();
             dropdownField.AddOptions(options);
-            dropdownField.interactable = setMethodIsPublic;
+            dropdownField.interactable = ctx.Interactable;
 
             // select current option
             dropdownField.value = selectedOption;
 
-            // configure value change event
             void registerMyEvents()
-            {
-                if (isProperty)
-                {
-                    dropdownField.onValueChanged.AddListener(optionIndex =>
-                    {
-                        var defaultValue = Convert.ToInt32(p.GetValue(input, null));
-                        if (objectMode)
-                        {
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                            _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                        }
-                        else
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-
-                        var enumValue = EnumValueOfOption(optionIndex);
-                        SetPropertyValueInt(p, enumValue, input);
-                    });
-                }
-                else
-                {
-                    dropdownField.onValueChanged.AddListener(optionIndex =>
-                    {
-                        var defaultValue = Convert.ToInt32(f.GetValue(input));
-                        if (objectMode)
-                        {
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                            _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                        }
-                        else
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-
-                        var enumValue = EnumValueOfOption(optionIndex);
-                        SetFieldValueInt(f, enumValue, input);
-                    });
-                }
-
-                dropdownField.onValueChanged.AddListener(_ =>
-                {
-                    uiEntry.SetBgColorEdited();
-                    ComponentUtilUI.TraverseAndSetEditedParents();
-                });
-            }
+                => dropdownField.onValueChanged.AddListener(optionIndex => ApplyEdit(ctx, EnumValueOfOption(optionIndex)));
             registerMyEvents();
 
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
@@ -154,67 +154,22 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return enumValue;
             };
-            uiEntry.ParentUiEntry = parentUiEntry;
+            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
-        void ConfigToggle(
-            ComponentUtilUI.GenericUIListEntry parentUiEntry,
-            GameObject entry,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
-            bool setMethodIsPublic,
-            bool isProperty,
-            object value,
-            bool objectMode)
+        void ConfigToggle(PropertyEntryContext ctx)
         {
+            var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
-                uiEntry.UiSelectable = entry.GetComponentInChildren<Toggle>();
+                uiEntry.UiSelectable = ctx.EntryGO.GetComponentInChildren<Toggle>();
             var toggleField = (Toggle)uiEntry.UiSelectable;
             toggleField.onValueChanged.RemoveAllListeners();
 
-            toggleField.isOn = (bool)value;
-            toggleField.interactable = setMethodIsPublic;
+            toggleField.isOn = (bool)ctx.Value;
+            toggleField.interactable = ctx.Interactable;
+
             void registerMyEvents()
-            {
-                if (isProperty)
-                    toggleField.onValueChanged.AddListener(value =>
-                    {
-                        var defaultValue = p.GetValue(input, null);
-                        if (objectMode)
-                        {
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
-                            _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                        }
-                        else
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
-                        SetPropertyValue(p, value.ToString(), input);
-                    });
-                else
-                    toggleField.onValueChanged.AddListener(value =>
-                    {
-                        var defaultValue = f.GetValue(input);
-                        if (objectMode)
-                        {
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
-                            _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                        }
-                        else
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsBool);
-                        SetFieldValue(f, value.ToString(), input);
-                    });
-                toggleField.onValueChanged.AddListener(_ =>
-                {
-                    uiEntry.SetBgColorEdited();
-                    ComponentUtilUI.TraverseAndSetEditedParents();
-                });
-            }
+                => toggleField.onValueChanged.AddListener(isOn => ApplyEdit(ctx, isOn));
             registerMyEvents();
 
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
@@ -226,70 +181,23 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return toggleField.isOn;
             };
-            uiEntry.ParentUiEntry = parentUiEntry;
+            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
-        void ConfigInput(
-            ComponentUtilUI.GenericUIListEntry parentUiEntry,
-            GameObject entry,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
-            bool setMethodIsPublic,
-            bool isProperty,
-            object value,
-            bool objectMode,
-            InputField.ContentType contentType)
+        void ConfigInput(PropertyEntryContext ctx, InputField.ContentType contentType)
         {
+            var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
-                uiEntry.UiSelectable = entry.GetComponentInChildren<InputField>();
+                uiEntry.UiSelectable = ctx.EntryGO.GetComponentInChildren<InputField>();
             var inputField = (InputField)uiEntry.UiSelectable;
             inputField.onValueChanged.RemoveAllListeners();
 
             inputField.contentType = contentType;
-            inputField.text = InvariantConversion.ToInvariantString(value);
-            inputField.interactable = setMethodIsPublic;
+            inputField.text = InvariantConversion.ToInvariantString(ctx.Value);
+            inputField.interactable = ctx.Interactable;
 
             void registerMyEvents()
-            {
-                if (isProperty)
-                    inputField.onValueChanged.AddListener(value =>
-                    {
-                        var defaultValue = p.GetValue(input, null);
-                        if (objectMode)
-                        {
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                p.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
-                            _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                        }
-                        else
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
-                        SetPropertyValue(p, value, input);
-                    });
-                else
-                    inputField.onValueChanged.AddListener(value =>
-                    {
-                        var defaultValue = f.GetValue(input);
-                        if (objectMode)
-                        {
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
-                                f.Name, defaultValue, PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
-                            _selectedReferencePropertyUiEntry.SetBgColorEdited();
-                        }
-                        else
-                            AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
-                                PropertyTrackerData.PropertyTrackerDataOptions.IsInput);
-                        SetFieldValue(f, value, input);
-                    });
-                inputField.onValueChanged.AddListener(_ =>
-                {
-                    uiEntry.SetBgColorEdited();
-                    ComponentUtilUI.TraverseAndSetEditedParents();
-                });
-            }
+                => inputField.onValueChanged.AddListener(text => ApplyEdit(ctx, text));
             registerMyEvents();
 
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
@@ -301,22 +209,15 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return inputField.text;
             };
-
-            uiEntry.ParentUiEntry = parentUiEntry;
+            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
         #region reset button
-        void ConfigReset(
-            PropertyKey key,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            Component input,
-            PropertyInfo p,
-            FieldInfo f,
-            string propName,
-            bool setMethodIsPublic,
-            bool isProperty)
+        void ConfigReset(PropertyKey key, PropertyEntryContext ctx)
         {
-            uiEntry.ResetButton.interactable = setMethodIsPublic;
+            var uiEntry = ctx.UiEntry;
+            var propName = ctx.Member.Name;
+            uiEntry.ResetButton.interactable = ctx.Interactable;
             uiEntry.ResetButton.onClick.RemoveAllListeners();
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
@@ -324,12 +225,7 @@ namespace RSkoi_ComponentUtil
                     return;
 
                 var defaultValue = GetTrackedDefaultValue(key, propName);
-                if (uiEntry.ResetOverrideDelegate != null)
-                    uiEntry.ResetOverrideDelegate.Invoke(defaultValue);
-                else if (isProperty)
-                    p.SetValue(input, defaultValue, null);
-                else
-                    f.SetValue(input, defaultValue);
+                SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
 
                 RemovePropertyFromTracker(key, propName);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
@@ -338,30 +234,11 @@ namespace RSkoi_ComponentUtil
             });
         }
 
-        void ConfigResetReference(
-            PropertyReferenceKey key,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            string propName,
-            bool isProperty)
+        void ConfigResetReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
         {
-            // fuck this
-            uiEntry.ResetButton.interactable = false;
-        }
-
-        void ConfigResetReferenceProperty(
-            PropertyReferenceKey key,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            string propName,
-            bool setMethodIsPublic,
-            bool isProperty)
-        {
-            uiEntry.ResetButton.interactable = setMethodIsPublic;
+            var uiEntry = ctx.UiEntry;
+            var propName = ctx.Member.Name;
+            uiEntry.ResetButton.interactable = ctx.Interactable;
             uiEntry.ResetButton.onClick.RemoveAllListeners();
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
@@ -369,14 +246,9 @@ namespace RSkoi_ComponentUtil
                     return;
 
                 var defaultValue = GetTrackedDefaultValue(key, propName);
-                if (uiEntry.ResetOverrideDelegate != null)
-                    uiEntry.ResetOverrideDelegate.Invoke(defaultValue);
-                else if (isProperty)
-                    p.SetValue(input, defaultValue, null);
-                else
-                    f.SetValue(input, defaultValue);
+                SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
 
-                RemovePropertyFromTracker(key, propName, out var removedKey);
+                RemovePropertyFromTracker(key, propName, out bool removedKey);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
                 uiEntry.SetBgColorDefault();
                 if (removedKey)
@@ -387,73 +259,35 @@ namespace RSkoi_ComponentUtil
         #endregion reset button
 
         #region timeline button
-        void ConfigTimeline(
-            PropertyKey key,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            Component input,
-            PropertyInfo p,
-            FieldInfo f,
-            string propName,
-            bool setMethodIsPublic,
-            bool isProperty,
-            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag)
+        void ConfigTimeline(PropertyKey key, PropertyEntryContext ctx)
         {
-            if (!ComponentUtilTimeline.IsTimelineAvailable())
-            {
-                uiEntry.TimelineButton.gameObject.SetActive(false);
+            if (!ConfigTimelineButton(ctx))
                 return;
-            }
-
-            var options = typeAsFlag;
-            if (isProperty)
-                options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
-            uiEntry.TimelineButton.interactable = setMethodIsPublic;
-            uiEntry.TimelineButton.onClick.RemoveAllListeners();
-            uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, p, f, propName, options));
+            ctx.UiEntry.TimelineButton.onClick.AddListener(
+                () => ComponentUtilTimeline.SelectTimelineModelTarget(key, ctx.Member, ctx.Flags));
         }
 
-        void ConfigTimelineReference(
-            PropertyReferenceKey key,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            string propName,
-            bool isProperty,
-            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag)
+        void ConfigTimelineReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
         {
-            if (!ComponentUtilTimeline.IsTimelineAvailable())
-            {
-                uiEntry.TimelineButton.gameObject.SetActive(false);
+            if (!ConfigTimelineButton(ctx))
                 return;
-            }
-
-            uiEntry.TimelineButton.interactable = false;
+            ctx.UiEntry.TimelineButton.onClick.AddListener(
+                () => ComponentUtilTimeline.SelectTimelineModelTarget(key, ctx.Target, ctx.Member, ctx.Flags));
         }
 
-        void ConfigTimelineReferenceProperty(
-            PropertyReferenceKey key,
-            ComponentUtilUI.PropertyUIEntry uiEntry,
-            object input,
-            PropertyInfo p,
-            FieldInfo f,
-            string propName,
-            bool setMethodIsPublic,
-            bool isProperty,
-            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag)
+        /// <returns>false if Timeline is not available and the button was hidden</returns>
+        bool ConfigTimelineButton(PropertyEntryContext ctx)
         {
+            var button = ctx.UiEntry.TimelineButton;
             if (!ComponentUtilTimeline.IsTimelineAvailable())
             {
-                uiEntry.TimelineButton.gameObject.SetActive(false);
-                return;
+                button.gameObject.SetActive(false);
+                return false;
             }
 
-            var options = typeAsFlag;
-            if (isProperty)
-                options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
-            uiEntry.TimelineButton.interactable = setMethodIsPublic;
-            uiEntry.TimelineButton.onClick.RemoveAllListeners();
-            uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, input, p, f, propName, options));
+            button.interactable = ctx.Interactable;
+            button.onClick.RemoveAllListeners();
+            return true;
         }
         #endregion timeline button
     }

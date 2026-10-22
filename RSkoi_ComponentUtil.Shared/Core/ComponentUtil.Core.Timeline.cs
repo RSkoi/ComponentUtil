@@ -67,34 +67,26 @@ namespace RSkoi_ComponentUtil.Timeline
         #region selection
         static SelectedTimelineModelTarget _selectedTimelineModelTarget;
 
-        internal static void SelectTimelineModelTarget(
-            PropertyKey key,
-            PropertyInfo p,
-            FieldInfo f,
-            string propertyName,
-            PropertyTrackerData.PropertyTrackerDataOptions options)
+        internal static void SelectTimelineModelTarget(PropertyKey key, Member member, PropertyTrackerData.PropertyTrackerDataOptions options)
         {
             _selectedTimelineModelTarget = new(
                 key.ObjCtrlInfo,
                 key.Go,
                 key.Component,
                 key.Component,
-                p,
-                f,
+                member,
                 null,
-                propertyName,
+                member.Name,
                 options);
             RefreshInterpolablesList();
 
-            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{propertyName} to Timeline");
+            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{member.Name} to Timeline");
         }
 
         internal static void SelectTimelineModelTarget(
             PropertyReferenceKey key,
             object target,
-            PropertyInfo p,
-            FieldInfo f,
-            string propertyName,
+            Member member,
             PropertyTrackerData.PropertyTrackerDataOptions options)
         {
             _selectedTimelineModelTarget = new(
@@ -102,14 +94,13 @@ namespace RSkoi_ComponentUtil.Timeline
                 key.Go,
                 key.Component,
                 target,
-                p,
-                f,
+                member,
                 key.ReferencePropertyName,
-                propertyName,
+                member.Name,
                 options | PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
             RefreshInterpolablesList();
 
-            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.ReferencePropertyName}.{propertyName} to Timeline");
+            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.ReferencePropertyName}.{member.Name} to Timeline");
         }
         #endregion selection
 
@@ -171,68 +162,50 @@ namespace RSkoi_ComponentUtil.Timeline
         #region set value
         static void SetPropValue(TimelinePropertyParameter param, string leftValue, string rightValue, float factor)
         {
-            bool isInt      = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-            bool isVector   = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-            bool isColor    = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
-
-            var castLeft  = CastStringValueToType(leftValue, isInt, isVector, isColor, param.Type);
-            var castRight = CastStringValueToType(rightValue, isInt, isVector, isColor, param.Type);
-            if (castLeft == null || castRight == null)
-                return;
-            var encodedTargetValue = InterpolateValue(castLeft, castRight, param.Type, factor);
-            SetValueWithFlags(param.P, param.F, param.Target, encodedTargetValue, param.Options);
-        }
-
-        static string InterpolateValue(object leftValue, object rightValue, Type t, float factor)
-        {
-            if (t.Equals(typeof(Color)))
-                return ColorConversion.ColorToString(Color.LerpUnclamped((Color)leftValue, (Color)rightValue, factor));
-            else if (t.Equals(typeof(Vector2)))
-                return VectorConversion.Vector2ToString(Vector2.LerpUnclamped((Vector2)leftValue, (Vector2)rightValue, factor));
-            else if (t.Equals(typeof(Vector3)))
-                return VectorConversion.Vector3ToString(Vector3.LerpUnclamped((Vector3)leftValue, (Vector3)rightValue, factor));
-            else if (t.Equals(typeof(Vector4)))
-                return VectorConversion.Vector4ToString(Vector4.LerpUnclamped((Vector4)leftValue, (Vector4)rightValue, factor));
-            else if (t.Equals(typeof(Quaternion)))
-                return VectorConversion.QuaternionToString(Quaternion.LerpUnclamped((Quaternion)leftValue, (Quaternion)rightValue, factor));
-            else if (t.Equals(typeof(float)))
-                return InvariantConversion.ToInvariantString(Mathf.LerpUnclamped((float)leftValue, (float)rightValue, factor));
             // don't lerp ints, strings and whatever else
-            return InvariantConversion.ToInvariantString(leftValue);
+            if (!IsInterpolatable(param.Type))
+            {
+                SetValueWithFlags(param.Member, param.Target, leftValue, param.Options);
+                return;
+            }
+
+            object left, right;
+            try
+            {
+                left = ValueConversion.Decode(leftValue, param.Type, param.Options);
+                right = ValueConversion.Decode(rightValue, param.Type, param.Options);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e);
+                return;
+            }
+            var interpolatedValue = InterpolateValue(left, right, param.Type, factor);
+            SetValueWithFlags(param.Member, param.Target, interpolatedValue, param.Options);
         }
 
-        static object CastStringValueToType(string value, bool toInt, bool toVector, bool toColor, Type t)
+        static bool IsInterpolatable(Type t)
+            => t == typeof(Color) || t == typeof(float) || VectorConversion.IsVectorType(t);
+
+        static object InterpolateValue(object leftValue, object rightValue, Type t, float factor)
         {
-            if (toInt)
-                return InvariantConversion.ParseInt(value);
-            else if (toVector)
-            {
-                VectorConversion.TryStringToVectorByType(t, value, out var vector);
-                return vector;
-            }
-            else if (toColor)
-                return ColorConversion.StringToColor(value);
-            return InvariantConversion.ChangeType(value, t);
+            if (t == typeof(Color))
+                return Color.LerpUnclamped((Color)leftValue, (Color)rightValue, factor);
+            else if (t == typeof(Vector2))
+                return Vector2.LerpUnclamped((Vector2)leftValue, (Vector2)rightValue, factor);
+            else if (t == typeof(Vector3))
+                return Vector3.LerpUnclamped((Vector3)leftValue, (Vector3)rightValue, factor);
+            else if (t == typeof(Vector4))
+                return Vector4.LerpUnclamped((Vector4)leftValue, (Vector4)rightValue, factor);
+            else if (t == typeof(Quaternion))
+                return Quaternion.LerpUnclamped((Quaternion)leftValue, (Quaternion)rightValue, factor);
+            return Mathf.LerpUnclamped((float)leftValue, (float)rightValue, factor);
         }
         #endregion set value
 
         #region get value
         static string GetPropValue(TimelinePropertyParameter param)
-        {
-            bool isProperty = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-            bool isInt      = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-            bool isVector   = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
-            bool isColor    = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
-
-            var value = isProperty ? param.P.GetValue(param.Target, null) : param.F.GetValue(param.Target);
-            if (isInt)
-                return InvariantConversion.ToInvariantString(Convert.ToInt32(value));
-            else if (isVector)
-                return VectorConversion.VectorToStringByType(param.Type, value);
-            else if (isColor)
-                return ColorConversion.ColorToString((Color)value);
-            return InvariantConversion.ToInvariantString(value);
-        }
+            => ValueConversion.EncodeToString(param.Member.GetValue(param.Target), param.Options);
 
         static TimelinePropertyParameter GetPropertyParameter(ObjectCtrlInfo _)
         {
@@ -244,10 +217,7 @@ namespace RSkoi_ComponentUtil.Timeline
                 _selectedTimelineModelTarget.Go,
                 _selectedTimelineModelTarget.Component,
                 _selectedTimelineModelTarget.Target,
-                _selectedTimelineModelTarget.P,
-                _selectedTimelineModelTarget.F,
-                HasPropertyFlag(_selectedTimelineModelTarget.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty)
-                    ? _selectedTimelineModelTarget.P.PropertyType : _selectedTimelineModelTarget.F.FieldType,
+                _selectedTimelineModelTarget.Member,
                 _selectedTimelineModelTarget.ReferenceName,
                 _selectedTimelineModelTarget.PropertyName,
                 _selectedTimelineModelTarget.Options);
@@ -257,9 +227,7 @@ namespace RSkoi_ComponentUtil.Timeline
         }
 
         static string GetFinalInterpolableName(string _, ObjectCtrlInfo __, TimelinePropertyParameter param)
-        {
-            return $"{param.Target.GetType().Name}.{param.PropertyName}";
-        }
+            => $"{param.Target.GetType().Name}.{param.PropertyName}";
         #endregion get value
 
         #region xml write and read
@@ -297,24 +265,18 @@ namespace RSkoi_ComponentUtil.Timeline
 
             if (isInsideReference)
             {
-                var propReferenceType = componentType.GetProperty(referenceName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var fieldReferenceType = componentType.GetField(referenceName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                target = Member.FindAny(componentType, referenceName).TryGetValue(component);
                 // this can produce a null ref
-                target = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
                 componentType = target.GetType();
             }
-            var p = isProperty ? componentType.GetProperty(propertyName) : null;
-            var f = !isProperty ? componentType.GetField(propertyName) : null;
-            var propertyType = isProperty ? p.PropertyType : f.FieldType;
+            var member = Member.Find(componentType, propertyName, isProperty);
 
             var param = new TimelinePropertyParameter(
                 oci,
                 go,
                 component,
                 target,
-                p,
-                f,
-                propertyType,
+                member,
                 referenceName,
                 propertyName,
                 options);
@@ -342,9 +304,7 @@ namespace RSkoi_ComponentUtil.Timeline
             GameObject go,
             Component component,
             object target,
-            PropertyInfo p,
-            FieldInfo f,
-            Type type,
+            Member member,
             string referenceName,
             string propertyName,
             PropertyTrackerData.PropertyTrackerDataOptions options)
@@ -353,9 +313,8 @@ namespace RSkoi_ComponentUtil.Timeline
             public GameObject Go = go;
             public Component Component = component;
             public object Target = target;
-            public PropertyInfo P = p;
-            public FieldInfo F = f;
-            public Type Type = type;
+            public Member Member = member;
+            public Type Type = member.MemberType;
             public string ReferenceName = referenceName;
             public string PropertyName = propertyName;
             public PropertyTrackerData.PropertyTrackerDataOptions Options = options;
@@ -363,7 +322,7 @@ namespace RSkoi_ComponentUtil.Timeline
             public override string ToString()
             {
                 return $"TimelinePropertyParameter [ Oci: {Oci}, Go: {Go.name}, Target: {Target}," +
-                    $" P: {P}, F: {F}, Type: {Type}, PropertyName: {PropertyName}, Options: {Options} ]";
+                    $" Member: {Member}, Type: {Type}, PropertyName: {PropertyName}, Options: {Options} ]";
             }
         }
 
@@ -372,8 +331,7 @@ namespace RSkoi_ComponentUtil.Timeline
             GameObject go,
             Component component,
             object target,
-            PropertyInfo p,
-            FieldInfo f,
+            Member member,
             string referenceName,
             string propertyName,
             PropertyTrackerData.PropertyTrackerDataOptions options)
@@ -383,8 +341,7 @@ namespace RSkoi_ComponentUtil.Timeline
             public GameObject Go = go;
             public Component Component = component;
             public object Target = target;
-            public PropertyInfo P = p;
-            public FieldInfo F = f;
+            public Member Member = member;
             public string ReferenceName = referenceName;
             public string PropertyName = propertyName;
             public PropertyTrackerData.PropertyTrackerDataOptions Options = options;
@@ -421,7 +378,7 @@ namespace RSkoi_ComponentUtil.Timeline
             public override string ToString()
             {
                 return $"SelectedTimelineModelTarget [ Oci: {Oci}, Go: {Go.name}, Target: {Target}," +
-                    $" P: {P}, F: {F}, PropertyName: {PropertyName}, Options: {Options} ]";
+                    $" Member: {Member}, PropertyName: {PropertyName}, Options: {Options} ]";
             }
         }
         #endregion classes

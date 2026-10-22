@@ -1,6 +1,7 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
+
+using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil.UI
 {
@@ -42,27 +43,19 @@ namespace RSkoi_ComponentUtil.UI
             }
         }
 
-        internal static GameObject MapPropertyOrFieldToEntryPrefab(Type t)
-        {
-            if (t == null)
-                return _componentPropertyNullEntryPrefab;
-            else if (t.IsEnum)
-                return _componentPropertyEnumEntryPrefab;
-            else if (t.Equals(typeof(bool)))
-                return _componentPropertyBoolEntryPrefab;
-            else if (t.Equals(typeof(Vector2)) ||
-                     t.Equals(typeof(Vector3)) ||
-                     t.Equals(typeof(Vector4)) ||
-                     t.Equals(typeof(Quaternion)))
-                return _componentPropertyVector4EntryPrefab;
-            else if (t.Equals(typeof(Color)))
-                return _componentPropertyColorEntryPrefab;
-            else if (t.Equals(typeof(string)))
-                return _componentPropertyDecimalEntryPrefab;
-            else if (!t.IsValueType || ComponentUtil.supportedTypesRewireAsReference.Contains(t))
-                return _componentPropertyReferenceEntryPrefab;
+        /// <summary>
+        /// Prefab for entries of properties / fields whose value is null
+        /// </summary>
+        internal static GameObject NullEntryPrefab => _componentPropertyNullEntryPrefab;
 
-            return _componentPropertyDecimalEntryPrefab;
-        }
+        internal static GameObject MapEntryKindToPrefab(EntryKind kind) => kind switch
+        {
+            EntryKind.Enum      => _componentPropertyEnumEntryPrefab,
+            EntryKind.Bool      => _componentPropertyBoolEntryPrefab,
+            EntryKind.Vector    => _componentPropertyVector4EntryPrefab,
+            EntryKind.Color     => _componentPropertyColorEntryPrefab,
+            EntryKind.Reference => _componentPropertyReferenceEntryPrefab,
+            _                   => _componentPropertyDecimalEntryPrefab, // input field, used for numbers and strings
+        };
     }
 }
