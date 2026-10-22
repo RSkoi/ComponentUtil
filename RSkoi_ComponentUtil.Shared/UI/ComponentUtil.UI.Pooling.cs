@@ -31,9 +31,9 @@ namespace RSkoi_ComponentUtil.UI
         #region property pool
         internal static PropertyUIEntry GetOrInstantiatePropEntryFromPool(GameObject entryPrefab, bool objectMode = false)
         {
-            Dictionary<GameObject, List<PropertyUIEntry>> pool = objectMode ?
+            var pool = objectMode ?
                 _objectInspectorPropertyBuckets : _componentInspectorPropertyBuckets;
-            Transform container = objectMode ?
+            var container = objectMode ?
                 _objectPropertyListContainer : _componentPropertyListContainer;
 
             if (pool.TryGetValue(entryPrefab, out var bucket))
@@ -48,9 +48,9 @@ namespace RSkoi_ComponentUtil.UI
                 pool.Add(entryPrefab, bucket);
             }
 
-            GameObject entryGO = GameObject.Instantiate(entryPrefab, container);
+            var entryGO = GameObject.Instantiate(entryPrefab, container);
             entryGO.SetActive(false);
-            PropertyUIEntry uiEntry = PreConfigureNewUiEntry(entryGO, entryPrefab);
+            var uiEntry = PreConfigureNewUiEntry(entryGO, entryPrefab);
             bucket.Add(uiEntry);
 
             return uiEntry;
@@ -58,7 +58,7 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static void ResetAndDisablePropertyEntries(bool objectMode = false)
         {
-            Dictionary<GameObject, List<PropertyUIEntry>> pool = objectMode ?
+            var pool = objectMode ?
                 _objectInspectorPropertyBuckets : _componentInspectorPropertyBuckets;
 
             foreach (var bucket in pool.Values)
@@ -92,7 +92,7 @@ namespace RSkoi_ComponentUtil.UI
                     _transformListContainer);
         }
 
-        private static void ResetAndDisableTransformEntries()
+        static void ResetAndDisableTransformEntries()
         {
             foreach (var entry in TransformListEntries)
             {
@@ -116,7 +116,7 @@ namespace RSkoi_ComponentUtil.UI
                     _componentListContainer);
         }
 
-        private static void ResetAndDisableComponentEntries()
+        static void ResetAndDisableComponentEntries()
         {
             foreach (var entry in ComponentListEntries)
             {
@@ -140,7 +140,7 @@ namespace RSkoi_ComponentUtil.UI
                     _componentAdderListContainer);
         }
 
-        private static void ResetAndDisableComponentAdderEntries()
+        static void ResetAndDisableComponentAdderEntries()
         {
             foreach (var entry in ComponentAdderListEntries)
             {
@@ -151,19 +151,19 @@ namespace RSkoi_ComponentUtil.UI
         #endregion component adder pool
 
         #region generic
-        private static void InstantiateGenericListEntries(
+        static void InstantiateGenericListEntries(
             int count,
             List<GenericUIListEntry> pool,
             GameObject prefab,
             Transform contentContainer)
         {
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                GameObject entryGO = GameObject.Instantiate(prefab, contentContainer);
+                var entryGO = GameObject.Instantiate(prefab, contentContainer);
                 entryGO.SetActive(false);
                 // order of disabled pool entries shouldn't matter
                 //entryGO.transform.SetAsLastSibling();
-                GenericUIListEntry uiEntry = PreConfigureNewGenericUIListEntry(entryGO);
+                var uiEntry = PreConfigureNewGenericUIListEntry(entryGO);
                 pool.Add(uiEntry);
             }
         }

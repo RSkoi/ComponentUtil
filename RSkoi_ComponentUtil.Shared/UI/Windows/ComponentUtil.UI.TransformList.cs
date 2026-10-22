@@ -13,7 +13,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Transform _transformListContainer;
 
         // pages
-        private static InputField _pageSearchTransformListInput;
+        static InputField _pageSearchTransformListInput;
         internal static string PageSearchTransformListInputValue
         {
             get
@@ -23,9 +23,9 @@ namespace RSkoi_ComponentUtil.UI
                 return _pageSearchTransformListInput.text;
             }
         }
-        private static Text _currentPageTransformListText;
-        private static Button _pageLastTransformListButton;
-        private static Button _pageNextTransformListButton;
+        static Text _currentPageTransformListText;
+        static Button _pageLastTransformListButton;
+        static Button _pageNextTransformListButton;
 
         internal static void UpdatePageNumberTransformList(int pageNumber)
         {

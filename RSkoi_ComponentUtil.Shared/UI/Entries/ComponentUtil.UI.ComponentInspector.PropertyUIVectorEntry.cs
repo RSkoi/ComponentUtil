@@ -7,11 +7,11 @@ namespace RSkoi_ComponentUtil.UI
     {
         internal class PropertyUIVectorEntry(PropertyUIEntry entry)
         {
-            private PropertyUIEntry _wrappedEntry = entry;
-            private readonly InputField _input4 = entry.UiGO.transform.Find("Input4").GetComponent<InputField>(); // rightmost
-            private readonly InputField _input3 = entry.UiGO.transform.Find("Input3").GetComponent<InputField>();
-            private readonly InputField _input2 = entry.UiGO.transform.Find("Input2").GetComponent<InputField>();
-            private readonly InputField _input1 = entry.UiGO.transform.Find("Input1").GetComponent<InputField>(); // leftmost
+            PropertyUIEntry _wrappedEntry = entry;
+            readonly InputField _input4 = entry.UiGO.transform.Find("Input4").GetComponent<InputField>(); // rightmost
+            readonly InputField _input3 = entry.UiGO.transform.Find("Input3").GetComponent<InputField>();
+            readonly InputField _input2 = entry.UiGO.transform.Find("Input2").GetComponent<InputField>();
+            readonly InputField _input1 = entry.UiGO.transform.Find("Input1").GetComponent<InputField>(); // leftmost
 
             /// <summary>
             /// event that fires when one input of the vector entry changes
@@ -23,30 +23,21 @@ namespace RSkoi_ComponentUtil.UI
             /// </summary>
             public InputField[] Inputs4
             {
-                get
-                {
-                    return [_input1, _input2, _input3, _input4];
-                }
+                get => [_input1, _input2, _input3, _input4];
             }
             /// <summary>
             /// returns three out of four ui elements of this vector
             /// </summary>
             public InputField[] Inputs3
             {
-                get
-                {
-                    return [_input2, _input3, _input4];
-                }
+                get => [_input2, _input3, _input4];
             }
             /// <summary>
             /// returns two out of four ui elements of this vector
             /// </summary>
             public InputField[] Inputs2
             {
-                get
-                {
-                    return [_input3, _input4];
-                }
+                get => [_input3, _input4];
             }
 
             /// <summary>
@@ -55,10 +46,10 @@ namespace RSkoi_ComponentUtil.UI
             /// <returns>values of input fields combined into string with # as separator</returns>
             public string GetUIVectorValuesAsString()
             {
-                string value1 = _input1.gameObject.activeSelf ? _input1.text : "";
-                string value2 = _input2.gameObject.activeSelf ? _input2.text : "";
-                string value3 = _input3.gameObject.activeSelf ? _input3.text : "";
-                string value4 = _input4.gameObject.activeSelf ? _input4.text : "";
+                var value1 = _input1.gameObject.activeSelf ? _input1.text : "";
+                var value2 = _input2.gameObject.activeSelf ? _input2.text : "";
+                var value3 = _input3.gameObject.activeSelf ? _input3.text : "";
+                var value4 = _input4.gameObject.activeSelf ? _input4.text : "";
                 return $"{value1}#{value2}#{value3}#{value4}";
             }
 
@@ -68,19 +59,19 @@ namespace RSkoi_ComponentUtil.UI
             /// <param name="encValue"></param>
             public void SetUIVectorValues(string encValue)
             {
-                InputField[] inputs = Inputs4;
-                string[] split = encValue.Split('#');
-                for (int i = 0; i < split.Length; i++)
+                var inputs = Inputs4;
+                var split = encValue.Split('#');
+                for (var i = 0; i < split.Length; i++)
                 {
-                    string s = split[i];
-                    if (s == "")
+                    var s = split[i];
+                    if (string.IsNullOrEmpty(s))
                     {
                         inputs[i].gameObject.SetActive(false);
                         continue;
                     }
 
                     inputs[i].gameObject.SetActive(true);
-                    InputField input = inputs[i];
+                    var input = inputs[i];
                     if (input.gameObject.activeSelf)
                         input.text = s;
                 }
@@ -92,7 +83,7 @@ namespace RSkoi_ComponentUtil.UI
             /// <param name="b"></param>
             public void SetInteractable(bool b)
             {
-                foreach (InputField i in Inputs4)
+                foreach (var i in Inputs4)
                     i.interactable = b;
             }
 
@@ -102,7 +93,7 @@ namespace RSkoi_ComponentUtil.UI
             /// <param name="ct"></param>
             public void SetContentType(InputField.ContentType ct)
             {
-                foreach (InputField i in Inputs4)
+                foreach (var i in Inputs4)
                     i.contentType = ct;
             }
 
@@ -111,13 +102,13 @@ namespace RSkoi_ComponentUtil.UI
             /// </summary>
             public void RegisterInputEvents()
             {
-                foreach (InputField i in Inputs4)
+                foreach (var i in Inputs4)
                     i.onValueChanged.AddListener(_ => OnValueChanged.Invoke(GetUIVectorValuesAsString()));
             }
 
             public void RemoveAllInputEvents()
             {
-                foreach (InputField i in Inputs4)
+                foreach (var i in Inputs4)
                     i.onValueChanged.RemoveAllListeners();
             }
         }

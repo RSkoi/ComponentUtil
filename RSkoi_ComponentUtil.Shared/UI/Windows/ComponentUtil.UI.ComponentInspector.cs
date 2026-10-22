@@ -23,15 +23,15 @@ namespace RSkoi_ComponentUtil.UI
         // scroll view content container
         internal static Transform _componentPropertyListContainer;
         // specific to ComponentInspector window
-        private static Button _hideComponentListButton;
+        static Button _hideComponentListButton;
         internal static Button _componentDeleteButton;
         internal static Text _componentPropertyListSelectedComponentText;
         internal static Button _componentPropertyCopyButton;
         internal static Button _componentPropertyPasteButton;
 
         // pages
-        private static Button _refreshComponentInspectorButton;
-        private static InputField _pageSearchComponentInspectorInput;
+        static Button _refreshComponentInspectorButton;
+        static InputField _pageSearchComponentInspectorInput;
         internal static string PageSearchComponentInspectorInputValue
         {
             get

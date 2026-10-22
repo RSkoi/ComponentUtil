@@ -5,13 +5,14 @@ using UnityEngine;
 using UnityEngine.UI;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Core;
 using RSkoi_ComponentUtil.Timeline;
 
 namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        private void ConfigReference(
+        void ConfigReference(
             ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
@@ -25,7 +26,7 @@ namespace RSkoi_ComponentUtil
         {
             if (uiEntry.UiSelectable == null)
                 uiEntry.UiSelectable = entry.GetComponentInChildren<Button>();
-            Button button = (Button)uiEntry.UiSelectable;
+            var button = (Button)uiEntry.UiSelectable;
             button.onClick.RemoveAllListeners();
 
             // setMethodIsPublic is irrelevant here because values will be set with reflection
@@ -44,7 +45,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.ParentUiEntry = parentUiEntry;
         }
 
-        private void ConfigDropdown(
+        void ConfigDropdown(
             ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
@@ -59,23 +60,31 @@ namespace RSkoi_ComponentUtil
         {
             if (uiEntry.UiSelectable == null)
                 uiEntry.UiSelectable = entry.GetComponentInChildren<Dropdown>();
-            Dropdown dropdownField = (Dropdown)uiEntry.UiSelectable;
+            var dropdownField = (Dropdown)uiEntry.UiSelectable;
             dropdownField.onValueChanged.RemoveAllListeners();
 
             // configure options
-            List<Dropdown.OptionData> options = [];
-            int selectedOption = 0;
-            int i = 0;
-            foreach (var enumValue in Enum.GetValues(type))
+            // dropdown works with option indices, which are not the same as enum values
+            // (e.g. flag enums 0, 1, 2, 4 or enums containing negative values) -> map between them
+            var enumValues = Enum.GetValues(type);
+            var options = new List<Dropdown.OptionData>();
+            var selectedOption = 0;
+            for (var i = 0; i < enumValues.Length; i++)
             {
-                Dropdown.OptionData option = new() { text = enumValue.ToString() };
-                options.Add(option);
+                var enumValue = enumValues.GetValue(i);
+                options.Add(new() { text = enumValue.ToString() });
 
                 // option that's currently selected
                 if (enumValue.Equals(value))
                     selectedOption = i;
-
-                i++;
+            }
+            int EnumValueOfOption(int optionIndex) => Convert.ToInt32(enumValues.GetValue(optionIndex));
+            int OptionOfEnumValue(int enumValue)
+            {
+                for (var i = 0; i < enumValues.Length; i++)
+                    if (Convert.ToInt32(enumValues.GetValue(i)) == enumValue)
+                        return i;
+                return 0; // fallback to first option
             }
             dropdownField.ClearOptions();
             dropdownField.AddOptions(options);
@@ -88,9 +97,10 @@ namespace RSkoi_ComponentUtil
             void registerMyEvents()
             {
                 if (isProperty)
-                    dropdownField.onValueChanged.AddListener(value =>
+                {
+                    dropdownField.onValueChanged.AddListener(optionIndex =>
                     {
-                        int defaultValue = (int)p.GetValue(input, null);
+                        var defaultValue = Convert.ToInt32(p.GetValue(input, null));
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -100,12 +110,16 @@ namespace RSkoi_ComponentUtil
                         else
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, p.Name, defaultValue,
                                 PropertyTrackerData.PropertyTrackerDataOptions.IsProperty | PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        SetPropertyValueInt(p, value, input);
+
+                        var enumValue = EnumValueOfOption(optionIndex);
+                        SetPropertyValueInt(p, enumValue, input);
                     });
+                }
                 else
-                    dropdownField.onValueChanged.AddListener(value =>
+                {
+                    dropdownField.onValueChanged.AddListener(optionIndex =>
                     {
-                        int defaultValue = (int)f.GetValue(input);
+                        var defaultValue = Convert.ToInt32(f.GetValue(input));
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -115,8 +129,11 @@ namespace RSkoi_ComponentUtil
                         else
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, f.Name, defaultValue,
                                 PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
-                        SetFieldValueInt(f, value, input);
+
+                        var enumValue = EnumValueOfOption(optionIndex);
+                        SetFieldValueInt(f, enumValue, input);
                     });
+                }
 
                 dropdownField.onValueChanged.AddListener(_ =>
                 {
@@ -131,14 +148,16 @@ namespace RSkoi_ComponentUtil
                 // suspending all (non-persistent) listeners because dropdownField.value
                 // will trigger onValueChanged, which would add to tracker
                 dropdownField.onValueChanged.RemoveAllListeners();
-                dropdownField.value = (int)value;
+                // value is the tracked default, i.e. an enum value, not an option index
+                var enumValue = Convert.ToInt32(value);
+                dropdownField.value = OptionOfEnumValue(enumValue);
                 registerMyEvents();
-                return dropdownField.value;
+                return enumValue;
             };
             uiEntry.ParentUiEntry = parentUiEntry;
         }
 
-        private void ConfigToggle(
+        void ConfigToggle(
             ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
@@ -153,7 +172,7 @@ namespace RSkoi_ComponentUtil
         {
             if (uiEntry.UiSelectable == null)
                 uiEntry.UiSelectable = entry.GetComponentInChildren<Toggle>();
-            Toggle toggleField = (Toggle)uiEntry.UiSelectable;
+            var toggleField = (Toggle)uiEntry.UiSelectable;
             toggleField.onValueChanged.RemoveAllListeners();
 
             toggleField.isOn = (bool)value;
@@ -163,7 +182,7 @@ namespace RSkoi_ComponentUtil
                 if (isProperty)
                     toggleField.onValueChanged.AddListener(value =>
                     {
-                        object defaultValue = p.GetValue(input, null);
+                        var defaultValue = p.GetValue(input, null);
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -178,7 +197,7 @@ namespace RSkoi_ComponentUtil
                 else
                     toggleField.onValueChanged.AddListener(value =>
                     {
-                        object defaultValue = f.GetValue(input);
+                        var defaultValue = f.GetValue(input);
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -210,7 +229,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.ParentUiEntry = parentUiEntry;
         }
 
-        private void ConfigInput(
+        void ConfigInput(
             ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
@@ -226,11 +245,11 @@ namespace RSkoi_ComponentUtil
         {
             if (uiEntry.UiSelectable == null)
                 uiEntry.UiSelectable = entry.GetComponentInChildren<InputField>();
-            InputField inputField = (InputField)uiEntry.UiSelectable;
+            var inputField = (InputField)uiEntry.UiSelectable;
             inputField.onValueChanged.RemoveAllListeners();
 
             inputField.contentType = contentType;
-            inputField.text = value.ToString();
+            inputField.text = InvariantConversion.ToInvariantString(value);
             inputField.interactable = setMethodIsPublic;
 
             void registerMyEvents()
@@ -238,7 +257,7 @@ namespace RSkoi_ComponentUtil
                 if (isProperty)
                     inputField.onValueChanged.AddListener(value =>
                     {
-                        object defaultValue = p.GetValue(input, null);
+                        var defaultValue = p.GetValue(input, null);
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -253,7 +272,7 @@ namespace RSkoi_ComponentUtil
                 else
                     inputField.onValueChanged.AddListener(value =>
                     {
-                        object defaultValue = f.GetValue(input);
+                        var defaultValue = f.GetValue(input);
                         if (objectMode)
                         {
                             AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -278,7 +297,7 @@ namespace RSkoi_ComponentUtil
                 // suspending all (non-persistent) listeners because inputField.text
                 // will trigger onValueChanged, which would add to tracker
                 inputField.onValueChanged.RemoveAllListeners();
-                inputField.text = value.ToString();
+                inputField.text = InvariantConversion.ToInvariantString(value);
                 registerMyEvents();
                 return inputField.text;
             };
@@ -287,7 +306,7 @@ namespace RSkoi_ComponentUtil
         }
 
         #region reset button
-        private void ConfigReset(
+        void ConfigReset(
             PropertyKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             Component input,
@@ -304,7 +323,7 @@ namespace RSkoi_ComponentUtil
                 if (!PropertyIsTracked(key, propName))
                     return;
 
-                object defaultValue = GetTrackedDefaultValue(key, propName);
+                var defaultValue = GetTrackedDefaultValue(key, propName);
                 if (uiEntry.ResetOverrideDelegate != null)
                     uiEntry.ResetOverrideDelegate.Invoke(defaultValue);
                 else if (isProperty)
@@ -319,7 +338,7 @@ namespace RSkoi_ComponentUtil
             });
         }
 
-        private void ConfigResetReference(
+        void ConfigResetReference(
             PropertyReferenceKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             object input,
@@ -332,7 +351,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.ResetButton.interactable = false;
         }
 
-        private void ConfigResetReferenceProperty(
+        void ConfigResetReferenceProperty(
             PropertyReferenceKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             object input,
@@ -349,7 +368,7 @@ namespace RSkoi_ComponentUtil
                 if (!PropertyIsTracked(key, propName))
                     return;
 
-                object defaultValue = GetTrackedDefaultValue(key, propName);
+                var defaultValue = GetTrackedDefaultValue(key, propName);
                 if (uiEntry.ResetOverrideDelegate != null)
                     uiEntry.ResetOverrideDelegate.Invoke(defaultValue);
                 else if (isProperty)
@@ -368,7 +387,7 @@ namespace RSkoi_ComponentUtil
         #endregion reset button
 
         #region timeline button
-        private void ConfigTimeline(
+        void ConfigTimeline(
             PropertyKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             Component input,
@@ -385,7 +404,7 @@ namespace RSkoi_ComponentUtil
                 return;
             }
 
-            PropertyTrackerData.PropertyTrackerDataOptions options = typeAsFlag;
+            var options = typeAsFlag;
             if (isProperty)
                 options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
             uiEntry.TimelineButton.interactable = setMethodIsPublic;
@@ -393,7 +412,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.TimelineButton.onClick.AddListener(() => ComponentUtilTimeline.SelectTimelineModelTarget(key, p, f, propName, options));
         }
 
-        private void ConfigTimelineReference(
+        void ConfigTimelineReference(
             PropertyReferenceKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             object input,
@@ -412,7 +431,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.TimelineButton.interactable = false;
         }
 
-        private void ConfigTimelineReferenceProperty(
+        void ConfigTimelineReferenceProperty(
             PropertyReferenceKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             object input,
@@ -429,7 +448,7 @@ namespace RSkoi_ComponentUtil
                 return;
             }
 
-            PropertyTrackerData.PropertyTrackerDataOptions options = typeAsFlag;
+            var options = typeAsFlag;
             if (isProperty)
                 options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
             uiEntry.TimelineButton.interactable = setMethodIsPublic;

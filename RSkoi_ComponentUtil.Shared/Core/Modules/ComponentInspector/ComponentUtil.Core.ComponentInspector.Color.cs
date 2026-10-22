@@ -1,16 +1,18 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        private void ConfigColor(
+        void ConfigColor(
             ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
@@ -25,19 +27,16 @@ namespace RSkoi_ComponentUtil
         {
             if (uiEntry.UiSelectable == null)
                 uiEntry.UiSelectable = entry.transform.Find("ColorButton").GetComponentInChildren<Button>();
-            Button colorButton = (Button)uiEntry.UiSelectable;
+            var colorButton = (Button)uiEntry.UiSelectable;
             colorButton.onClick.RemoveAllListeners();
 
-            Studio.ColorPalette colorPalette = Studio.Studio.Instance.colorPalette;
-            Color GetCurColor()
-            {
-                return (Color)(isProperty ? p.GetValue(input, null) : f.GetValue(input));
-            };
+            var colorPalette = Studio.Studio.Instance.colorPalette;
+            Color GetCurrenntColor() => (Color)(isProperty ? p.GetValue(input, null) : f.GetValue(input));
 
             colorButton.interactable = setMethodIsPublic;
-            SetButtonColor(colorButton, GetCurColor());
+            SetButtonColor(colorButton, GetCurrenntColor());
 
-            string propName = isProperty ? p.Name : f.Name;
+            var propName = isProperty ? p.Name : f.Name;
 
             colorButton.onClick.AddListener(() =>
             {
@@ -47,16 +46,16 @@ namespace RSkoi_ComponentUtil
                     return;
                 }
 
-                Color curColor = GetCurColor();
-                colorPalette.Setup($"ComponentUtil: {propName} Color", curColor, (c) => 
+                var currentColor = GetCurrenntColor();
+                colorPalette.Setup($"ComponentUtil: {propName} Color", currentColor, (c) => 
                 {
-                    curColor = GetCurColor();
-                    string colorValueString = ColorConversion.ColorToString(curColor);
+                    currentColor = GetCurrenntColor();
+                    var colorValueString = ColorConversion.ColorToString(currentColor);
 
                     SetButtonColor(colorButton, c);
 
                     object defaultValue = colorValueString; 
-                    PropertyTrackerData.PropertyTrackerDataOptions options = PropertyTrackerData.PropertyTrackerDataOptions.IsColor;
+                    var options = PropertyTrackerData.PropertyTrackerDataOptions.IsColor;
                     if (isProperty)
                         options |= PropertyTrackerData.PropertyTrackerDataOptions.IsProperty;
 
@@ -76,19 +75,19 @@ namespace RSkoi_ComponentUtil
 
                     uiEntry.SetBgColorEdited();
                     ComponentUtilUI.TraverseAndSetEditedParents();
-                }, true);
+                }, _useAlpha: true);
                 colorPalette.visible = true;
             });
 
             uiEntry.UiComponentSetValueResetDelegate = (value) =>
             {
-                Color valColor = ColorConversion.StringToColor((string)value);
+                var valColor = ColorConversion.StringToColor((string)value);
                 SetButtonColor(colorButton, valColor);
                 return valColor;
             };
             uiEntry.ResetOverrideDelegate = (value) =>
             {
-                Color valColor = ColorConversion.StringToColor((string)value);
+                var valColor = ColorConversion.StringToColor((string)value);
                 if (isProperty)
                     SetPropertyValue(p, valColor, input);
                 else
@@ -98,17 +97,17 @@ namespace RSkoi_ComponentUtil
             uiEntry.ParentUiEntry = parentUiEntry;
         }
 
-        private void SetButtonColor(Button button, Color color)
+        void SetButtonColor(Button button, Color color)
         {
             // clamp alpha, otherwise button will not be visible at all
             if (color.a < 0.1f)
                 color.a = 0.1f;
 
-            ColorBlock buttonColors = button.colors;
+            var buttonColors = button.colors;
             buttonColors.normalColor = color;
             buttonColors.highlightedColor = color;
             buttonColors.pressedColor = color;
-            buttonColors.disabledColor = new(color.r, color.g, color.b, 0.5f);
+            buttonColors.disabledColor = new(color.r, color.g, color.b, a: 0.5f);
             button.colors = buttonColors;
         }
 
@@ -126,24 +125,24 @@ namespace RSkoi_ComponentUtil
             /// <returns>values parsed to color</returns>
             public static Color StringToColor(string value)
             {
-                Color colorValue = Color.white;
+                var colorValue = Color.white;
 
-                string[] split = value.Split('#');
-                int count = split.Where(s => !s.IsNullOrEmpty()).Count();
+                var split = value.Split('#');
+                var count = split.Where(s => !s.IsNullOrEmpty()).Count();
                 if (count != 4)
                 {
                     _logger.LogError("ColorConversion.StringToColor() was provided incomplete color string, returning default");
                     return colorValue;
                 }
 
-                int i = 0;
-                foreach (string s in split)
+                var i = 0;
+                foreach (var s in split)
                 {
                     if (s.IsNullOrEmpty())
                         continue;
 
                     // exceptions should be caught by user
-                    colorValue[i] = float.Parse(s);
+                    colorValue[i] = InvariantConversion.ParseFloat(s);
                     i++;
                 }
 
@@ -152,7 +151,7 @@ namespace RSkoi_ComponentUtil
 
             public static string ColorToString(Color c)
             {
-                return $"{c.r}#{c.g}#{c.b}#{c.a}";
+                return string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", c.r, c.g, c.b, c.a);
             }
         }
     }

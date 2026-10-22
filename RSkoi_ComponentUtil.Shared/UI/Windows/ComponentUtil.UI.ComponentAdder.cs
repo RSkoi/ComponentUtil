@@ -15,7 +15,7 @@ namespace RSkoi_ComponentUtil.UI
         internal static Text _componentAdderListSelectedGOText;
 
         // pages
-        private static InputField _pageSearchComponentAdderInput;
+        static InputField _pageSearchComponentAdderInput;
         internal static string PageSearchComponentAdderInputValue
         {
             get
@@ -25,9 +25,9 @@ namespace RSkoi_ComponentUtil.UI
                 return _pageSearchComponentAdderInput.text;
             }
         }
-        private static Text _currentPageComponentAdderText;
-        private static Button _pageLastComponentAdderButton;
-        private static Button _pageNextComponentAdderButton;
+        static Text _currentPageComponentAdderText;
+        static Button _pageLastComponentAdderButton;
+        static Button _pageNextComponentAdderButton;
 
         internal static void UpdatePageNumberComponentAdder(int pageNumber)
         {

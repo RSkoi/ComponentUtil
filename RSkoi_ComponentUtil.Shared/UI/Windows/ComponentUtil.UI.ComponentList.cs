@@ -12,12 +12,12 @@ namespace RSkoi_ComponentUtil.UI
         // scroll view content container
         internal static Transform _componentListContainer;
         // specific to ComponentList window window
-        private static Button _hideTransformListButton;
-        private static Button _toggleComponentAdderButton;
+        static Button _hideTransformListButton;
+        static Button _toggleComponentAdderButton;
         internal static Text _componentListSelectedGOText;
 
         // pages
-        private static InputField _pageSearchComponentListInput;
+        static InputField _pageSearchComponentListInput;
         internal static string PageSearchComponentListInputValue
         {
             get
@@ -27,9 +27,9 @@ namespace RSkoi_ComponentUtil.UI
                 return _pageSearchComponentListInput.text;
             }
         }
-        private static Text _currentPageComponentListText;
-        private static Button _pageLastComponentListButton;
-        private static Button _pageNextComponentListButton;
+        static Text _currentPageComponentListText;
+        static Button _pageLastComponentListButton;
+        static Button _pageNextComponentListButton;
 
         internal static void UpdatePageNumberComponentList(int pageNumber)
         {

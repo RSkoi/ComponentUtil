@@ -2,7 +2,6 @@
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
-using Studio;
 
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
@@ -26,14 +25,14 @@ namespace RSkoi_ComponentUtil
             uiEntry.Wrapper = value;
             _selectedReferencePropertyUiEntry = uiEntry;
 
-            ColorPalette colorPalette = Studio.Studio.Instance.colorPalette;
+            var colorPalette = Studio.Studio.Instance.colorPalette;
             if (colorPalette.visible)           // this closes the palette even if it doesn't 'belong' to ComponentUtil
                 colorPalette.visible = false;   // fix would be to e.g. check title of the window but that means a dependency
 
             if (!ComponentUtilUI._objectInspectorWindow.gameObject.activeSelf)
                 ComponentUtilUI._objectInspectorWindow.gameObject.SetActive(true);
 
-            string propName = isProperty ? p.Name : f.Name;
+            var propName = isProperty ? p.Name : f.Name;
             GetAllFieldsAndPropertiesOfObject(propName, type, value, parentUiEntry);
         }
 
@@ -42,20 +41,20 @@ namespace RSkoi_ComponentUtil
         /// </summary>
         /// <param name="input">referenced object to list the properties and fields of</param>
         /// <param name="inputUi">selected component ui entry</param>
-        private void GetAllFieldsAndPropertiesOfObject(string propName, Type type, object input, ComponentUtilUI.GenericUIListEntry inputUi)
+        void GetAllFieldsAndPropertiesOfObject(string propName, Type type, object input, ComponentUtilUI.GenericUIListEntry inputUi)
         {
             if (input == null || inputUi == null)
                 return;
 
-            ComponentUtilUI.ResetAndDisablePropertyEntries(true);
+            ComponentUtilUI.ResetAndDisablePropertyEntries(objectMode: true);
 
-            Component cParent = (Component)inputUi.UiTarget;
+            var cParent = (Component)inputUi.UiTarget;
             ComponentUtilUI.UpdateUISelectedText(
                 ComponentUtilUI._objectPropertyListSelectedText,
                 $"{cParent.gameObject.name}.{cParent.GetType().Name}.{propName} ({type.Name})");
 
-            string filter = ComponentUtilUI.PageSearchObjectInspectorInputValue.ToLower();
-            foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfosObject(input))
+            var filter = ComponentUtilUI.PageSearchObjectInspectorInputValue.ToLower();
+            foreach (var p in ComponentUtilCache.GetOrCachePropertyInfosObject(input))
             {
                 // ignore properties with private getters
                 if (p.GetGetMethod() == null)
@@ -67,13 +66,13 @@ namespace RSkoi_ComponentUtil
                     continue;
 
                 // filter string
-                if (filter != "" && !p.Name.ToLower().Contains(filter))
+                if (!string.IsNullOrEmpty(filter) && !p.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null, true);
+                ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null, objectMode: true);
             }
 
-            foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfosObject(input))
+            foreach (var f in ComponentUtilCache.GetOrCacheFieldInfosObject(input))
             {
                 // no recursing in the object inspector else it could lead to circular hell
                 // this includes collections
@@ -81,10 +80,10 @@ namespace RSkoi_ComponentUtil
                     continue;
 
                 // filter string
-                if (filter != "" && !f.Name.ToLower().Contains(filter))
+                if (!string.IsNullOrEmpty(filter) && !f.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f, true);
+                ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f, objectMode: true);
             }
         }
 
@@ -104,9 +103,9 @@ namespace RSkoi_ComponentUtil
             if (_selectedReferencePropertyUiEntry == null)
                 return;
 
-            object input = _selectedReferencePropertyUiEntry.Wrapper;
-            ComponentUtilCache.GetOrCachePropertyInfosObject(input, true);
-            ComponentUtilCache.GetOrCacheFieldInfosObject(input, true);
+            var input = _selectedReferencePropertyUiEntry.Wrapper;
+            ComponentUtilCache.GetOrCachePropertyInfosObject(input, forceRefresh: true);
+            ComponentUtilCache.GetOrCacheFieldInfosObject(input, forceRefresh: true);
             ((Button)_selectedReferencePropertyUiEntry.UiSelectable).onClick.Invoke();
 
             _logger.LogMessage("Force refreshed ObjectInspector cache");

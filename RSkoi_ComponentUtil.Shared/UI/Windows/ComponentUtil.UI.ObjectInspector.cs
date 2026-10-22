@@ -17,8 +17,8 @@ namespace RSkoi_ComponentUtil.UI
         internal static Button _objectPropertyPasteButton;
 
         // pages
-        private static Button _refreshObjectInspectorButton;
-        private static InputField _pageSearchObjectInspectorInput;
+        static Button _refreshObjectInspectorButton;
+        static InputField _pageSearchObjectInspectorInput;
         internal static string PageSearchObjectInspectorInputValue
         {
             get

@@ -17,7 +17,7 @@ namespace RSkoi_ComponentUtil.UI
     internal static partial class ComponentUtilUI
     {
         // overarching canvas prefab
-        private static GameObject _canvasPrefab;
+        static GameObject _canvasPrefab;
 
         #region canvas and containers
         internal static GameObject _canvasContainer;
@@ -38,12 +38,12 @@ namespace RSkoi_ComponentUtil.UI
         #endregion canvas and containers
 
         #region entry bg colors
-        private static readonly Color ENTRY_BG_COLOR_DEFAULT = Color.white;
-        private static readonly Color ENTRY_BG_COLOR_EDITED = Color.green;
+        static readonly Color ENTRY_BG_COLOR_DEFAULT = Color.white;
+        static readonly Color ENTRY_BG_COLOR_EDITED = Color.green;
         #endregion entry bg colors
 
         // this will be overwritten in InstantiateUI()
-        private static float _baseCanvasReferenceResolutionY = 600f;
+        static float _baseCanvasReferenceResolutionY = 600f;
 
         /// <summary>
         /// initializes the UI, call only once
@@ -78,7 +78,7 @@ namespace RSkoi_ComponentUtil.UI
         public static void ShowWindow()
         {
             _canvas.enabled = true;
-            float uiScale = ComponentUtil.UiScale.Value;
+            var uiScale = ComponentUtil.UiScale.Value;
             _canvasScaler.referenceResolution = new(
                 _canvasScaler.referenceResolution.x,
                 _baseCanvasReferenceResolutionY / uiScale); // aiiee float division, what could go wrong
@@ -126,8 +126,8 @@ namespace RSkoi_ComponentUtil.UI
              * => the more entries in the tracker and the bigger the pool, the worse this gets
              */
 
-            HashSet<Transform> trackedTransforms = ComponentUtil.TrackedTransforms;
-            HashSet<Component> trackedComponents = ComponentUtil.TrackedComponents;
+            var trackedTransforms = ComponentUtil.TrackedTransforms;
+            var trackedComponents = ComponentUtil.TrackedComponents;
 
             foreach (var entry in TransformListEntries)
             {
@@ -158,8 +158,8 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static void UpdateUISelectedText(Text uiText, string selectedName, char separator = ':')
         {
-            int splitIndex = uiText.text.IndexOf(separator);
-            string newText = uiText.text.Substring(0, splitIndex + 1);
+            var splitIndex = uiText.text.IndexOf(separator);
+            var newText = uiText.text.Substring(startIndex: 0, splitIndex + 1);
             newText += $" <b>{selectedName}</b>";
             uiText.text = newText;
         }
@@ -177,14 +177,14 @@ namespace RSkoi_ComponentUtil.UI
         #endregion internal
 
         #region private - loading and instantiating
-        private static void LoadUIResources()
+        static void LoadUIResources()
         {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            Stream stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.componentutil.unity3d");
-            byte[] buffer = new byte[stream.Length];
-            stream.Read(buffer, 0, buffer.Length);
+            var assembly = Assembly.GetExecutingAssembly();
+            var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.componentutil.unity3d");
+            var buffer = new byte[stream.Length];
+            stream.Read(buffer, offset: 0, buffer.Length);
 
-            AssetBundle ab                          = AssetBundle.LoadFromMemory(buffer);
+            var ab                          = AssetBundle.LoadFromMemory(buffer);
             _canvasPrefab                           = ab.LoadAsset<GameObject>("ComponentUtilCanvas");
             _genericListEntryPrefab                 = ab.LoadAsset<GameObject>("ListEntry");
             _componentPropertyDecimalEntryPrefab    = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Decimal");
@@ -198,7 +198,7 @@ namespace RSkoi_ComponentUtil.UI
             stream.Close();
         }
 
-        private static void InstantiateUI()
+        static void InstantiateUI()
         {
             _canvasContainer = GameObject.Instantiate(_canvasPrefab);
             _canvas = _canvasContainer.GetComponent<Canvas>();
@@ -248,12 +248,12 @@ namespace RSkoi_ComponentUtil.UI
             // close buttons
             SetupCloseButton(_transformWindow);
             SetupCloseButton(_componentWindow);
-            SetupCloseButton(_inspectorWindow, true);
+            SetupCloseButton(_inspectorWindow, hideWholeUI: true);
             SetupCloseButton(_componentAdderWindow);
             SetupCloseButton(_objectInspectorWindow);
 
             // page buttons
-            Transform page = _transformWindow.Find("TransformList/PageContainer");
+            var page = _transformWindow.Find("TransformList/PageContainer");
             _pageSearchTransformListInput = page.Find("SearchInput").GetComponent<InputField>();
             _pageSearchTransformListInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterTransform());
             _currentPageTransformListText = page.Find("PageCurrentLabel").GetComponent<Text>();
@@ -297,19 +297,19 @@ namespace RSkoi_ComponentUtil.UI
 
             // copy paste buttons
             _componentPropertyCopyButton = _inspectorWindow.Find("ComponentPropertyList/CopyEditsButton").GetComponent<Button>();
-            _componentPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(false));
+            _componentPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(objectMode: false));
             _componentPropertyPasteButton = _inspectorWindow.Find("ComponentPropertyList/PasteEditsButton").GetComponent<Button>();
-            _componentPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(false));
+            _componentPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(objectMode: false));
             _componentPropertyPasteButton.interactable = false;
 
             _objectPropertyCopyButton = _objectInspectorWindow.Find("ObjectPropertyList/CopyEditsButton").GetComponent<Button>();
-            _objectPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(true));
+            _objectPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(objectMode: true));
             _objectPropertyPasteButton = _objectInspectorWindow.Find("ObjectPropertyList/PasteEditsButton").GetComponent<Button>();
-            _objectPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(true));
+            _objectPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(objectMode: true));
             _objectPropertyPasteButton.interactable = false;
 
             // prepare pools
-            int itemsPerPage = ComponentUtil.ItemsPerPageValue;
+            var itemsPerPage = ComponentUtil.ItemsPerPageValue;
             PrepareTransformPool(itemsPerPage);
             PrepareComponentPool(itemsPerPage);
             PrepareComponentAdderPool(itemsPerPage);
@@ -324,22 +324,22 @@ namespace RSkoi_ComponentUtil.UI
             _baseCanvasReferenceResolutionY = _canvasScaler.referenceResolution.y;
         }
 
-        private static void SetupDraggable(Transform windowContainer)
+        static void SetupDraggable(Transform windowContainer)
         {
-            ComponentUtilDraggable draggable = windowContainer.Find("LabelDragPanel").gameObject.AddComponent<ComponentUtilDraggable>();
+            var draggable = windowContainer.Find("LabelDragPanel").gameObject.AddComponent<ComponentUtilDraggable>();
             draggable.target = windowContainer.GetComponent<RectTransform>();
         }
 
-        private static void SetupCloseButton(Transform windowContainer, bool hideWholeUI = false)
+        static void SetupCloseButton(Transform windowContainer, bool hideWholeUI = false)
         {
-            Button b = windowContainer.Find("CloseWindowButton").GetComponent<Button>();
+            var b = windowContainer.Find("CloseWindowButton").GetComponent<Button>();
             if (hideWholeUI)
-                b.onClick.AddListener(() => HideWindow());
+                b.onClick.AddListener(HideWindow);
             else
                 b.onClick.AddListener(() => ToggleSubWindow(windowContainer));
         }
 
-        private static void ToggleSubWindow(Transform container)
+        static void ToggleSubWindow(Transform container)
         {
             container.gameObject.SetActive(!container.gameObject.activeSelf);
         }

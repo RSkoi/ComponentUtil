@@ -33,13 +33,13 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI._componentDeleteButton.interactable = true;
                 ComponentUtilUI._componentDeleteButton.onClick.AddListener(() =>
                 {
-                    GameObject go = input.gameObject;
+                    var go = input.gameObject;
                     if (RemoveComponentFromTracker(_selectedObject, go, input))
                         DestroyImmediate(input); // scary, so that GetOrCacheComponents doesn't pick it up again
 
                     // force refresh cache
                     ComponentUtilCache.ClearComponentFromCache(input);
-                    ComponentUtilCache.GetOrCacheComponents(go, true);
+                    ComponentUtilCache.GetOrCacheComponents(go, forceRefresh: true);
 
                     Entry(_selectedObject);
                 });
@@ -64,8 +64,8 @@ namespace RSkoi_ComponentUtil
             if (ComponentUtilUI._objectInspectorWindow.gameObject.activeSelf)
                 ComponentUtilUI._objectInspectorWindow.gameObject.SetActive(false);
 
-            string filter = ComponentUtilUI.PageSearchComponentInspectorInputValue.ToLower();
-            foreach (PropertyInfo p in ComponentUtilCache.GetOrCachePropertyInfos(input))
+            var filter = ComponentUtilUI.PageSearchComponentInspectorInputValue.ToLower();
+            foreach (var p in ComponentUtilCache.GetOrCachePropertyInfos(input))
             {
                 // indexed properties are annoying
                 if (p.GetIndexParameters().Length != 0)
@@ -81,13 +81,13 @@ namespace RSkoi_ComponentUtil
                     continue;
 
                 // filter string
-                if (filter != "" && !p.Name.ToLower().Contains(filter))
+                if (!string.IsNullOrEmpty(filter) && !p.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, null);
+                ConfigurePropertyEntry(_selectedComponentUiEntry, input, p, f: null);
             }
 
-            foreach (FieldInfo f in ComponentUtilCache.GetOrCacheFieldInfos(input))
+            foreach (var f in ComponentUtilCache.GetOrCacheFieldInfos(input))
             {
                 // collections are annoying
                 if (typeof(IEnumerable).IsAssignableFrom(f.FieldType)
@@ -95,10 +95,10 @@ namespace RSkoi_ComponentUtil
                     continue;
 
                 // filter string
-                if (filter != "" && !f.Name.ToLower().Contains(filter))
+                if (!string.IsNullOrEmpty(filter) && !f.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, null, f);
+                ConfigurePropertyEntry(_selectedComponentUiEntry, input, p: null, f);
             }
         }
 
@@ -123,7 +123,7 @@ namespace RSkoi_ComponentUtil
             return null;
         }
 
-        private void ConfigurePropertyEntry(ComponentUtilUI.GenericUIListEntry parentUiEntry, object input, PropertyInfo p, FieldInfo f, bool objectMode = false)
+        void ConfigurePropertyEntry(ComponentUtilUI.GenericUIListEntry parentUiEntry, object input, PropertyInfo p, FieldInfo f, bool objectMode = false)
         {
             /* 'objectMode' signifies whether we're populating ObjectInspector (true) or ComponentInspector (false)
             *  'input' is either
@@ -150,42 +150,42 @@ namespace RSkoi_ComponentUtil
                 return;
             }
 
-            Component cInput = objectMode ? null : (Component)input;
+            var cInput = objectMode ? null : (Component)input;
             if (!objectMode && cInput == null)
             {
                 _logger.LogError("ConfigurePropertyEntry: objectMode is false, but could not convert input to Component");
                 return;
             }
             
-            Type type = isProperty ? p.PropertyType : f.FieldType;
+            var type = isProperty ? p.PropertyType : f.FieldType;
             bool typeIsSupported = supportedTypes.Contains(type);
             bool typeIsSupportedAndRewired = supportedTypesRewireAsReference.Contains(type);
             bool typeIsBlacklisted = blacklistTypes.Contains(type);
             if (typeIsBlacklisted
                 || !type.IsEnum && type.IsValueType && !typeIsSupported && !typeIsSupportedAndRewired)
                 return;
-            
+
             // properties without set method will be non-interactable except 'generic' reference types
             bool setMethodIsPublic = !isProperty || (p.GetSetMethod() != null);
-            string propName = isProperty ? p.Name : f.Name;
+            var propName = isProperty ? p.Name : f.Name;
             
-            object value = GetValueFieldOrProperty(objectMode ? input : cInput, p, f);
+            var value = GetValueFieldOrProperty(objectMode ? input : cInput, p, f);
             if (value == null)
             {
                 SetupNullEntry(isProperty, propName, objectMode);
                 return;
             }
 
-            GameObject entryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(type);
+            var entryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(type);
 
-            ComponentUtilUI.PropertyUIEntry uiEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(entryPrefab, objectMode);
-            GameObject entry = uiEntry.UiGO;
+            var uiEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(entryPrefab, objectMode);
+            var entry = uiEntry.UiGO;
             uiEntry.PropertyName.text = isProperty ? $"[Property] {propName}" : $"[Field] {propName}";
 
             bool isValidReference = !objectMode                         // don't recurse down from object inspector
                 && !typeIsSupported                                     // don't override types with custom property entries
                 && (!type.IsValueType || typeIsSupportedAndRewired);    // is reference type or rewired
-            PropertyTrackerData.PropertyTrackerDataOptions typeAsFlag = isValidReference
+            var typeAsFlag = isValidReference
                 ? PropertyTrackerData.PropertyTrackerDataOptions.IsReference : MapTypeToTrackerFlag(type);
             if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.IsReference)
                 ConfigReference(parentUiEntry, entry, uiEntry, cInput, p, f, type, setMethodIsPublic, isProperty, value);
@@ -197,9 +197,9 @@ namespace RSkoi_ComponentUtil
             { // do not remove these brackets
                 if (!ConfigVector(parentUiEntry, entry, uiEntry, objectMode ? input : cInput, p, f, type, setMethodIsPublic, isProperty, value, objectMode))
                 {
-                    _logger.LogWarning($"Could not configure vector property entry on {cInput.transform.name}.{cInput.name} with name {propName}," +
-                        " destroying entry and returning");
-                    Destroy(entry);
+                    var owner = objectMode ? input.ToString() : $"{cInput.transform.name}.{cInput.name}";
+                    _logger.LogWarning($"Could not configure vector property entry on {owner} with name {propName}, skipping entry");
+                    // entry is pooled and inactive, leave it instead of destroying
                     return;
                 }
             }
@@ -211,13 +211,13 @@ namespace RSkoi_ComponentUtil
                     MapTypeToInputContentType(type));
             else if (typeAsFlag == PropertyTrackerData.PropertyTrackerDataOptions.None)
             {
-                Destroy(entry);
+                // entry is pooled and inactive, leave it instead of destroying
                 return;
             }
             
             if (isValidReference) // reference type
             {
-                PropertyKey key = new(_selectedObject, cInput.gameObject, cInput);
+                var key = new PropertyKey(_selectedObject, cInput.gameObject, cInput);
                 // make green if dummy property entry is tracked
                 CheckTrackedAndMarkAsEditedReference(key, uiEntry, propName);
 
@@ -227,8 +227,8 @@ namespace RSkoi_ComponentUtil
             }
             else if (objectMode) // property inside reference type / the object inspector
             {
-                Component c = (Component)parentUiEntry.UiTarget;
-                PropertyReferenceKey key = new(_selectedObject, c.gameObject, c, _selectedReferencePropertyUiEntry.PropertyNameValue);
+                var c = (Component)parentUiEntry.UiTarget;
+                var key = new PropertyReferenceKey(_selectedObject, c.gameObject, c, _selectedReferencePropertyUiEntry.PropertyNameValue);
                 // make bg green if value is edited
                 CheckTrackedAndMarkAsEdited(key, uiEntry, propName, value);
 
@@ -237,7 +237,7 @@ namespace RSkoi_ComponentUtil
             }
             else // property in the component inspector
             {
-                PropertyKey key = new(_selectedObject, cInput.gameObject, cInput);
+                var key = new PropertyKey(_selectedObject, cInput.gameObject, cInput);
                 // make bg green if value is edited
                 CheckTrackedAndMarkAsEdited(key, uiEntry, propName, value);
 
@@ -248,10 +248,10 @@ namespace RSkoi_ComponentUtil
             uiEntry.UiGO.SetActive(true);
         }
 
-        private void SetupNullEntry(bool isProperty, string propName, bool objectMode)
+        void SetupNullEntry(bool isProperty, string propName, bool objectMode)
         {
-            GameObject nullEntryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(null);
-            ComponentUtilUI.PropertyUIEntry uiNullEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(nullEntryPrefab, objectMode);
+            var nullEntryPrefab = ComponentUtilUI.MapPropertyOrFieldToEntryPrefab(t: null);
+            var uiNullEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(nullEntryPrefab, objectMode);
 
             uiNullEntry.PropertyName.text = isProperty ? $"[Property] {propName}" : $"[Field] {propName}";
             uiNullEntry.ResetButton.interactable = false;
@@ -260,7 +260,7 @@ namespace RSkoi_ComponentUtil
             uiNullEntry.UiGO.SetActive(true);
         }
 
-        private void CheckTrackedAndMarkAsEdited(
+        void CheckTrackedAndMarkAsEdited(
             PropertyReferenceKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             string propName,
@@ -269,7 +269,7 @@ namespace RSkoi_ComponentUtil
             if (!PropertyIsTracked(key, propName))
                 return;
 
-            object defaultValue = GetTrackedDefaultValue(key, propName);
+            var defaultValue = GetTrackedDefaultValue(key, propName);
             if (defaultValue == null)
             {
                 _logger.LogError($"CheckTrackedAndMarkAsEdited: no defaultValue for property {propName} found or value is null");
@@ -280,7 +280,7 @@ namespace RSkoi_ComponentUtil
                 uiEntry.SetBgColorEdited();
         }
 
-        private void CheckTrackedAndMarkAsEdited(
+        void CheckTrackedAndMarkAsEdited(
             PropertyKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             string propName,
@@ -289,7 +289,7 @@ namespace RSkoi_ComponentUtil
             if (!PropertyIsTracked(key, propName))
                 return;
 
-            object defaultValue = GetTrackedDefaultValue(key, propName);
+            var defaultValue = GetTrackedDefaultValue(key, propName);
             if (defaultValue == null)
             {
                 _logger.LogError($"CheckTrackedAndMarkAsEdited: no defaultValue for property {propName} found or value is null");
@@ -300,7 +300,7 @@ namespace RSkoi_ComponentUtil
                 uiEntry.SetBgColorEdited();
         }
 
-        private void CheckTrackedAndMarkAsEditedReference(
+        void CheckTrackedAndMarkAsEditedReference(
             PropertyKey key,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             string propName)
@@ -311,7 +311,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.SetBgColorEdited();
         }
 
-        private bool TypeIsFloatingPoint(Type type)
+        bool TypeIsFloatingPoint(Type type)
         {
             if (type.Equals(typeof(float))
                 || type.Equals(typeof(double))
@@ -320,7 +320,7 @@ namespace RSkoi_ComponentUtil
             return false;
         }
 
-        private InputField.ContentType MapTypeToInputContentType(Type type)
+        InputField.ContentType MapTypeToInputContentType(Type type)
         {
             if (type.Equals(typeof(string)))
                 return InputField.ContentType.Standard;
@@ -330,7 +330,7 @@ namespace RSkoi_ComponentUtil
                 return InputField.ContentType.IntegerNumber; // trying to cram an integer into e.g. a short will lead to problems
         }
 
-        private PropertyTrackerData.PropertyTrackerDataOptions MapTypeToTrackerFlag(Type type)
+        PropertyTrackerData.PropertyTrackerDataOptions MapTypeToTrackerFlag(Type type)
         {
             if (type.IsEnum)
                 return PropertyTrackerData.PropertyTrackerDataOptions.IsInt;
@@ -353,7 +353,7 @@ namespace RSkoi_ComponentUtil
         {
             try
             {
-                p.SetValue(input, Convert.ChangeType(value, p.PropertyType), null);
+                p.SetValue(input, InvariantConversion.ChangeType(value, p.PropertyType), index: null);
             }
             catch (Exception e)
             {
@@ -366,7 +366,9 @@ namespace RSkoi_ComponentUtil
         {
             try
             {
-                p.SetValue(input, value, null);
+                // Enum.ToObject handles enums that are not backed by int
+                var castValue = p.PropertyType.IsEnum ? Enum.ToObject(p.PropertyType, value) : value;
+                p.SetValue(input, castValue, index: null);
             }
             catch (Exception e) {
                 _logger.LogError(e);
@@ -378,7 +380,7 @@ namespace RSkoi_ComponentUtil
         {
             try
             {
-                f.SetValue(input, Convert.ChangeType(value, f.FieldType));
+                f.SetValue(input, InvariantConversion.ChangeType(value, f.FieldType));
             }
             catch (Exception e) {
                 _logger.LogError(e);
@@ -390,7 +392,9 @@ namespace RSkoi_ComponentUtil
         {
             try
             {
-                f.SetValue(input, value);
+                // Enum.ToObject handles enums that are not backed by int
+                var castValue = f.FieldType.IsEnum ? Enum.ToObject(f.FieldType, value) : value;
+                f.SetValue(input, castValue);
             }
             catch (Exception e) {
                 _logger.LogError(e);
@@ -403,11 +407,7 @@ namespace RSkoi_ComponentUtil
         internal static bool HasPropertyFlag(
             PropertyTrackerData.PropertyTrackerDataOptions input,
             PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
-        {
-            if ((input & flagToCheck) == flagToCheck)
-                return true;
-            return false;
-        }
+            => (input & flagToCheck) == flagToCheck;
 
         internal static void SetValueWithFlags(
             PropertyInfo p,
@@ -439,7 +439,7 @@ namespace RSkoi_ComponentUtil
             if (isProperty)
             {
                 if (isInt)
-                    _instance.SetPropertyValueInt(p, int.Parse(valueString), targetObject);
+                    _instance.SetPropertyValueInt(p, InvariantConversion.ParseInt(valueString), targetObject);
                 else if (isVector)
                     _instance.SetVectorPropertyValue(p, valueString, targetObject);
                 else if (isColor)
@@ -450,7 +450,7 @@ namespace RSkoi_ComponentUtil
             else
             {
                 if (isInt)
-                    _instance.SetFieldValueInt(f, int.Parse(valueString), targetObject);
+                    _instance.SetFieldValueInt(f, InvariantConversion.ParseInt(valueString), targetObject);
                 else if (isVector)
                     _instance.SetVectorFieldValue(f, valueString, targetObject);
                 else if (isColor)
@@ -477,8 +477,8 @@ namespace RSkoi_ComponentUtil
             if (_selectedComponent == null)
                 return;
 
-            ComponentUtilCache.GetOrCachePropertyInfos(_selectedComponent, true);
-            ComponentUtilCache.GetOrCacheFieldInfos(_selectedComponent, true);
+            ComponentUtilCache.GetOrCachePropertyInfos(_selectedComponent, forceRefresh: true);
+            ComponentUtilCache.GetOrCacheFieldInfos(_selectedComponent, forceRefresh: true);
             GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
 
             _logger.LogMessage("Force refreshed ComponentInspector cache");
@@ -492,7 +492,7 @@ namespace RSkoi_ComponentUtil
         {
             if (!objectMode)
             {
-                PropertyKey key = new(_selectedObject, _selectedGO, _selectedComponent);
+                var key = new PropertyKey(_selectedObject, _selectedGO, _selectedComponent);
                 if (!_propertyTracker.TryGetValue(key, out var propEdits))
                 {
                     _logger.LogMessage("No property or field edits to copy");
@@ -509,7 +509,7 @@ namespace RSkoi_ComponentUtil
             }
             else
             {
-                PropertyReferenceKey refKey = new(_selectedObject, _selectedGO, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue);
+                var refKey = new PropertyReferenceKey(_selectedObject, _selectedGO, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue);
                 if (!_referencePropertyTracker.TryGetValue(refKey, out var propEdits))
                 {
                     _logger.LogMessage("No property or field edits to copy");
@@ -526,9 +526,9 @@ namespace RSkoi_ComponentUtil
             }
         }
 
-        private Dictionary<string, CopiedEditValueTuple> GetPropValuesOfObj(object obj, Dictionary<string, PropertyTrackerData> trackerData)
+        Dictionary<string, CopiedEditValueTuple> GetPropValuesOfObj(object obj, Dictionary<string, PropertyTrackerData> trackerData)
         {
-            Dictionary<string, CopiedEditValueTuple> values = [];
+            var values = new Dictionary<string, CopiedEditValueTuple>();
             foreach (var pair in trackerData)
             {
                 bool isReference = HasPropertyFlag(pair.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
@@ -550,7 +550,7 @@ namespace RSkoi_ComponentUtil
                     continue;
 
                 if (isInt)
-                    value = (int)value;
+                    value = Convert.ToInt32(value);
                 else if (isVector)
                     value = VectorConversion.VectorToStringByType(value.GetType(), value);
                 else if (isColor)
@@ -578,44 +578,44 @@ namespace RSkoi_ComponentUtil
             OnRefreshComponentInspector();
         }
 
-        private void OnPasteEditsComponent(PropertyKey key)
+        void OnPasteEditsComponent(PropertyKey key)
         {
-            Component target = _selectedComponent;
+            var target = _selectedComponent;
 
             var propsInfosTarget = ComponentUtilCache.GetOrCachePropertyInfos(target).ToDictionary(p => p.Name, p => p);
             var fieldInfosTarget = ComponentUtilCache.GetOrCacheFieldInfos(target).ToDictionary(f => f.Name, f => f);
 
             foreach (var pair in _currentCopiedEdits.PropEdits)
             {
-                string editedPropName = pair.Key;
-                object value = pair.Value.Value;
+                var editedPropName = pair.Key;
+                var value = pair.Value.Value;
 
                 if (propsInfosTarget.TryGetValue(editedPropName, out var targetProp))
                 {
                     target.GetPropertyValue(editedPropName, out var defaultValue);
                     AddPropertyToTracker(key, editedPropName, defaultValue, pair.Value.OptionFlags);
-                    SetValueWithFlags(targetProp, null, target, value.ToString(), pair.Value.OptionFlags);
+                    SetValueWithFlags(targetProp, f: null, target, InvariantConversion.ToInvariantString(value), pair.Value.OptionFlags);
                 }
                 else if (fieldInfosTarget.TryGetValue(editedPropName, out var targetField))
                 {
                     target.GetFieldValue(editedPropName, out var defaultValue);
                     AddPropertyToTracker(key, editedPropName, defaultValue, pair.Value.OptionFlags);
-                    SetValueWithFlags(null, targetField, target, value.ToString(), pair.Value.OptionFlags);
+                    SetValueWithFlags(p: null, targetField, target, InvariantConversion.ToInvariantString(value), pair.Value.OptionFlags);
                 }
             }
         }
 
-        private void OnPasteEditsObject(PropertyReferenceKey refKey)
+        void OnPasteEditsObject(PropertyReferenceKey refKey)
         {
-            object target = _selectedReferencePropertyUiEntry.Wrapper;
+            var target = _selectedReferencePropertyUiEntry.Wrapper;
 
             var propsInfosTarget = ComponentUtilCache.GetOrCachePropertyInfosObject(target).ToDictionary(p => p.Name, p => p);
             var fieldInfosTarget = ComponentUtilCache.GetOrCacheFieldInfosObject(target).ToDictionary(f => f.Name, f => f);
 
             foreach (var pair in _currentCopiedEdits.PropEdits)
             {
-                string editedPropName = pair.Key;
-                object value = pair.Value.Value;
+                var editedPropName = pair.Key;
+                var value = pair.Value.Value;
 
                 if (propsInfosTarget.TryGetValue(editedPropName, out var targetProp))
                 {
@@ -628,7 +628,7 @@ namespace RSkoi_ComponentUtil
                         editedPropName,
                         defaultValue,
                         pair.Value.OptionFlags);
-                    SetValueWithFlags(targetProp, null, target, value.ToString(), pair.Value.OptionFlags);
+                    SetValueWithFlags(targetProp, f: null, target, InvariantConversion.ToInvariantString(value), pair.Value.OptionFlags);
                 }
                 else if (fieldInfosTarget.TryGetValue(editedPropName, out var targetField))
                 {
@@ -641,7 +641,7 @@ namespace RSkoi_ComponentUtil
                         editedPropName,
                         defaultValue,
                         pair.Value.OptionFlags);
-                    SetValueWithFlags(null, targetField, target, value.ToString(), pair.Value.OptionFlags);
+                    SetValueWithFlags(p: null, targetField, target, InvariantConversion.ToInvariantString(value), pair.Value.OptionFlags);
                 }
             }
         }

@@ -59,17 +59,17 @@ namespace RSkoi_ComponentUtil.Core
             if (forceRefresh)
                 _componentAdderSearchCache.Clear();
 
-            Type componentType = typeof(Component);
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (Assembly a in assemblies)
+            var componentType = typeof(Component);
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var a in assemblies)
             {
                 try
                 {
-                    Type[] assemblyTypes = a.GetTypes();
+                    var assemblyTypes = a.GetTypes();
                     // TODO: this still lets through stuff like MonoBehaviour
                     // it will probably crash the game when added as a component
                     // whoops!
-                    foreach (Type t in assemblyTypes.Where(t => componentType.IsAssignableFrom(t) && t.IsClass && !t.IsAbstract && !t.IsInterface))
+                    foreach (var t in assemblyTypes.Where(t => componentType.IsAssignableFrom(t) && t.IsClass && !t.IsAbstract && !t.IsInterface))
                         if (!_componentAdderSearchCache.ContainsKey(t.FullName))
                             _componentAdderSearchCache.Add(t.FullName, t);
                 }
@@ -84,15 +84,15 @@ namespace RSkoi_ComponentUtil.Core
 
         internal static Transform[] GetOrCacheTransforms(ObjectCtrlInfo inputCtrl, bool forceRefresh = false)
         {
-            GameObject input = inputCtrl.guideObject.transformTarget.gameObject;
+            var input = inputCtrl.guideObject.transformTarget.gameObject;
 
             // this should only return cached transforms of input w/o children transforms
-            if (!forceRefresh && _transformSearchCache.TryGetValue(input, out Transform[] value) && value != null)
+            if (!forceRefresh && _transformSearchCache.TryGetValue(input, out var value) && value != null)
                 return value;
 
-            Transform[] transforms = GetOrCacheTransforms(_transformSearchCache, input, forceRefresh);
+            var transforms = GetOrCacheTransforms(_transformSearchCache, input, forceRefresh);
 
-            HashSet<Transform> allTnoChildrenTransforms = GetOrCacheChildrenTransformsOfTno(inputCtrl.treeNodeObject);
+            var allTnoChildrenTransforms = GetOrCacheChildrenTransformsOfTno(inputCtrl.treeNodeObject);
             transforms = [.. transforms.Where(t => !allTnoChildrenTransforms.Contains(t))];
 
             // overwrite cache with filtered list w/o children transforms
@@ -102,24 +102,24 @@ namespace RSkoi_ComponentUtil.Core
 
         internal static Component[] GetOrCacheComponents(GameObject input, bool forceRefresh = false)
         {
-            if (!forceRefresh && _componentSearchCache.TryGetValue(input, out Component[] value) && value != null)
+            if (!forceRefresh && _componentSearchCache.TryGetValue(input, out var value) && value != null)
                 return value;
             if (forceRefresh)
                 _componentSearchCache.Clear();
 
-            Component[] res = input.GetComponents(typeof(Component));
+            var res = input.GetComponents(typeof(Component));
             _componentSearchCache.Add(input, res);
             return res;
         }
 
         internal static PropertyInfo[] GetOrCachePropertyInfos(Component input, bool forceRefresh = false)
         {
-            if (!forceRefresh && _propertyInfoSearchCache.TryGetValue(input, out PropertyInfo[] value) && value != null)
+            if (!forceRefresh && _propertyInfoSearchCache.TryGetValue(input, out var value) && value != null)
                 return value;
             if (forceRefresh)
                 _propertyInfoSearchCache.Clear();
 
-            PropertyInfo[] res = input
+            var res = input
                 .GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             _propertyInfoSearchCache.Add(input, res);
@@ -128,12 +128,12 @@ namespace RSkoi_ComponentUtil.Core
 
         internal static FieldInfo[] GetOrCacheFieldInfos(Component input, bool forceRefresh = false)
         {
-            if (!forceRefresh && _fieldInfoSearchCache.TryGetValue(input, out FieldInfo[] value) && value != null)
+            if (!forceRefresh && _fieldInfoSearchCache.TryGetValue(input, out var value) && value != null)
                 return value;
             if (forceRefresh)
                 _fieldInfoSearchCache.Clear();
 
-            FieldInfo[] res = input
+            var res = input
                 .GetType()
                 .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             _fieldInfoSearchCache.Add(input, res);
@@ -142,12 +142,12 @@ namespace RSkoi_ComponentUtil.Core
 
         internal static PropertyInfo[] GetOrCachePropertyInfosObject(object input, bool forceRefresh = false)
         {
-            if (!forceRefresh && _propertyInfoSearchCacheObject.TryGetValue(input, out PropertyInfo[] value) && value != null)
+            if (!forceRefresh && _propertyInfoSearchCacheObject.TryGetValue(input, out var value) && value != null)
                 return value;
             if (forceRefresh)
                 _propertyInfoSearchCacheObject.Clear();
 
-            PropertyInfo[] res = input
+            var res = input
                 .GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             _propertyInfoSearchCacheObject.Add(input, res);
@@ -156,12 +156,12 @@ namespace RSkoi_ComponentUtil.Core
 
         internal static FieldInfo[] GetOrCacheFieldInfosObject(object input, bool forceRefresh = false)
         {
-            if (!forceRefresh && _fieldInfoSearchCacheObject.TryGetValue(input, out FieldInfo[] value) && value != null)
+            if (!forceRefresh && _fieldInfoSearchCacheObject.TryGetValue(input, out var value) && value != null)
                 return value;
             if (forceRefresh)
                 _fieldInfoSearchCacheObject.Clear();
 
-            FieldInfo[] res = input
+            var res = input
                 .GetType()
                 .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             _fieldInfoSearchCacheObject.Add(input, res);
@@ -170,9 +170,9 @@ namespace RSkoi_ComponentUtil.Core
         #endregion internal
 
         #region private
-        private static HashSet<Transform> GetOrCacheChildrenTransformsOfTno(TreeNodeObject tnoRoot)
+        static HashSet<Transform> GetOrCacheChildrenTransformsOfTno(TreeNodeObject tnoRoot)
         {
-            List<Transform> allChildTransforms = [];
+            var allChildTransforms = new List<Transform>();
             foreach (var child in tnoRoot.child)
             {
                 if (!Studio.Studio.Instance.dicInfo.ContainsKey(child))
@@ -187,14 +187,14 @@ namespace RSkoi_ComponentUtil.Core
             return [.. allChildTransforms];
         }
 
-        private static Transform[] GetOrCacheTransforms(Dictionary<GameObject, Transform[]> cacheBucket, GameObject input, bool forceRefresh = false)
+        static Transform[] GetOrCacheTransforms(Dictionary<GameObject, Transform[]> cacheBucket, GameObject input, bool forceRefresh = false)
         {
-            if (!forceRefresh && cacheBucket.TryGetValue(input, out Transform[] value) && value != null)
+            if (!forceRefresh && cacheBucket.TryGetValue(input, out var value) && value != null)
                 return value;
             if (forceRefresh)
                 cacheBucket.Clear();
 
-            Transform[] res = input.GetComponentsInChildren<Transform>();
+            var res = input.GetComponentsInChildren<Transform>();
             cacheBucket.Add(input, res);
             return res;
         }
@@ -211,16 +211,16 @@ namespace RSkoi_ComponentUtil.Core
             foreach (var entry in _componentSearchCache)
                 ComponentUtil._logger.LogInfo($"+ components: {entry.Key} , length {entry.Value.Length}");
 
-            foreach (Component c in _propertyInfoSearchCache.Keys)
+            foreach (var c in _propertyInfoSearchCache.Keys)
                 ComponentUtil._logger.LogInfo($"+ propertyInfos: {c}");
 
-            foreach (Component c in _fieldInfoSearchCache.Keys)
+            foreach (var c in _fieldInfoSearchCache.Keys)
                 ComponentUtil._logger.LogInfo($"+ fieldInfos: {c}");
 
-            foreach (object o in _propertyInfoSearchCacheObject.Keys)
+            foreach (var o in _propertyInfoSearchCacheObject.Keys)
                 ComponentUtil._logger.LogInfo($"+ referencePropertyInfos: {o}");
 
-            foreach (object o in _fieldInfoSearchCacheObject.Keys)
+            foreach (var o in _fieldInfoSearchCacheObject.Keys)
                 ComponentUtil._logger.LogInfo($"+ referenceFieldInfos: {o}");
 
             //foreach (string c in _componentAdderSearchCache.Keys)

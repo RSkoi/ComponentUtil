@@ -6,6 +6,7 @@ using UnityEngine;
 using Studio;
 using KKAPI.Utilities;
 
+using RSkoi_ComponentUtil.Core;
 using RSkoi_ComponentUtil.Scene;
 using static RSkoi_ComponentUtil.ComponentUtil;
 
@@ -20,10 +21,10 @@ namespace RSkoi_ComponentUtil.Timeline
         internal const string INTERPOLABLE_NAME = "Value";
 
         #region availability and refresh
-        private static bool? isTimelineAvailable;
-        private static MethodInfo refreshInterpolablesList;
+        static bool? isTimelineAvailable;
+        static MethodInfo refreshInterpolablesList;
 
-        private static Type GetKkapiType()
+        static Type GetKkapiType()
         {
 #if KK
             return Type.GetType("KKAPI.Utilities.TimelineCompatibility,KKAPI", throwOnError: false);
@@ -64,7 +65,7 @@ namespace RSkoi_ComponentUtil.Timeline
         #endregion availability and refresh
 
         #region selection
-        private static SelectedTimelineModelTarget _selectedTimelineModelTarget;
+        static SelectedTimelineModelTarget _selectedTimelineModelTarget;
 
         internal static void SelectTimelineModelTarget(
             PropertyKey key,
@@ -113,7 +114,7 @@ namespace RSkoi_ComponentUtil.Timeline
         #endregion selection
 
         #region initialization and work
-        private readonly static Dictionary<SelectedTimelineModelTarget, TimelinePropertyParameter> _paramCache = [];
+        readonly static Dictionary<SelectedTimelineModelTarget, TimelinePropertyParameter> _paramCache = [];
 
         #region internal
         /// <summary>
@@ -168,21 +169,21 @@ namespace RSkoi_ComponentUtil.Timeline
         #endregion internal
 
         #region set value
-        private static void SetPropValue(TimelinePropertyParameter param, string leftValue, string rightValue, float factor)
+        static void SetPropValue(TimelinePropertyParameter param, string leftValue, string rightValue, float factor)
         {
             bool isInt      = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
             bool isVector   = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
             bool isColor    = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
-            object castLeft  = CastStringValueToType(leftValue, isInt, isVector, isColor, param.Type);
-            object castRight = CastStringValueToType(rightValue, isInt, isVector, isColor, param.Type);
+            var castLeft  = CastStringValueToType(leftValue, isInt, isVector, isColor, param.Type);
+            var castRight = CastStringValueToType(rightValue, isInt, isVector, isColor, param.Type);
             if (castLeft == null || castRight == null)
                 return;
-            string encodedTargetValue = InterpolateValue(castLeft, castRight, param.Type, factor);
+            var encodedTargetValue = InterpolateValue(castLeft, castRight, param.Type, factor);
             SetValueWithFlags(param.P, param.F, param.Target, encodedTargetValue, param.Options);
         }
 
-        private static string InterpolateValue(object leftValue, object rightValue, Type t, float factor)
+        static string InterpolateValue(object leftValue, object rightValue, Type t, float factor)
         {
             if (t.Equals(typeof(Color)))
                 return ColorConversion.ColorToString(Color.LerpUnclamped((Color)leftValue, (Color)rightValue, factor));
@@ -195,50 +196,50 @@ namespace RSkoi_ComponentUtil.Timeline
             else if (t.Equals(typeof(Quaternion)))
                 return VectorConversion.QuaternionToString(Quaternion.LerpUnclamped((Quaternion)leftValue, (Quaternion)rightValue, factor));
             else if (t.Equals(typeof(float)))
-                return Mathf.LerpUnclamped((float)leftValue, (float)rightValue, factor).ToString();
+                return InvariantConversion.ToInvariantString(Mathf.LerpUnclamped((float)leftValue, (float)rightValue, factor));
             // don't lerp ints, strings and whatever else
-            return leftValue.ToString();
+            return InvariantConversion.ToInvariantString(leftValue);
         }
 
-        private static object CastStringValueToType(string value, bool toInt, bool toVector, bool toColor, Type t)
+        static object CastStringValueToType(string value, bool toInt, bool toVector, bool toColor, Type t)
         {
             if (toInt)
-                return int.Parse(value);
+                return InvariantConversion.ParseInt(value);
             else if (toVector)
             {
-                VectorConversion.TryStringToVectorByType(t, value, out object vector);
+                VectorConversion.TryStringToVectorByType(t, value, out var vector);
                 return vector;
             }
             else if (toColor)
                 return ColorConversion.StringToColor(value);
-            return Convert.ChangeType(value, t);
+            return InvariantConversion.ChangeType(value, t);
         }
         #endregion set value
 
         #region get value
-        private static string GetPropValue(TimelinePropertyParameter param)
+        static string GetPropValue(TimelinePropertyParameter param)
         {
             bool isProperty = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
             bool isInt      = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
             bool isVector   = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
             bool isColor    = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
-            object value = isProperty ? param.P.GetValue(param.Target, null) : param.F.GetValue(param.Target);
+            var value = isProperty ? param.P.GetValue(param.Target, null) : param.F.GetValue(param.Target);
             if (isInt)
-                return ((int)value).ToString();
+                return InvariantConversion.ToInvariantString(Convert.ToInt32(value));
             else if (isVector)
                 return VectorConversion.VectorToStringByType(param.Type, value);
             else if (isColor)
                 return ColorConversion.ColorToString((Color)value);
-            return value.ToString();
+            return InvariantConversion.ToInvariantString(value);
         }
 
-        private static TimelinePropertyParameter GetPropertyParameter(ObjectCtrlInfo _)
+        static TimelinePropertyParameter GetPropertyParameter(ObjectCtrlInfo _)
         {
             if (_selectedTimelineModelTarget != null && _paramCache.TryGetValue(_selectedTimelineModelTarget, out var value))
                 return value;
 
-            TimelinePropertyParameter param = new(
+            var param = new TimelinePropertyParameter(
                 _selectedTimelineModelTarget.Oci,
                 _selectedTimelineModelTarget.Go,
                 _selectedTimelineModelTarget.Component,
@@ -255,14 +256,14 @@ namespace RSkoi_ComponentUtil.Timeline
             return param;
         }
 
-        private static string GetFinalInterpolableName(string _, ObjectCtrlInfo __, TimelinePropertyParameter param)
+        static string GetFinalInterpolableName(string _, ObjectCtrlInfo __, TimelinePropertyParameter param)
         {
             return $"{param.Target.GetType().Name}.{param.PropertyName}";
         }
         #endregion get value
 
         #region xml write and read
-        private static void WritePropertyParamXml(ObjectCtrlInfo oci, XmlTextWriter writer, TimelinePropertyParameter param)
+        static void WritePropertyParamXml(ObjectCtrlInfo oci, XmlTextWriter writer, TimelinePropertyParameter param)
         {
             writer.WriteAttributeString("goPath", ComponentUtilSceneBehaviour.GetGameObjectPathToRoot(param.Go.transform, oci.guideObject.transformTarget));
             writer.WriteAttributeString("componentName", param.Component.GetType().Name);
@@ -273,43 +274,40 @@ namespace RSkoi_ComponentUtil.Timeline
             writer.WriteAttributeString("options", param.Options.ToString());
         }
 
-        private static TimelinePropertyParameter ReadPropertyParamXml(ObjectCtrlInfo oci, XmlNode node)
+        static TimelinePropertyParameter ReadPropertyParamXml(ObjectCtrlInfo oci, XmlNode node)
         {
-            string goPath = node.Attributes["goPath"].Value;
-            string componentName = node.Attributes["componentName"].Value;
-            PropertyTrackerData.PropertyTrackerDataOptions options = (PropertyTrackerData.PropertyTrackerDataOptions)Enum.Parse(
+            var goPath = node.Attributes["goPath"].Value;
+            var componentName = node.Attributes["componentName"].Value;
+            var options = (PropertyTrackerData.PropertyTrackerDataOptions)Enum.Parse(
                 typeof(PropertyTrackerData.PropertyTrackerDataOptions),
                 node.Attributes["options"].Value);
             bool isProperty = HasPropertyFlag(options, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
             bool isInsideReference = HasPropertyFlag(options, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-            string referenceName = isInsideReference ? node.Attributes["referenceName"].Value : null;
-            string propertyName = node.Attributes["propertyName"].Value;
+            var referenceName = isInsideReference ? node.Attributes["referenceName"].Value : null;
+            var propertyName = node.Attributes["propertyName"].Value;
 
-            Transform providedGameObjectTarget = oci.guideObject.transformTarget;
-            GameObject go = goPath.IsNullOrEmpty()
-                ? providedGameObjectTarget.gameObject : providedGameObjectTarget.Find(goPath).gameObject;
+            var providedGameObjectTarget = oci.guideObject.transformTarget;
+            var go = goPath.IsNullOrEmpty()
+                ? providedGameObjectTarget.gameObject
+                : providedGameObjectTarget.Find(goPath).gameObject;
 
-            Component component = go.GetComponentByName(componentName);
-            Type componentType = component.GetType();
+            var component = go.GetComponentByName(componentName);
+            var componentType = component.GetType();
             object target = component;
 
-            PropertyInfo p;
-            FieldInfo f;
             if (isInsideReference)
             {
-                PropertyInfo propReferenceType = componentType.GetProperty(referenceName,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                FieldInfo fieldReferenceType = componentType.GetField(referenceName,
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var propReferenceType = componentType.GetProperty(referenceName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var fieldReferenceType = componentType.GetField(referenceName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 // this can produce a null ref
                 target = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
                 componentType = target.GetType();
             }
-            p = isProperty ? componentType.GetProperty(propertyName) : null;
-            f = !isProperty ? componentType.GetField(propertyName) : null;
-            Type propertyType = isProperty ? p.PropertyType : f.FieldType;
+            var p = isProperty ? componentType.GetProperty(propertyName) : null;
+            var f = !isProperty ? componentType.GetField(propertyName) : null;
+            var propertyType = isProperty ? p.PropertyType : f.FieldType;
 
-            TimelinePropertyParameter param = new(
+            var param = new TimelinePropertyParameter(
                 oci,
                 go,
                 component,
@@ -324,7 +322,7 @@ namespace RSkoi_ComponentUtil.Timeline
         }
         #endregion xml write and read
 
-        private static bool IsCompatibleWithTarget(ObjectCtrlInfo oci)
+        static bool IsCompatibleWithTarget(ObjectCtrlInfo oci)
         {
             // why does this happen?
             if (oci == null)
@@ -339,7 +337,7 @@ namespace RSkoi_ComponentUtil.Timeline
         }
 
         #region classes
-        private class TimelinePropertyParameter(
+        class TimelinePropertyParameter(
             ObjectCtrlInfo oci,
             GameObject go,
             Component component,
@@ -369,7 +367,7 @@ namespace RSkoi_ComponentUtil.Timeline
             }
         }
 
-        private class SelectedTimelineModelTarget(
+        class SelectedTimelineModelTarget(
             ObjectCtrlInfo oci,
             GameObject go,
             Component component,
@@ -396,7 +394,7 @@ namespace RSkoi_ComponentUtil.Timeline
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {
-                    int hash = 17;
+                    var hash = 17;
                     hash = hash * 31 + Oci.GetHashCode();
                     hash = hash * 31 + Go.GetHashCode();
                     hash = hash * 31 + Target.GetHashCode();

@@ -18,12 +18,12 @@ namespace RSkoi_ComponentUtil
     {
         internal const string PLUGIN_GUID = "RSkoi_ComponentUtil";
         internal const string PLUGIN_NAME = "RSkoi_ComponentUtil";
-        internal const string PLUGIN_VERSION = "1.5.0";
+        internal const string PLUGIN_VERSION = "1.5.1";
 
         internal static ComponentUtil _instance;
         internal static ManualLogSource _logger;
 
-        private void Awake()
+        void Awake()
         {
             _instance = this;
             _logger = Logger;
@@ -31,18 +31,18 @@ namespace RSkoi_ComponentUtil
             SetupConfig();
         }
 
-        private void Update()
+        void Update()
         {
             UpdateConfig();
         }
 
-        private void OnEnable()
+        void OnEnable()
         {
             SceneManager.sceneLoaded += new UnityAction<UnityEngine.SceneManagement.Scene, LoadSceneMode>(LoadedEvent);
             StudioSaveLoadApi.RegisterExtraBehaviour<ComponentUtilSceneBehaviour>(PLUGIN_GUID);
         }
 
-        private void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)
+        void LoadedEvent(UnityEngine.SceneManagement.Scene scene, LoadSceneMode loadMode)
         {
 #if KK
             if (scene.buildIndex != 1)
@@ -54,7 +54,7 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.Init();
             ComponentUtilTimeline.Init();
-            ComponentUtilCache.GetOrCacheComponentAdders(true);
+            ComponentUtilCache.GetOrCacheComponentAdders(forceRefresh: true);
         }
     }
 }

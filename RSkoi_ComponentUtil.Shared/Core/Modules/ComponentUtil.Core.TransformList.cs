@@ -25,27 +25,27 @@ namespace RSkoi_ComponentUtil
             if (inputCtrl == null)
                 return;
 
-            GameObject input = inputCtrl.guideObject.transformTarget.gameObject;
-            List<Transform> transformList = [.. ComponentUtilCache.GetOrCacheTransforms(inputCtrl)];
+            var input = inputCtrl.guideObject.transformTarget.gameObject;
+            var transformList = ComponentUtilCache.GetOrCacheTransforms(inputCtrl).ToList();
 
             // filter string
-            string filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
-            if (filter != "")
+            var filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
+            if (!string.IsNullOrEmpty(filter))
                 transformList = [.. transformList.Where(t => t.name.ToLower().Contains(filter))];
 
             // paging
-            int itemsPerPage = ItemsPerPageValue;
-            int startIndex = _currentPageTransformList * itemsPerPage;
-            int n = (transformList.Count - startIndex) <= itemsPerPage ? transformList.Count - startIndex : itemsPerPage;
+            var itemsPerPage = ItemsPerPageValue;
+            var startIndex = _currentPageTransformList * itemsPerPage;
+            var n = (transformList.Count - startIndex) <= itemsPerPage ? transformList.Count - startIndex : itemsPerPage;
             if (transformList.Count != 0)
                 transformList = transformList.GetRange(startIndex, n);
 
             ComponentUtilUI.PrepareTransformPool(transformList.Count);
-            for (int poolIndex = 0; poolIndex < transformList.Count; poolIndex++)
+            for (var poolIndex = 0; poolIndex < transformList.Count; poolIndex++)
             {
-                Transform t = transformList[poolIndex];
+                var t = transformList[poolIndex];
 
-                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.TransformListEntries[poolIndex];
+                var uiEntry = ComponentUtilUI.TransformListEntries[poolIndex];
                 uiEntry.EntryName.text = t.name;
                 // remove all (non-persistent) listeners
                 uiEntry.SelfButton.onClick.RemoveAllListeners();
@@ -60,7 +60,7 @@ namespace RSkoi_ComponentUtil
             SetSelectedTransform(setsSelected, transformList);
         }
 
-        private void ChangeSelectedGO(GameObject target, ComponentUtilUI.GenericUIListEntry uiEntry)
+        void ChangeSelectedGO(GameObject target, ComponentUtilUI.GenericUIListEntry uiEntry)
         {
             _selectedGO = target;
             _selectedTransformUIEntry = uiEntry;
@@ -106,7 +106,7 @@ namespace RSkoi_ComponentUtil
 
             _currentPageTransformList--;
             ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
-            FlattenTransformHierarchy(_selectedObject, false);
+            FlattenTransformHierarchy(_selectedObject, setsSelected: false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
@@ -114,29 +114,29 @@ namespace RSkoi_ComponentUtil
         {
             if (_selectedObject == null)
                 return;
-            int toBeStartIndex = (_currentPageTransformList + 1) * ItemsPerPageValue;
+            var toBeStartIndex = (_currentPageTransformList + 1) * ItemsPerPageValue;
             // page switch can only occur after the _selectedObject has been scanned for transforms
-            Transform[] cached = ComponentUtilCache._transformSearchCache[_selectedObject.guideObject.transformTarget.gameObject];
+            var cached = ComponentUtilCache._transformSearchCache[_selectedObject.guideObject.transformTarget.gameObject];
             // out of bounds start index
             if (toBeStartIndex >= cached.Length)
                 return;
 
             // if filter string reduces length of transform list
-            string filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
-            if (filter != "" && (toBeStartIndex >= cached
+            var filter = ComponentUtilUI.PageSearchTransformListInputValue.ToLower();
+            if (!string.IsNullOrEmpty(filter) && (toBeStartIndex >= cached
                 .Where(t => t.name.ToLower().Contains(filter))
                 .ToArray().Length))
                 return;
 
             _currentPageTransformList++;
             ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
-            FlattenTransformHierarchy(_selectedObject, false);
+            FlattenTransformHierarchy(_selectedObject, setsSelected: false);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion pages
 
         #region setter, getter
-        private void SetSelectedTransform(bool setsSelected, List<Transform> cacheList)
+        void SetSelectedTransform(bool setsSelected, List<Transform> cacheList)
         {
             if (!setsSelected)
                 return;

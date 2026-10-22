@@ -11,13 +11,13 @@ namespace RSkoi_ComponentUtil
     {
         #region bepinex config
         #region Config
-        private const bool DEFAULT_SAVE_SCENE_DATA = true;
+        const bool DEFAULT_SAVE_SCENE_DATA = true;
         internal static ConfigEntry<bool> SaveSceneData { get; private set; }
-        private const bool DEFAULT_LOAD_SCENE_DATA = true;
+        const bool DEFAULT_LOAD_SCENE_DATA = true;
         internal static ConfigEntry<bool> LoadSceneData { get; private set; }
 
         #region WaitTimeLoadScene
-        private const float DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 2f;
+        const float DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 2f;
         internal static ConfigEntry<float> WaitTimeLoadScene { get; private set; }
         internal static float WaitTimeLoadSceneValue
         {
@@ -33,17 +33,17 @@ namespace RSkoi_ComponentUtil
         #endregion Config
 
         #region Keyboard Shortcuts
-        private const KeyCode DEFAULT_TOGGLE_MAIN_KEY = KeyCode.M;
-        private const KeyCode DEFAULT_TOGGLE_MODIFIER = KeyCode.RightControl;
+        const KeyCode DEFAULT_TOGGLE_MAIN_KEY = KeyCode.M;
+        const KeyCode DEFAULT_TOGGLE_MODIFIER = KeyCode.RightControl;
         internal static ConfigEntry<KeyboardShortcut> ToggleUI { get; private set; }
         #endregion Keyboard Shortcuts
 
         #region Config - UI
-        private const float DEFAULT_UI_SCALE = 0.7f;
+        const float DEFAULT_UI_SCALE = 0.7f;
         internal static ConfigEntry<float> UiScale { get; private set; }
 
         #region WindowScale
-        private static readonly Vector2 DEFAULT_WINDOW_SIZE_FACTOR = Vector2.one;
+        static readonly Vector2 DEFAULT_WINDOW_SIZE_FACTOR = Vector2.one;
         internal static ConfigEntry<Vector2> TransformWindowScale { get; private set; }
         internal static ConfigEntry<Vector2> ComponentWindowScale { get; private set; }
         internal static ConfigEntry<Vector2> ComponentAdderWindowScale { get; private set; }
@@ -103,7 +103,7 @@ namespace RSkoi_ComponentUtil
         #endregion WindowScale
 
         #region ItemsPerPage
-        private const int DEFAULT_ITEMS_PER_PAGE = 9;
+        const int DEFAULT_ITEMS_PER_PAGE = 9;
         internal static ConfigEntry<int> ItemsPerPage { get; private set; }
         internal static int ItemsPerPageValue
         {
@@ -119,9 +119,9 @@ namespace RSkoi_ComponentUtil
         #endregion Config - UI
         #endregion bepinex config
 
-        private static T ValidateConfigValue<T>(ConfigEntry<T> config, Func<T, bool> validateFunc, T defaultValue)
+        static T ValidateConfigValue<T>(ConfigEntry<T> config, Func<T, bool> validateFunc, T defaultValue)
         {
-            T val = config.Value;
+            var val = config.Value;
             if (!validateFunc(val))
             {
                 config.Value = defaultValue;
@@ -130,13 +130,13 @@ namespace RSkoi_ComponentUtil
             return val;
         }
 
-        private void UpdateConfig()
+        void UpdateConfig()
         {
             if (ToggleUI.Value.IsDown())
                 ComponentUtilUI.ToggleWindow();
         }
 
-        private void SetupConfig()
+        void SetupConfig()
         {
             #region Keyboard Shortcuts
             ToggleUI = Config.Bind(

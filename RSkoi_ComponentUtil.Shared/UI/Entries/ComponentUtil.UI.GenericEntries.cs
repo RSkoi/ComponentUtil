@@ -10,18 +10,18 @@ namespace RSkoi_ComponentUtil.UI
 
         internal static PropertyUIEntry PreConfigureNewUiEntry(GameObject entry, GameObject usedPrefab)
         {
-            Button timelineButton = entry.transform.Find("TimelineButton").GetComponent<Button>();
-            Button resetButton = entry.transform.Find("ResetButton").GetComponent<Button>();
-            Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
-            Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
+            var timelineButton = entry.transform.Find("TimelineButton").GetComponent<Button>();
+            var resetButton = entry.transform.Find("ResetButton").GetComponent<Button>();
+            var entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
+            var bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
             return new(timelineButton, resetButton, entryname, bgImage, null, entry, usedPrefab, null);
         }
 
         internal static GenericUIListEntry PreConfigureNewGenericUIListEntry(GameObject entry)
         {
-            Button selfButton = entry.GetComponent<Button>();
-            Text entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
-            Image bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
+            var selfButton = entry.GetComponent<Button>();
+            var entryname = entry.transform.Find("EntryLabel").GetComponent<Text>();
+            var bgImage = entry.transform.Find("EntryBg").GetComponent<Image>();
             return new(selfButton, entryname, bgImage, entry, null, null);
         }
 

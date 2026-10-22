@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using System.Globalization;
 using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
+using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil
 {
     public partial class ComponentUtil
     {
-        private bool ConfigVector(ComponentUtilUI.GenericUIListEntry parentUiEntry,
+        bool ConfigVector(ComponentUtilUI.GenericUIListEntry parentUiEntry,
             GameObject entry,
             ComponentUtilUI.PropertyUIEntry uiEntry,
             object input,
@@ -21,11 +23,11 @@ namespace RSkoi_ComponentUtil
             object value,
             bool objectMode)
         {
-            string valueString = VectorConversion.VectorToStringByType(type, value);
+            var valueString = VectorConversion.VectorToStringByType(type, value);
             if (valueString.IsNullOrEmpty())
                 return false;
 
-            ComponentUtilUI.PropertyUIVectorEntry vectorEntry = new(uiEntry);
+            var vectorEntry = new ComponentUtilUI.PropertyUIVectorEntry(uiEntry);
             vectorEntry.SetInteractable(setMethodIsPublic);
             vectorEntry.RemoveAllInputEvents();
             // this is already set on the prefab so this is redundant
@@ -38,7 +40,7 @@ namespace RSkoi_ComponentUtil
             {
                 if (isProperty)
                 {
-                    string defaultValue = VectorConversion.VectorToStringByType(p.PropertyType, p.GetValue(input, null));
+                    var defaultValue = VectorConversion.VectorToStringByType(p.PropertyType, p.GetValue(input, null));
                     if (objectMode)
                     {
                         AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -52,7 +54,7 @@ namespace RSkoi_ComponentUtil
                 }
                 else
                 {
-                    string defaultValue = VectorConversion.VectorToStringByType(f.FieldType, f.GetValue(input));
+                    var defaultValue = VectorConversion.VectorToStringByType(f.FieldType, f.GetValue(input));
                     if (objectMode)
                     {
                         AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, _selectedReferencePropertyUiEntry.PropertyNameValue,
@@ -98,8 +100,8 @@ namespace RSkoi_ComponentUtil
         {
             try
             {
-                float[] values = VectorConversion.StringToVectorValues(value);
-                object vector = VectorConversion.FloatValuesToVectorByType(p.PropertyType, values);
+                var values = VectorConversion.StringToVectorValues(value);
+                var vector = VectorConversion.FloatValuesToVectorByType(p.PropertyType, values);
                 p.SetValue(input, vector, null);
             }
             catch (Exception e) {
@@ -112,8 +114,8 @@ namespace RSkoi_ComponentUtil
         {
             try
             {
-                float[] values = VectorConversion.StringToVectorValues(value);
-                object vector = VectorConversion.FloatValuesToVectorByType(f.FieldType, values);
+                var values = VectorConversion.StringToVectorValues(value);
+                var vector = VectorConversion.FloatValuesToVectorByType(f.FieldType, values);
                 f.SetValue(input, vector);
             }
             catch (Exception e) {
@@ -159,19 +161,19 @@ namespace RSkoi_ComponentUtil
             /// <returns>values of vector parsed to floats</returns>
             public static float[] StringToVectorValues(string value)
             {
-                string[] split = value.Split('#');
-                int count = split.Where(s => !s.IsNullOrEmpty()).Count();
+                var split = value.Split('#');
+                var count = split.Where(s => !s.IsNullOrEmpty()).Count();
 
-                int i = 0;
-                float[] vectorValues = new float[count];
+                var i = 0;
+                var vectorValues = new float[count];
 
-                foreach (string s in split)
+                foreach (var s in split)
                 {
                     if (s.IsNullOrEmpty())
                         continue;
 
                     // exceptions should be caught by user
-                    vectorValues[i] = float.Parse(s);
+                    vectorValues[i] = InvariantConversion.ParseFloat(s);
                     i++;
                 }
 
@@ -221,44 +223,28 @@ namespace RSkoi_ComponentUtil
             }
 
             public static string Vector2ToString(Vector2 v)
-            {
-                return $"##{v.x}#{v.y}";
-            }
+                => string.Format(CultureInfo.InvariantCulture, "##{0}#{1}", v.x, v.y);
 
             public static string Vector3ToString(Vector3 v)
-            {
-                return $"#{v.x}#{v.y}#{v.z}";
-            }
+                => string.Format(CultureInfo.InvariantCulture, "#{0}#{1}#{2}", v.x, v.y, v.z);
 
             public static string Vector4ToString(Vector4 v)
-            {
-                return $"{v.x}#{v.y}#{v.z}#{v.w}";
-            }
+                => string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", v.x, v.y, v.z, v.w);
 
             public static string QuaternionToString(Quaternion v)
-            {
-                return $"{v.x}#{v.y}#{v.z}#{v.w}";
-            }
+                => string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", v.x, v.y, v.z, v.w);
 
             public static Vector2 ValuesToVector2(float[] values)
-            {
-                return new(values[0], values[1]);
-            }
+                => new(values[0], values[1]);
 
             public static Vector3 ValuesToVector3(float[] values)
-            {
-                return new(values[0], values[1], values[2]);
-            }
+                => new(values[0], values[1], values[2]);
 
             public static Vector4 ValuesToVector4(float[] values)
-            {
-                return new(values[0], values[1], values[2], values[3]);
-            }
+                => new(values[0], values[1], values[2], values[3]);
 
             public static Quaternion ValuesToQuaternion(float[] values)
-            {
-                return new(values[0], values[1], values[2], values[3]);
-            }
+                => new(values[0], values[1], values[2], values[3]);
         }
     }
 }

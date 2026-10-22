@@ -33,15 +33,15 @@ namespace RSkoi_ComponentUtil
         /// <summary>
         /// Selected Transform UI entry in TransformList.
         /// </summary>
-        private static ComponentUtilUI.GenericUIListEntry _selectedTransformUIEntry;
+        static ComponentUtilUI.GenericUIListEntry _selectedTransformUIEntry;
         /// <summary>
         /// Selected Component UI entry in ComponentList.
         /// </summary>
-        private static ComponentUtilUI.GenericUIListEntry _selectedComponentUiEntry;
+        static ComponentUtilUI.GenericUIListEntry _selectedComponentUiEntry;
         /// <summary>
         /// Selected reference type / object in ComponentInspector.
         /// </summary>
-        private static ComponentUtilUI.PropertyUIEntry _selectedReferencePropertyUiEntry;
+        static ComponentUtilUI.PropertyUIEntry _selectedReferencePropertyUiEntry;
         #endregion currently selected
 
         #region currently copied

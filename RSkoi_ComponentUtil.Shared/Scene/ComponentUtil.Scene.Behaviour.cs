@@ -28,7 +28,7 @@ namespace RSkoi_ComponentUtil.Scene
             if (operation == SceneOperationKind.Clear || operation == SceneOperationKind.Load)
                 _instance.ResetState();
 
-            PluginData data = GetExtendedData();
+            var data = GetExtendedData();
             if (data == null || operation == SceneOperationKind.Clear)
                 return;
 
@@ -38,7 +38,7 @@ namespace RSkoi_ComponentUtil.Scene
             #region add all components
             if (data.data.TryGetValue($"{name}_addedComponents", out var componentDict) && componentDict != null)
             {
-                SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict
+                var deserializedTrackerDataDict
                     = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerComponentDataSO>>>((byte[])componentDict);
                 
                 //PrintCompSavedDict(deserializedTrackerDataDict);
@@ -51,7 +51,7 @@ namespace RSkoi_ComponentUtil.Scene
             #region set all edited properties
             if (data.data.TryGetValue(name, out var propertyDict) && propertyDict != null)
             {
-                SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict
+                var deserializedTrackerDataDict
                     = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerDataSO>>>((byte[])propertyDict);
 
                 //PrintPropSavedDict(deserializedTrackerDataDict);
@@ -63,7 +63,7 @@ namespace RSkoi_ComponentUtil.Scene
             #region set all edited reference properties
             if (data.data.TryGetValue($"{name}_referenceProperties", out var referencePropertyDict) && referencePropertyDict != null)
             {
-                SortedDictionary<int, List<TrackerReferenceDataSO>> deserializedTrackerDataDict
+                var deserializedTrackerDataDict
                     = MessagePackSerializer.Deserialize<SortedDictionary<int, List<TrackerReferenceDataSO>>>((byte[])referencePropertyDict);
 
                 //PrintPropSavedDict(deserializedTrackerDataDict);
@@ -76,20 +76,21 @@ namespace RSkoi_ComponentUtil.Scene
                 ComponentUtilUI.HideWindow();
         }
 
-        private void OnSceneLoadAddComponents(
+        void OnSceneLoadAddComponents(
             SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
             foreach (var entry in deserializedTrackerDataDict)
             {
-                ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
-                Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                var loadedItem = loadedItems[entry.Key];
+                var loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
 
                 foreach (var componentEntry in entry.Value)
                 {
                     // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
-                    Transform loadedItemEditTransform = (componentEntry.parentPath == "")
-                        ? loadedItemTransformTarget : loadedItemTransformTarget.Find(componentEntry.parentPath);
+                    var loadedItemEditTransform = string.IsNullOrEmpty(componentEntry.parentPath)
+                        ? loadedItemTransformTarget
+                        : loadedItemTransformTarget.Find(componentEntry.parentPath);
                     if (loadedItemEditTransform == null)
                     {
                         _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{componentEntry.parentPath}");
@@ -99,7 +100,7 @@ namespace RSkoi_ComponentUtil.Scene
                     foreach (var componentAddEntry in componentEntry.addedComponents)
                     {
                         // _componentAdderSearchCache is populated once on plugin init (ComponentUtil.LoadedEvent)
-                        if (!ComponentUtilCache._componentAdderSearchCache.TryGetValue(componentAddEntry.componentName, out Type type))
+                        if (!ComponentUtilCache._componentAdderSearchCache.TryGetValue(componentAddEntry.componentName, out var type))
                         {
                             _logger.LogError($"Component {componentAddEntry.componentName} was not present in cache, cannot add it");
                             continue;
@@ -118,7 +119,7 @@ namespace RSkoi_ComponentUtil.Scene
             }
         }
 
-        private IEnumerator OnSceneLoadAddComponentsRoutine(
+        IEnumerator OnSceneLoadAddComponentsRoutine(
             SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
@@ -127,7 +128,7 @@ namespace RSkoi_ComponentUtil.Scene
             OnSceneLoadAddComponents(deserializedTrackerDataDict, loadedItems);
         }
 
-        private IEnumerator OnSceneLoadEditPropsRoutine(
+        IEnumerator OnSceneLoadEditPropsRoutine(
             SortedDictionary<int, List<TrackerDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
@@ -136,27 +137,28 @@ namespace RSkoi_ComponentUtil.Scene
             // this is beyond horrid
             foreach (var entry in deserializedTrackerDataDict)
             {
-                ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
-                Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                var loadedItem = loadedItems[entry.Key];
+                var loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
 
                 foreach (var propEntry in entry.Value)
                 {
                     // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
-                    Transform loadedItemEditTransform = (propEntry.parentPath == "")
-                        ? loadedItemTransformTarget : loadedItemTransformTarget.Find(propEntry.parentPath);
+                    var loadedItemEditTransform = string.IsNullOrEmpty(propEntry.parentPath)
+                        ? loadedItemTransformTarget
+                        : loadedItemTransformTarget.Find(propEntry.parentPath);
                     if (loadedItemEditTransform == null)
                     {
                         _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
                         continue;
                     }
 
-                    Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    var component = loadedItemEditTransform.GetComponent(propEntry.componentName);
                     if (component == null)
                     {
                         _logger.LogError($"Could not get component with name {propEntry.componentName} on {loadedItemTransformTarget.name}");
                         continue;
                     }
-                    Type componentType = component.GetType();
+                    var componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
                     foreach (var propEdit in propEntry.properties)
@@ -167,10 +169,10 @@ namespace RSkoi_ComponentUtil.Scene
                         bool isVector       = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
                         bool isColor        = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
-                        PropertyInfo p = (isReference || isProperty) ? componentType.GetProperty(propEdit.propertyName) : null;
-                        FieldInfo f = (isReference || !isProperty) ? componentType.GetField(propEdit.propertyName) : null;
+                        var p = (isReference || isProperty) ? componentType.GetProperty(propEdit.propertyName) : null;
+                        var f = (isReference || !isProperty) ? componentType.GetField(propEdit.propertyName) : null;
 
-                        object value = _instance.GetValueFieldOrProperty(component, p, f);
+                        var value = _instance.GetValueFieldOrProperty(component, p, f);
                         if (value == null)
                         {
                             _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
@@ -179,10 +181,10 @@ namespace RSkoi_ComponentUtil.Scene
                         }
 
                         if (isInt)
-                            value = (int)value;
+                            value = Convert.ToInt32(value);
                         else if (isVector)
                         {
-                            string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
+                            var vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
                             if (vectorString.IsNullOrEmpty())
                             {
                                 _logger.LogError($"Failed to convert vector {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
@@ -194,10 +196,10 @@ namespace RSkoi_ComponentUtil.Scene
                         else if (isColor)
                             value = ColorConversion.ColorToString((Color)value);
 
-                        string propEditValueString = propEdit.propertyValue.ToString();
+                        var propEditValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
                         // a default value was saved -> can be discarded
                         // redirector values are always set
-                        if (!componentTypeIsRedirector && value.ToString() == propEditValueString)
+                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(value) == propEditValueString)
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
@@ -220,7 +222,7 @@ namespace RSkoi_ComponentUtil.Scene
             }
         }
 
-        private IEnumerator OnSceneLoadEditReferencePropsRoutine(
+        IEnumerator OnSceneLoadEditReferencePropsRoutine(
             SortedDictionary<int, List<TrackerReferenceDataSO>> deserializedTrackerDataDict,
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
@@ -229,46 +231,47 @@ namespace RSkoi_ComponentUtil.Scene
             // this is beyond horrid
             foreach (var entry in deserializedTrackerDataDict)
             {
-                ObjectCtrlInfo loadedItem = loadedItems[entry.Key];
-                Transform loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                var loadedItem = loadedItems[entry.Key];
+                var loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
 
                 foreach (var propEntry in entry.Value)
                 {
                     // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
-                    Transform loadedItemEditTransform = (propEntry.parentPath == "")
-                        ? loadedItemTransformTarget : loadedItemTransformTarget.Find(propEntry.parentPath);
+                    var loadedItemEditTransform = string.IsNullOrEmpty(propEntry.parentPath)
+                        ? loadedItemTransformTarget
+                        : loadedItemTransformTarget.Find(propEntry.parentPath);
                     if (loadedItemEditTransform == null)
                     {
                         _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
                         continue;
                     }
 
-                    Component component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    var component = loadedItemEditTransform.GetComponent(propEntry.componentName);
                     if (component == null)
                     {
                         _logger.LogError($"Could not get component with name {propEntry.componentName} on {loadedItemTransformTarget.name}");
                         continue;
                     }
-                    Type componentType = component.GetType();
+                    var componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
-                    PropertyInfo propReferenceType = componentType.GetProperty(propEntry.referencePropertyName,
+                    var propReferenceType = componentType.GetProperty(propEntry.referencePropertyName,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    FieldInfo fieldReferenceType = componentType.GetField(propEntry.referencePropertyName,
+                    var fieldReferenceType = componentType.GetField(propEntry.referencePropertyName,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    object referenceObject = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
+                    var referenceObject = _instance.GetValueFieldOrProperty(component, propReferenceType, fieldReferenceType);
                     if (referenceObject == null)
                     {
                         _logger.LogWarning($"Could not find non-null reference on {loadedItemEditTransform.name}" +
                             $".{componentType.Name} with name {propEntry.referencePropertyName}, ignoring");
                         continue;
                     }
-                    Type referenceObjectType = referenceObject.GetType();
+                    var referenceObjectType = referenceObject.GetType();
 
                     foreach (var propEdit in propEntry.properties)
                     {
                         // reference properties are not allowed in object inspector
-                        bool isReference = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                        var isReference = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
                         if (isReference)
                             continue;
 
@@ -277,10 +280,10 @@ namespace RSkoi_ComponentUtil.Scene
                         bool isVector   = !isInt && HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
                         bool isColor    = HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
-                        PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEdit.propertyName) : null;
-                        FieldInfo f = !isProperty ? referenceObjectType.GetField(propEdit.propertyName) : null;
+                        var p = isProperty ? referenceObjectType.GetProperty(propEdit.propertyName) : null;
+                        var f = !isProperty ? referenceObjectType.GetField(propEdit.propertyName) : null;
 
-                        object value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
+                        var value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
                         if (value == null)
                         {
                             _logger.LogWarning($"Could not find non-null reference {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
@@ -289,10 +292,10 @@ namespace RSkoi_ComponentUtil.Scene
                         }
 
                         if (isInt)
-                            value = (int)value;
+                            value = Convert.ToInt32(value);
                         else if (isVector)
                         {
-                            string vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
+                            var vectorString = VectorConversion.VectorToStringByType(isProperty ? p.PropertyType : f.FieldType, value);
                             if (vectorString.IsNullOrEmpty())
                             {
                                 _logger.LogError($"Failed to convert vector {(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
@@ -304,10 +307,10 @@ namespace RSkoi_ComponentUtil.Scene
                         else if (isColor)
                             value = ColorConversion.ColorToString((Color)value);
 
-                        string propEditValueString = propEdit.propertyValue.ToString();
+                        var propEditValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
                         // a default value was saved -> can be discarded
                         // redirector values are always set
-                        if (!componentTypeIsRedirector && value.ToString() == propEditValueString)
+                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(value) == propEditValueString)
                             continue;
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
@@ -331,7 +334,7 @@ namespace RSkoi_ComponentUtil.Scene
         #region save
         protected override void OnSceneSave()
         {
-            PluginData data = new();
+            var data = new PluginData();
 
             if (!SaveSceneData.Value)
             {
@@ -342,11 +345,11 @@ namespace RSkoi_ComponentUtil.Scene
 
             _instance.ClearInvalidEntriesFromTracker();
 
-            SortedDictionary<int, List<TrackerDataSO>> propertySavedDict = [];
+            var propertySavedDict = new SortedDictionary<int, List<TrackerDataSO>>();
             foreach (var entry in _propertyTracker)
             {
-                int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
-                List<TrackerDataPropertySO> properties = [];
+                var key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
+                var properties = new List<TrackerDataPropertySO>();
                 foreach (var propEntry in entry.Value)
                 {
                     bool isReference    = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
@@ -370,18 +373,18 @@ namespace RSkoi_ComponentUtil.Scene
                         }
 
                         if (isInt)
-                            value = (int)value;
+                            value = Convert.ToInt32(value);
                         else if (isVector)
                             value = VectorConversion.VectorToStringByType(value.GetType(), value);
                         else if (isColor)
                             value = ColorConversion.ColorToString((Color)value);
                     }
 
-                    TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
+                    var prop = new TrackerDataPropertySO(propEntry.Key, value, propEntry.Value.OptionFlags);
                     properties.Add(prop);
                 }
 
-                TrackerDataSO container = new(
+                var container = new TrackerDataSO(
                     key,
                     GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
                     entry.Key.Go.transform.name,
@@ -395,41 +398,40 @@ namespace RSkoi_ComponentUtil.Scene
                     propertySavedDict.Add(key, [ container ]);
             }
 
-            SortedDictionary<int, List<TrackerReferenceDataSO>> referencePropertySavedDict = [];
+            var referencePropertySavedDict = new SortedDictionary<int, List<TrackerReferenceDataSO>>();
             foreach (var entry in _referencePropertyTracker)
             {
-                int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
-                Type componentType = entry.Key.Component.GetType();
-                PropertyInfo propReferenceType = componentType.GetProperty(entry.Key.ReferencePropertyName,
+                var key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
+                var componentType = entry.Key.Component.GetType();
+                var propReferenceType = componentType.GetProperty(entry.Key.ReferencePropertyName,
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                FieldInfo fieldReferenceType = componentType.GetField(entry.Key.ReferencePropertyName,
+                var fieldReferenceType = componentType.GetField(entry.Key.ReferencePropertyName,
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                object referenceObject = _instance.GetValueFieldOrProperty(entry.Key.Component, propReferenceType, fieldReferenceType);
+                var referenceObject = _instance.GetValueFieldOrProperty(entry.Key.Component, propReferenceType, fieldReferenceType);
                 if (referenceObject == null)
                 {
                     _logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.ReferencePropertyName}, ignoring");
                     continue;
                 }
 
-                Type referenceObjectType = referenceObject.GetType();
+                var referenceObjectType = referenceObject.GetType();
 
-                List<TrackerDataPropertySO> properties = [];
+                var properties = new List<TrackerDataPropertySO>();
                 foreach (var propEntry in entry.Value)
                 {
                     // reference properties are not allowed in object inspector
-                    bool isReference = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                    if (isReference)
-                        continue;
+                    var isReference = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
+                    if (isReference) continue;
 
                     bool isProperty = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                     bool isInt      = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsInt);
                     bool isVector   = !isInt && HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsVector);
                     bool isColor    = HasPropertyFlag(propEntry.Value.OptionFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsColor);
 
-                    PropertyInfo p = isProperty ? referenceObjectType.GetProperty(propEntry.Key) : null;
-                    FieldInfo f = !isProperty ? referenceObjectType.GetField(propEntry.Key) : null;
+                    var p = isProperty ? referenceObjectType.GetProperty(propEntry.Key) : null;
+                    var f = !isProperty ? referenceObjectType.GetField(propEntry.Key) : null;
 
-                    object value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
+                    var value = _instance.GetValueFieldOrProperty(referenceObject, p, f);
                     if (value == null)
                     {
                         _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {entry.Key.Go.name}.{componentType.Name}" +
@@ -438,17 +440,17 @@ namespace RSkoi_ComponentUtil.Scene
                     }
 
                     if (isInt)
-                        value = (int)value;
+                        value = Convert.ToInt32(value);
                     else if (isVector)
                         value = VectorConversion.VectorToStringByType(value.GetType(), value);
                     else if (isColor)
                         value = ColorConversion.ColorToString((Color)value);
 
-                    TrackerDataPropertySO prop = new(propEntry.Key, value, propEntry.Value.OptionFlags);
+                    var prop = new TrackerDataPropertySO(propEntry.Key, value, propEntry.Value.OptionFlags);
                     properties.Add(prop);
                 }
 
-                TrackerReferenceDataSO container = new(
+                var container = new TrackerReferenceDataSO(
                     key,
                     GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
                     entry.Key.Go.transform.name,
@@ -463,18 +465,18 @@ namespace RSkoi_ComponentUtil.Scene
                     referencePropertySavedDict.Add(key, [container]);
             }
 
-            SortedDictionary<int, List<TrackerComponentDataSO>> componentSavedDict = [];
+            var componentSavedDict = new SortedDictionary<int, List<TrackerComponentDataSO>>();
             foreach (var entry in _addedComponentsTracker)
             {
-                int key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
-                List<TrackerAddedComponentDataSO> addedComponents = [];
-                foreach (string componentName in entry.Value)
+                var key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
+                var addedComponents = new List<TrackerAddedComponentDataSO>();
+                foreach (var componentName in entry.Value)
                 {
-                    TrackerAddedComponentDataSO c = new(componentName);
+                    var c = new TrackerAddedComponentDataSO(componentName);
                     addedComponents.Add(c);
                 }
 
-                TrackerComponentDataSO container = new(
+                var container = new TrackerComponentDataSO(
                     key,
                     GetGameObjectPathToRoot(entry.Key.Go.transform, entry.Key.ObjCtrlInfo.guideObject.transformTarget),
                     entry.Key.Go.transform.name,
@@ -563,10 +565,9 @@ namespace RSkoi_ComponentUtil.Scene
             // notice that transform.Find already accounts for the root
             // -> do not include it in the path
 
-            if (transform == root)
-                return "";
+            if (transform == root) return "";
 
-            string path = transform.name;
+            var path = transform.name;
             while (transform.parent != null && transform.parent != root)
             {
                 transform = transform.parent;
@@ -577,14 +578,14 @@ namespace RSkoi_ComponentUtil.Scene
         #endregion internal helpers
 
         #region private helpers
-        private bool TypeIsSupportedRedirector(Type type)
+        bool TypeIsSupportedRedirector(Type type)
         {
             return redirectorTypes.ContainsValue(type);
         }
 
-        private void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
+        void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
         {
-            int i = 0;
+            var i = 0;
             foreach (var entry in savedDict)
             {
                 _logger.LogInfo($"-------------- Entry {i}:");
@@ -600,9 +601,9 @@ namespace RSkoi_ComponentUtil.Scene
             }
         }
 
-        private void PrintPropSavedDict(SortedDictionary<int, List<TrackerReferenceDataSO>> savedDict)
+        void PrintPropSavedDict(SortedDictionary<int, List<TrackerReferenceDataSO>> savedDict)
         {
-            int i = 0;
+            var i = 0;
             foreach (var entry in savedDict)
             {
                 _logger.LogInfo($"-------------- Entry {i}:");
@@ -618,9 +619,9 @@ namespace RSkoi_ComponentUtil.Scene
             }
         }
 
-        private void PrintCompSavedDict(SortedDictionary<int, List<TrackerComponentDataSO>> savedDict)
+        void PrintCompSavedDict(SortedDictionary<int, List<TrackerComponentDataSO>> savedDict)
         {
-            int i = 0;
+            var i = 0;
             foreach (var entry in savedDict)
             {
                 _logger.LogInfo($"-------------- Entry {i}:");

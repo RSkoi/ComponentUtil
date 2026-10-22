@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Collections.Generic;
+﻿using System.Linq;
 using UnityEngine;
 
 using RSkoi_ComponentUtil.UI;
@@ -24,27 +22,27 @@ namespace RSkoi_ComponentUtil
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentAdderListSelectedGOText, input.name);
 
-            List<Type> componentList = ComponentUtilCache.GetOrCacheComponentAdders();
+            var componentList = ComponentUtilCache.GetOrCacheComponentAdders();
 
             // filter string
-            string filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
-            if (filter != "")
+            var filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
+            if (!string.IsNullOrEmpty(filter))
                 componentList = [.. componentList.Where(t => t.FullName.ToLower().Contains(filter))];
 
             // paging
-            int itemsPerPage = ItemsPerPageValue;
-            int startIndex = _currentPageComponentAdderList * itemsPerPage;
-            int n = (componentList.Count - startIndex) <= itemsPerPage ? componentList.Count - startIndex : itemsPerPage;
+            var itemsPerPage = ItemsPerPageValue;
+            var startIndex = _currentPageComponentAdderList * itemsPerPage;
+            var n = (componentList.Count - startIndex) <= itemsPerPage ? componentList.Count - startIndex : itemsPerPage;
 
             if (componentList.Count != 0)
                 componentList = componentList.GetRange(startIndex, n);
 
             ComponentUtilUI.PrepareComponentAdderPool(componentList.Count);
-            for (int poolIndex = 0; poolIndex < componentList.Count; poolIndex++)
+            for (var poolIndex = 0; poolIndex < componentList.Count; poolIndex++)
             {
-                Type t = componentList[poolIndex];
+                var t = componentList[poolIndex];
 
-                ComponentUtilUI.GenericUIListEntry uiEntry = ComponentUtilUI.ComponentAdderListEntries[poolIndex];
+                var uiEntry = ComponentUtilUI.ComponentAdderListEntries[poolIndex];
                 uiEntry.EntryName.text = t.Name;
                 // remove all (non-persistent) listeners
                 uiEntry.SelfButton.onClick.RemoveAllListeners();
@@ -60,8 +58,8 @@ namespace RSkoi_ComponentUtil
                     AddComponentToTracker(_selectedObject, input, t.FullName);
 
                     // force refresh the component list cache
-                    ComponentUtilCache.GetOrCacheComponents(input, true);
-                    GetAllComponents(_selectedGO, _selectedTransformUIEntry, false);
+                    ComponentUtilCache.GetOrCacheComponents(input, forceRefresh: true);
+                    GetAllComponents(_selectedGO, _selectedTransformUIEntry, setsSelected: false);
 
                     ComponentUtilUI.TraverseAndSetEditedParents();
                 });
@@ -104,7 +102,7 @@ namespace RSkoi_ComponentUtil
         {
             if (_selectedGO == null)
                 return;
-            int toBeStartIndex = (_currentPageComponentAdderList + 1) * ItemsPerPageValue;
+            var toBeStartIndex = (_currentPageComponentAdderList + 1) * ItemsPerPageValue;
             // page switch can only occur after the assemblies have been scanned for components
             var cached = ComponentUtilCache._componentAdderSearchCache.Values;
             // out of bounds start index
@@ -112,9 +110,9 @@ namespace RSkoi_ComponentUtil
                 return;
 
             // if filter string reduces length of transform list
-            string filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
-            if (filter != "" && (toBeStartIndex >= cached
-                .Where(t => t.Name.ToLower().Contains(filter))
+            var filter = ComponentUtilUI.PageSearchComponentAdderInputValue.ToLower();
+            if (!string.IsNullOrEmpty(filter) && (toBeStartIndex >= cached
+                .Where(t => t.FullName.ToLower().Contains(filter))
                 .Count()))
                 return;
 

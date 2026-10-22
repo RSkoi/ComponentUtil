@@ -29,8 +29,8 @@ namespace RSkoi_ComponentUtil
         {
             get
             {
-                HashSet<Transform> res = [];
-                foreach (PropertyKey key in _propertyTracker.Keys)
+                var res = new HashSet<Transform>();
+                foreach (var key in _propertyTracker.Keys)
                     res.Add(key.Go.transform);
                 return res;
             }
@@ -43,8 +43,8 @@ namespace RSkoi_ComponentUtil
         {
             get
             {
-                HashSet<Component> res = [];
-                foreach (PropertyKey key in _propertyTracker.Keys)
+                var res = new HashSet<Component>();
+                foreach (var key in _propertyTracker.Keys)
                     res.Add(key.Component);
                 return res;
             }
@@ -85,7 +85,7 @@ namespace RSkoi_ComponentUtil
             GameObject go,
             string componentName)
         {
-            ComponentAdderKey key = new(objCtrlInfo, go);
+            var key = new ComponentAdderKey(objCtrlInfo, go);
             return AddComponentToTracker(key, componentName);
         }
 
@@ -107,13 +107,13 @@ namespace RSkoi_ComponentUtil
             GameObject go,
             Component component)
         {
-            ComponentAdderKey key = new(objCtrlInfo, go);
+            var key = new ComponentAdderKey(objCtrlInfo, go);
             return RemoveComponentFromTracker(key, component);
         }
 
         internal bool RemoveComponentFromTracker(ComponentAdderKey key, Component component)
         {
-            string componentName = component.GetType().FullName;
+            var componentName = component.GetType().FullName;
             if (!ComponentIsTracked(key, componentName))
                 return false;
 
@@ -136,7 +136,7 @@ namespace RSkoi_ComponentUtil
         internal bool ComponentIsTracked(
             ObjectCtrlInfo objCtrlInfo, GameObject go, string componentName)
         {
-            ComponentAdderKey key = new(objCtrlInfo, go);
+            var key = new ComponentAdderKey(objCtrlInfo, go);
             return ComponentIsTracked(key, componentName);
         }
 
@@ -159,7 +159,7 @@ namespace RSkoi_ComponentUtil
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
-            PropertyKey key = new(objCtrlInfo, go, component);
+            var key = new PropertyKey(objCtrlInfo, go, component);
             return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
         }
 
@@ -169,7 +169,7 @@ namespace RSkoi_ComponentUtil
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
-            PropertyTrackerData data = new(propertyName, optionFlags, defaultValue);
+            var data = new PropertyTrackerData(propertyName, optionFlags, defaultValue);
 
             if (_propertyTracker.ContainsKey(key))
                 if (_propertyTracker[key].ContainsKey(propertyName))
@@ -188,7 +188,7 @@ namespace RSkoi_ComponentUtil
             Component component,
             string propertyName)
         {
-            PropertyKey key = new(objCtrlInfo, go, component);
+            var key = new PropertyKey(objCtrlInfo, go, component);
             return RemovePropertyFromTracker(key, propertyName);
         }
 
@@ -207,7 +207,7 @@ namespace RSkoi_ComponentUtil
         internal bool PropertyIsTracked(
             ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string propertyName)
         {
-            PropertyKey key = new(objCtrlInfo, go, component);
+            var key = new PropertyKey(objCtrlInfo, go, component);
             return PropertyIsTracked(key, propertyName);
         }
 
@@ -223,7 +223,7 @@ namespace RSkoi_ComponentUtil
         internal bool TransformObjectAndComponentIsTracked(
             ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
         {
-            PropertyKey key = new(objCtrlInfo, go, component);
+            var key = new PropertyKey(objCtrlInfo, go, component);
             return TransformObjectAndComponentIsTracked(key);
         }
 
@@ -240,7 +240,7 @@ namespace RSkoi_ComponentUtil
             Component component,
             string propertyName)
         {
-            PropertyKey key = new(objCtrlInfo, go, component);
+            var key = new PropertyKey(objCtrlInfo, go, component);
             return GetTrackedDefaultValue(key, propertyName);
         }
 
@@ -273,8 +273,8 @@ namespace RSkoi_ComponentUtil
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
             // add dummy tracker to reference type
-            AddPropertyToTracker(objCtrlInfo, go, component, referencePropertyName, 0, PropertyTrackerDataOptions.IsReference);
-            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            AddPropertyToTracker(objCtrlInfo, go, component, referencePropertyName, defaultValue: 0, PropertyTrackerDataOptions.IsReference);
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
             return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
         }
 
@@ -284,7 +284,7 @@ namespace RSkoi_ComponentUtil
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
-            PropertyTrackerData data = new(propertyName, optionFlags, defaultValue);
+            var data = new PropertyTrackerData(propertyName, optionFlags, defaultValue);
 
             if (_referencePropertyTracker.ContainsKey(key))
                 if (_referencePropertyTracker[key].ContainsKey(propertyName))
@@ -306,8 +306,8 @@ namespace RSkoi_ComponentUtil
             out bool removedKey)
         {
             RemovePropertyFromTracker(objCtrlInfo, go, component, referencePropertyName);
-            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
-            bool ret = RemovePropertyFromTracker(key, propertyName, out bool removedK);
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
+            var ret = RemovePropertyFromTracker(key, propertyName, out var removedK);
             removedKey = removedK;
             return ret;
         }
@@ -338,7 +338,7 @@ namespace RSkoi_ComponentUtil
             string referencePropertyName,
             string propertyName)
         {
-            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
             return PropertyIsTracked(key, propertyName)
                 && PropertyIsTracked(objCtrlInfo, go, component, referencePropertyName);
         }
@@ -358,7 +358,7 @@ namespace RSkoi_ComponentUtil
             Component component,
             string referencePropertyName)
         {
-            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
             return TransformObjectAndComponentIsTracked(key)
                 && TransformObjectAndComponentIsTracked(objCtrlInfo, go, component);
         }
@@ -377,7 +377,7 @@ namespace RSkoi_ComponentUtil
             string referencePropertyName,
             string propertyName)
         {
-            PropertyReferenceKey key = new(objCtrlInfo, go, component, referencePropertyName);
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
             return GetTrackedDefaultValue(key, propertyName);
         }
 
@@ -401,9 +401,9 @@ namespace RSkoi_ComponentUtil
         #endregion internal
 
         #region private helpers
-        private void PrintTracker()
+        void PrintTracker()
         {
-            int i = 0;
+            var i = 0;
             _logger.LogInfo($"+++++++++++++++++ Properties:");
             foreach (var entry in _propertyTracker)
             {
@@ -524,7 +524,7 @@ namespace RSkoi_ComponentUtil
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {
-                    int hash = 17;
+                    var hash = 17;
                     hash = hash * 31 + ObjCtrlInfo.GetHashCode();
                     hash = hash * 31 + Go.GetHashCode();
                     hash = hash * 31 + Component.GetHashCode();
@@ -587,7 +587,7 @@ namespace RSkoi_ComponentUtil
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {
-                    int hash = 17;
+                    var hash = 17;
                     hash = hash * 31 + ObjCtrlInfo.GetHashCode();
                     hash = hash * 31 + Go.GetHashCode();
                     hash = hash * 31 + Component.GetHashCode();
@@ -642,7 +642,7 @@ namespace RSkoi_ComponentUtil
                 // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
                 unchecked
                 {
-                    int hash = 17;
+                    var hash = 17;
                     hash = hash * 31 + ObjCtrlInfo.GetHashCode();
                     hash = hash * 31 + Go.GetHashCode();
                     return hash;
