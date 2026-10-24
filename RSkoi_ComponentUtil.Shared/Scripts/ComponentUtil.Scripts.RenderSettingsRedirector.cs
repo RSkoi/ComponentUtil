@@ -151,7 +151,7 @@ namespace RSkoi_ComponentUtil.Scripts
 
         public void Start()
         {
-            ComponentUtil._logger.LogInfo("RenderSettingsRedirector started");
+            Logger.LogInfo("RenderSettingsRedirector started");
         }
     }
 }

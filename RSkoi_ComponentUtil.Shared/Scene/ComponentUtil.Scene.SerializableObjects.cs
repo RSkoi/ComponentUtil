@@ -1,7 +1,7 @@
 ﻿using System;
 using MessagePack;
 
-using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
+using static RSkoi_ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil.Scene
 {

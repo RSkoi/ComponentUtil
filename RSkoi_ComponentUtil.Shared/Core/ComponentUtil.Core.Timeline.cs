@@ -9,6 +9,7 @@ using KKAPI.Utilities;
 using RSkoi_ComponentUtil.Core;
 using RSkoi_ComponentUtil.Scene;
 using static RSkoi_ComponentUtil.ComponentUtil;
+using static RSkoi_ComponentUtil.ComponentUtilTracker;
 
 namespace RSkoi_ComponentUtil.Timeline
 {
@@ -80,7 +81,7 @@ namespace RSkoi_ComponentUtil.Timeline
                 options);
             RefreshInterpolablesList();
 
-            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{member.Name} to Timeline");
+            Logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{member.Name} to Timeline");
         }
 
         internal static void SelectTimelineModelTarget(
@@ -100,7 +101,7 @@ namespace RSkoi_ComponentUtil.Timeline
                 options | PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
             RefreshInterpolablesList();
 
-            _logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.ReferencePropertyName}.{member.Name} to Timeline");
+            Logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.ReferencePropertyName}.{member.Name} to Timeline");
         }
         #endregion selection
 
@@ -165,7 +166,7 @@ namespace RSkoi_ComponentUtil.Timeline
             // don't lerp ints, strings and whatever else
             if (!IsInterpolatable(param.Type))
             {
-                SetValueWithFlags(param.Member, param.Target, leftValue, param.Options);
+                ValueConversion.SetValueWithFlags(param.Member, param.Target, leftValue, param.Options);
                 return;
             }
 
@@ -177,11 +178,11 @@ namespace RSkoi_ComponentUtil.Timeline
             }
             catch (Exception e)
             {
-                _logger.LogError(e);
+                Logger.LogError(e);
                 return;
             }
             var interpolatedValue = InterpolateValue(left, right, param.Type, factor);
-            SetValueWithFlags(param.Member, param.Target, interpolatedValue, param.Options);
+            ValueConversion.SetValueWithFlags(param.Member, param.Target, interpolatedValue, param.Options);
         }
 
         static bool IsInterpolatable(Type t)
@@ -209,20 +210,26 @@ namespace RSkoi_ComponentUtil.Timeline
 
         static TimelinePropertyParameter GetPropertyParameter(ObjectCtrlInfo _)
         {
-            if (_selectedTimelineModelTarget != null && _paramCache.TryGetValue(_selectedTimelineModelTarget, out var value))
-                return value;
+            var selected = _selectedTimelineModelTarget;
+            if (selected == null)
+            {
+                Logger.LogError("GetPropertyParameter: no property was sent to Timeline");
+                return null;
+            }
+
+            if (_paramCache.TryGetValue(selected, out var cached))
+                return cached;
 
             var param = new TimelinePropertyParameter(
-                _selectedTimelineModelTarget.Oci,
-                _selectedTimelineModelTarget.Go,
-                _selectedTimelineModelTarget.Component,
-                _selectedTimelineModelTarget.Target,
-                _selectedTimelineModelTarget.Member,
-                _selectedTimelineModelTarget.ReferenceName,
-                _selectedTimelineModelTarget.PropertyName,
-                _selectedTimelineModelTarget.Options);
-            if (_selectedTimelineModelTarget != null)
-                _paramCache.Add(_selectedTimelineModelTarget, param);
+                selected.Oci,
+                selected.Go,
+                selected.Component,
+                selected.Target,
+                selected.Member,
+                selected.ReferenceName,
+                selected.PropertyName,
+                selected.Options);
+            _paramCache.Add(selected, param);
             return param;
         }
 
@@ -255,7 +262,7 @@ namespace RSkoi_ComponentUtil.Timeline
             var propertyName = node.Attributes["propertyName"].Value;
 
             var providedGameObjectTarget = oci.guideObject.transformTarget;
-            var go = goPath.IsNullOrEmpty()
+            var go = string.IsNullOrEmpty(goPath)
                 ? providedGameObjectTarget.gameObject
                 : providedGameObjectTarget.Find(goPath).gameObject;
 
@@ -265,9 +272,8 @@ namespace RSkoi_ComponentUtil.Timeline
 
             if (isInsideReference)
             {
-                target = Member.FindAny(componentType, referenceName).TryGetValue(component);
-                // this can produce a null ref
-                componentType = target.GetType();
+                target = Member.FindAny(componentType, referenceName).TryGetValue(component);   // this can return null
+                componentType = target.GetType();                                               // this can produce a null ref
             }
             var member = Member.Find(componentType, propertyName, isProperty);
 

@@ -176,7 +176,7 @@ namespace RSkoi_ComponentUtil.Scripts
 
         public void Start()
         {
-            ComponentUtil._logger.LogInfo("QualitySettingsRedirector started");
+            Logger.LogInfo("QualitySettingsRedirector started");
         }
     }
 }

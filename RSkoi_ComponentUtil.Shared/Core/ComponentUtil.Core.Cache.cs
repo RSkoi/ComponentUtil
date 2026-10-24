@@ -18,10 +18,8 @@ namespace RSkoi_ComponentUtil.Core
         internal static readonly Dictionary<GameObject, Transform[]> _transformSearchChildrenCache = [];
         internal static readonly Dictionary<GameObject, Component[]> _componentSearchCache = [];
         // cache is used to circumvent repeated GetFields, GetProperties calls (reflection)
-        internal static readonly Dictionary<Component, PropertyInfo[]> _propertyInfoSearchCache = [];
-        internal static readonly Dictionary<Component, FieldInfo[]> _fieldInfoSearchCache = [];
-        internal static readonly Dictionary<object, PropertyInfo[]> _propertyInfoSearchCacheObject = [];
-        internal static readonly Dictionary<object, FieldInfo[]> _fieldInfoSearchCacheObject = [];
+        internal static readonly Dictionary<Type, PropertyInfo[]> _propertyInfoCache = [];
+        internal static readonly Dictionary<Type, FieldInfo[]> _fieldInfoCache = [];
 
         // cache is used to avoid expensive reflection, key is Type.FullName
         internal static Dictionary<string, Type> _componentAdderSearchCache = [];
@@ -32,26 +30,16 @@ namespace RSkoi_ComponentUtil.Core
             _transformSearchCache.Clear();
             _transformSearchChildrenCache.Clear();
             _componentSearchCache.Clear();
-            //_componentAdderSearchCache.Clear();
-            _propertyInfoSearchCache.Clear();
-            _fieldInfoSearchCache.Clear();
-            _propertyInfoSearchCacheObject.Clear();
-            _fieldInfoSearchCacheObject.Clear();
-        }
-
-        internal static void ClearComponentFromCache(Component c)
-        {
-            _propertyInfoSearchCache.Remove(c);
-            _fieldInfoSearchCache.Remove(c);
-
-            // TODO: how to remove from property/fieldInfoSearchCacheObject, is it really needed?
+            // _componentAdderSearchCache is not cleared
+            _propertyInfoCache.Clear();
+            _fieldInfoCache.Clear();
         }
 
         /// <summary>
         /// Gets and caches all addable Types
         /// </summary>
-        /// <param name="forceRefresh">Whether to forcefully refresh the cache</param>
-        /// <returns>List of addable Types</returns>
+        /// <param name="forceRefresh">whether to forcefully refresh the cache</param>
+        /// <returns>list of addable Types</returns>
         internal static List<Type> GetOrCacheComponentAdders(bool forceRefresh = false)
         {
             if (!forceRefresh && _componentAdderSearchCache.Count != 0)
@@ -75,7 +63,7 @@ namespace RSkoi_ComponentUtil.Core
                 }
                 catch (ReflectionTypeLoadException)
                 {
-                    ComponentUtil._logger.LogWarning($"Could not load types of assembly {a.FullName}, skipping");
+                    Logger.LogWarning($"Could not load types of assembly {a.FullName}, skipping");
                 }
             }
 
@@ -85,91 +73,41 @@ namespace RSkoi_ComponentUtil.Core
         internal static Transform[] GetOrCacheTransforms(ObjectCtrlInfo inputCtrl, bool forceRefresh = false)
         {
             var input = inputCtrl.guideObject.transformTarget.gameObject;
-
-            // this should only return cached transforms of input w/o children transforms
-            if (!forceRefresh && _transformSearchCache.TryGetValue(input, out var value) && value != null)
-                return value;
-
-            var transforms = GetOrCacheTransforms(_transformSearchCache, input, forceRefresh);
-
-            var allTnoChildrenTransforms = GetOrCacheChildrenTransformsOfTno(inputCtrl.treeNodeObject);
-            transforms = [.. transforms.Where(t => !allTnoChildrenTransforms.Contains(t))];
-
-            // overwrite cache with filtered list w/o children transforms
-            _transformSearchCache[input] = transforms;
-            return transforms;
+            return GetOrCache(_transformSearchCache, input, forceRefresh, _ =>
+            {
+                var transforms = input.GetComponentsInChildren<Transform>();
+                // without transforms of child items in the workspace, they are items of their own
+                var allTnoChildrenTransforms = GetOrCacheChildrenTransformsOfTno(inputCtrl.treeNodeObject);
+                return [.. transforms.Where(t => !allTnoChildrenTransforms.Contains(t))];
+            });
         }
 
         internal static Component[] GetOrCacheComponents(GameObject input, bool forceRefresh = false)
-        {
-            if (!forceRefresh && _componentSearchCache.TryGetValue(input, out var value) && value != null)
-                return value;
-            if (forceRefresh)
-                _componentSearchCache.Clear();
+            => GetOrCache(_componentSearchCache, input, forceRefresh, go => go.GetComponents(typeof(Component)));
 
-            var res = input.GetComponents(typeof(Component));
-            _componentSearchCache.Add(input, res);
-            return res;
-        }
+        internal static PropertyInfo[] GetOrCachePropertyInfos(object input, bool forceRefresh = false)
+            => GetOrCache(_propertyInfoCache, input.GetType(), forceRefresh, t => t.GetProperties(Member.INSTANCE_MEMBERS));
 
-        internal static PropertyInfo[] GetOrCachePropertyInfos(Component input, bool forceRefresh = false)
-        {
-            if (!forceRefresh && _propertyInfoSearchCache.TryGetValue(input, out var value) && value != null)
-                return value;
-            if (forceRefresh)
-                _propertyInfoSearchCache.Clear();
-
-            var res = input
-                .GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            _propertyInfoSearchCache.Add(input, res);
-            return res;
-        }
-
-        internal static FieldInfo[] GetOrCacheFieldInfos(Component input, bool forceRefresh = false)
-        {
-            if (!forceRefresh && _fieldInfoSearchCache.TryGetValue(input, out var value) && value != null)
-                return value;
-            if (forceRefresh)
-                _fieldInfoSearchCache.Clear();
-
-            var res = input
-                .GetType()
-                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            _fieldInfoSearchCache.Add(input, res);
-            return res;
-        }
-
-        internal static PropertyInfo[] GetOrCachePropertyInfosObject(object input, bool forceRefresh = false)
-        {
-            if (!forceRefresh && _propertyInfoSearchCacheObject.TryGetValue(input, out var value) && value != null)
-                return value;
-            if (forceRefresh)
-                _propertyInfoSearchCacheObject.Clear();
-
-            var res = input
-                .GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            _propertyInfoSearchCacheObject.Add(input, res);
-            return res;
-        }
-
-        internal static FieldInfo[] GetOrCacheFieldInfosObject(object input, bool forceRefresh = false)
-        {
-            if (!forceRefresh && _fieldInfoSearchCacheObject.TryGetValue(input, out var value) && value != null)
-                return value;
-            if (forceRefresh)
-                _fieldInfoSearchCacheObject.Clear();
-
-            var res = input
-                .GetType()
-                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            _fieldInfoSearchCacheObject.Add(input, res);
-            return res;
-        }
+        internal static FieldInfo[] GetOrCacheFieldInfos(object input, bool forceRefresh = false)
+            => GetOrCache(_fieldInfoCache, input.GetType(), forceRefresh, t => t.GetFields(Member.INSTANCE_MEMBERS));
         #endregion internal
 
         #region private
+        /// <summary>
+        /// Returns cached value, or computes and caches it.
+        /// </summary>
+        /// <param name="forceRefresh">whether to recompute the value of this key</param>
+        static TValue GetOrCache<TKey, TValue>(Dictionary<TKey, TValue> cache, TKey key, bool forceRefresh, Func<TKey, TValue> compute)
+            where TValue : class
+        {
+            if (!forceRefresh && cache.TryGetValue(key, out var value) && value != null)
+                return value;
+
+            var res = compute(key);
+            cache[key] = res;
+            return res;
+        }
+
         static HashSet<Transform> GetOrCacheChildrenTransformsOfTno(TreeNodeObject tnoRoot)
         {
             var allChildTransforms = new List<Transform>();
@@ -178,55 +116,34 @@ namespace RSkoi_ComponentUtil.Core
                 if (!Studio.Studio.Instance.dicInfo.ContainsKey(child))
                     continue;
 
-                allChildTransforms.AddRange(
-                    // using different bucket as GetComponentsInChildren will pick up further children
-                    GetOrCacheTransforms(_transformSearchChildrenCache, Studio.Studio.Instance.dicInfo[child].guideObject.transformTarget.gameObject)
+                var childRoot = Studio.Studio.Instance.dicInfo[child].guideObject.transformTarget.gameObject;
+                allChildTransforms.AddRange(GetOrCache(
+                    _transformSearchChildrenCache, childRoot, forceRefresh: false, go => go.GetComponentsInChildren<Transform>())
                 );
             }
-            // no recursion needed because of GetComponentsInChildren being used in GetOrCacheTransforms
+            // no recursion because of GetComponentsInChildren
             return [.. allChildTransforms];
-        }
-
-        static Transform[] GetOrCacheTransforms(Dictionary<GameObject, Transform[]> cacheBucket, GameObject input, bool forceRefresh = false)
-        {
-            if (!forceRefresh && cacheBucket.TryGetValue(input, out var value) && value != null)
-                return value;
-            if (forceRefresh)
-                cacheBucket.Clear();
-
-            var res = input.GetComponentsInChildren<Transform>();
-            cacheBucket.Add(input, res);
-            return res;
         }
         #endregion private
 
         #region internal helper
         internal static void PrintCache()
         {
-            ComponentUtil._logger.LogInfo("+++++++ cache entries");
+            Logger.LogInfo("+++++++ cache entries");
 
             foreach (var entry in _transformSearchCache)
-                ComponentUtil._logger.LogInfo($"+ transforms: {entry.Key} , length {entry.Value.Length}");
+                Logger.LogInfo($"+ transforms: {entry.Key} , length {entry.Value.Length}");
 
             foreach (var entry in _componentSearchCache)
-                ComponentUtil._logger.LogInfo($"+ components: {entry.Key} , length {entry.Value.Length}");
+                Logger.LogInfo($"+ components: {entry.Key} , length {entry.Value.Length}");
 
-            foreach (var c in _propertyInfoSearchCache.Keys)
-                ComponentUtil._logger.LogInfo($"+ propertyInfos: {c}");
+            foreach (var t in _propertyInfoCache.Keys)
+                Logger.LogInfo($"+ propertyInfos: {t}");
 
-            foreach (var c in _fieldInfoSearchCache.Keys)
-                ComponentUtil._logger.LogInfo($"+ fieldInfos: {c}");
+            foreach (var t in _fieldInfoCache.Keys)
+                Logger.LogInfo($"+ fieldInfos: {t}");
 
-            foreach (var o in _propertyInfoSearchCacheObject.Keys)
-                ComponentUtil._logger.LogInfo($"+ referencePropertyInfos: {o}");
-
-            foreach (var o in _fieldInfoSearchCacheObject.Keys)
-                ComponentUtil._logger.LogInfo($"+ referenceFieldInfos: {o}");
-
-            //foreach (string c in _componentAdderSearchCache.Keys)
-            //    ComponentUtil.logger.LogInfo($"+ componentAdder: {c}");
-
-            ComponentUtil._logger.LogInfo("+++++++");
+            Logger.LogInfo("+++++++");
         }
         #endregion internal helper
     }

@@ -7,50 +7,27 @@ using UnityEngine.UI;
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
 
+using static RSkoi_ComponentUtil.ComponentUtilTracker;
+using static RSkoi_ComponentUtil.SupportedTypes;
+
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static partial class ComponentUtilEditor
     {
         /// <summary>
         /// Sets up component inspector: configure delete component button,
         /// get all fields of currently selected component, map to list entries of different types.
         /// </summary>
         /// <param name="input">selected component to list the properties and fields of</param>
-        /// <param name="inputUi">selected component ui entry</param>
-        internal void GetAllFieldsAndProperties(Component input, ComponentUtilUI.GenericUIListEntry inputUi)
+        internal static void GetAllFieldsAndProperties(Component input)
         {
+            // clear the inspector, so nothing of a previous selection stays visible and editable
             ComponentUtilUI._componentDeleteButton.interactable = false;
-            if (input == null || inputUi == null)
-                return;
-
-            #region component delete button
             ComponentUtilUI._componentDeleteButton.onClick.RemoveAllListeners();
-            if (ComponentIsTracked(_selectedObject, input.gameObject, input.GetType().FullName))
-            {
-                ComponentUtilUI._componentDeleteButton.interactable = true;
-                ComponentUtilUI._componentDeleteButton.onClick.AddListener(() =>
-                {
-                    var go = input.gameObject;
-                    if (RemoveComponentFromTracker(_selectedObject, go, input))
-                        DestroyImmediate(input); // scary, so that GetOrCacheComponents doesn't pick it up again
-
-                    // force refresh cache
-                    ComponentUtilCache.ClearComponentFromCache(input);
-                    ComponentUtilCache.GetOrCacheComponents(go, forceRefresh: true);
-
-                    Entry(_selectedObject);
-                });
-            }
-            #endregion component delete button
-
             ComponentUtilUI.ResetAndDisablePropertyEntries();
-
-            ComponentUtilUI.UpdateUISelectedText(
-                ComponentUtilUI._componentPropertyListSelectedComponentText,
-                $"{input.gameObject.name}.{input.GetType().Name}");
-            ComponentUtilUI.UpdateUISelectedText(
-                ComponentUtilUI._objectPropertyListSelectedText,
-                "None");
+            _shownReferenceEntries.Clear();
+            ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentPropertyListSelectedComponentText, "None");
+            ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._objectPropertyListSelectedText, "None");
             _selectedReferencePropertyUiEntry = null;
 
             // otherwise the color picker from a color prop can produce a null ref
@@ -60,6 +37,31 @@ namespace RSkoi_ComponentUtil
             // otherwise changing value in ObjectInspector will fail with exception
             if (ComponentUtilUI._objectInspectorWindow.gameObject.activeSelf)
                 ComponentUtilUI._objectInspectorWindow.gameObject.SetActive(false);
+
+            if (input == null)
+                return;
+
+            #region component delete button
+            if (ComponentIsTracked(_selectedObject, input.gameObject, input.GetType().FullName))
+            {
+                ComponentUtilUI._componentDeleteButton.interactable = true;
+                ComponentUtilUI._componentDeleteButton.onClick.AddListener(() =>
+                {
+                    var go = input.gameObject;
+                    if (RemoveComponentFromTracker(_selectedObject, go, input))
+                        UnityEngine.Object.DestroyImmediate(input); // scary, so that GetOrCacheComponents doesn't pick it up again
+
+                    // force refresh the component list cache of the GO
+                    ComponentUtilCache.GetOrCacheComponents(go, forceRefresh: true);
+
+                    Entry(_selectedObject);
+                });
+            }
+            #endregion component delete button
+
+            ComponentUtilUI.UpdateUISelectedText(
+                ComponentUtilUI._componentPropertyListSelectedComponentText,
+                $"{input.gameObject.name}.{input.GetType().Name}");
 
             var filter = ComponentUtilUI.PageSearchComponentInspectorInputValue.ToLower();
             foreach (var p in ComponentUtilCache.GetOrCachePropertyInfos(input))
@@ -81,7 +83,7 @@ namespace RSkoi_ComponentUtil
                 if (!string.IsNullOrEmpty(filter) && !p.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, Member.Of(p));
+                ConfigurePropertyEntry(input, Member.Of(p));
             }
 
             foreach (var f in ComponentUtilCache.GetOrCacheFieldInfos(input))
@@ -95,19 +97,18 @@ namespace RSkoi_ComponentUtil
                 if (!string.IsNullOrEmpty(filter) && !f.Name.ToLower().Contains(filter))
                     continue;
 
-                ConfigurePropertyEntry(_selectedComponentUiEntry, input, Member.Of(f));
+                ConfigurePropertyEntry(input, Member.Of(f));
             }
         }
 
-        /// <param name="parentUiEntry">selected component entry</param>
-        /// <param name="input">selected Component (ComponentInspector), or a referenced object (ObjectInspector)</param>
-        /// <param name="member">property / field of input to create an entry for</param>
+        /// <param name="input">the selected Component (ComponentInspector), or a referenced object (ObjectInspector)</param>
+        /// <param name="member">the property / field of input to create an entry for</param>
         /// <param name="objectMode">whether we're populating the ObjectInspector (true) or ComponentInspector (false)</param>
-        void ConfigurePropertyEntry(ComponentUtilUI.GenericUIListEntry parentUiEntry, object input, Member member, bool objectMode = false)
+        static void ConfigurePropertyEntry(object input, Member member, bool objectMode = false)
         {
             if (input == null)
             {
-                _logger.LogError($"ConfigurePropertyEntry: received null input for {member}");
+                Logger.LogError($"ConfigurePropertyEntry: received input null value for {member}");
                 return;
             }
 
@@ -115,7 +116,7 @@ namespace RSkoi_ComponentUtil
             var cInput = objectMode ? null : (Component)input;
             if (!objectMode && cInput == null)
             {
-                _logger.LogError("ConfigurePropertyEntry: objectMode is false, but could not convert input to Component");
+                Logger.LogError("ConfigurePropertyEntry: objectMode is false, but could not convert input to Component");
                 return;
             }
 
@@ -140,7 +141,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.PropertyName.text = member.Label;
             uiEntry.MemberName = member.Name;
 
-            var ctx = new PropertyEntryContext(parentUiEntry, uiEntry, input, member, value, kind.ToTrackerFlag() | member.MemberFlag, objectMode);
+            var ctx = new PropertyEntryContext(uiEntry, input, member, value, kind.ToTrackerFlag() | member.MemberFlag, objectMode);
             switch (kind)
             {
                 case EntryKind.Reference:
@@ -156,8 +157,8 @@ namespace RSkoi_ComponentUtil
                     if (!ConfigVector(ctx))
                     {
                         var owner = objectMode ? input.ToString() : $"{cInput.transform.name}.{cInput.name}";
-                        _logger.LogWarning($"Could not configure vector property entry on {owner} with name {member.Name}, skipping");
-                        // entry is pooled and inactive, leave it instead of destroying
+                        Logger.LogWarning($"Could not configure vector property entry on {owner} with name {member.Name}, skipping entry");
+                        // the entry is pooled and still inactive, leave it in the pool instead of destroying it
                         return;
                     }
                     break;
@@ -172,15 +173,13 @@ namespace RSkoi_ComponentUtil
             if (kind == EntryKind.Reference) // reference type, only in the component inspector
             {
                 // make green if dummy property entry is tracked
-                var key = new PropertyKey(_selectedObject, cInput.gameObject, cInput);
+                var key = SelectedPropertyKey(cInput);
                 if (PropertyIsTracked(key, member.Name))
                     uiEntry.SetBgColorEdited();
             }
             else if (objectMode) // property inside reference type / the object inspector
             {
-                var c = (Component)parentUiEntry.UiTarget;
-                var key = new PropertyReferenceKey(_selectedObject, c.gameObject, c, _selectedReferencePropertyUiEntry.MemberName);
-                // make bg green if value is edited
+                var key = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
                 if (PropertyIsTracked(key, member.Name))
                     MarkAsEditedIfChanged(ctx, GetTrackedDefaultValue(key, member.Name));
 
@@ -189,8 +188,7 @@ namespace RSkoi_ComponentUtil
             }
             else // property in the component inspector
             {
-                var key = new PropertyKey(_selectedObject, cInput.gameObject, cInput);
-                // make bg green if value is edited
+                var key = SelectedPropertyKey(cInput);
                 if (PropertyIsTracked(key, member.Name))
                     MarkAsEditedIfChanged(ctx, GetTrackedDefaultValue(key, member.Name));
 
@@ -201,7 +199,7 @@ namespace RSkoi_ComponentUtil
             uiEntry.UiGO.SetActive(true);
         }
 
-        void SetupNullEntry(Member member, bool objectMode)
+        static void SetupNullEntry(Member member, bool objectMode)
         {
             var uiNullEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(ComponentUtilUI.NullEntryPrefab, objectMode);
 
@@ -213,12 +211,12 @@ namespace RSkoi_ComponentUtil
             uiNullEntry.UiGO.SetActive(true);
         }
 
-        /// <param name="defaultValue">encoded default value of the member (see ValueConversion)</param>
-        void MarkAsEditedIfChanged(PropertyEntryContext ctx, object defaultValue)
+        /// <param name="defaultValue">tracked default value of the member, encoded (see ValueConversion)</param>
+        static void MarkAsEditedIfChanged(PropertyEntryContext ctx, object defaultValue)
         {
             if (defaultValue == null)
             {
-                _logger.LogError($"MarkAsEditedIfChanged: no defaultValue for property {ctx.Member.Name} found or value is null");
+                Logger.LogError($"MarkAsEditedIfChanged: no defaultValue for property {ctx.Member.Name} found or value is null");
                 return;
             }
 
@@ -227,7 +225,7 @@ namespace RSkoi_ComponentUtil
                 ctx.UiEntry.SetBgColorEdited();
         }
 
-        InputField.ContentType MapTypeToInputContentType(Type type)
+        static InputField.ContentType MapTypeToInputContentType(Type type)
         {
             if (type.Equals(typeof(string)))
                 return InputField.ContentType.Standard;
@@ -237,95 +235,78 @@ namespace RSkoi_ComponentUtil
                 return InputField.ContentType.IntegerNumber; // trying to cram an integer into e.g. a short will lead to problems
         }
 
-        #region internal helpers
-        internal static bool HasPropertyFlag(
-            PropertyTrackerData.PropertyTrackerDataOptions input,
-            PropertyTrackerData.PropertyTrackerDataOptions flagToCheck)
-            => (input & flagToCheck) == flagToCheck;
-
-        internal static void SetValueWithFlags(
-            Member member,
-            object targetObject,
-            object value,
-            PropertyTrackerData.PropertyTrackerDataOptions flags)
+        static void RebuildComponentInspector()
         {
-            if (member == null)
-            {
-                _logger.LogError("SetValueWithFlags was passed no member");
-                return;
-            }
-            if (targetObject == null)
-            {
-                _logger.LogError("SetValueWithFlags was passed a null targetObject");
-                return;
-            }
-            // this shit is beyond cursed
-            // this is probably a destroyed Unity object that's not actually been set to null yet
-            if (targetObject.ToString() == "null")
-                return;
+            var openReference = ObjectInspectorIsOpen ? _selectedReferenceMember : null;
 
-            try
-            {
-                member.SetValue(targetObject, ValueConversion.Decode(value, member.MemberType, flags));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e);
-                _logger.LogError($"Tried to set value {value} on {targetObject}.{member.Name}");
-            }
+            // closes the ObjectInspector
+            GetAllFieldsAndProperties(_selectedComponent);
+
+            if (openReference == null)
+                return;
+            if (_shownReferenceEntries.TryGetValue(openReference.Name, out var referenceEntry))
+                OpenObjectInspector(openReference, openReference.TryGetValue(_selectedComponent), referenceEntry);
         }
-        #endregion internal helpers
 
         #region pages
-        internal void OnFilterComponentInspector()
+        internal static void OnFilterComponentInspector()
         {
             if (_selectedComponent == null)
                 return;
 
-            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+            GetAllFieldsAndProperties(_selectedComponent);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
-        internal void OnRefreshComponentInspector()
+        internal static void OnRefreshComponentInspector()
         {
             if (_selectedComponent == null)
                 return;
 
             ComponentUtilCache.GetOrCachePropertyInfos(_selectedComponent, forceRefresh: true);
             ComponentUtilCache.GetOrCacheFieldInfos(_selectedComponent, forceRefresh: true);
-            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+            GetAllFieldsAndProperties(_selectedComponent);
 
-            _logger.LogMessage("Force refreshed ComponentInspector cache");
+            Logger.LogMessage("Force refreshed ComponentInspector cache");
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion pages
 
         #region copy / pasting edits
-        internal void OnCopyEdits(bool objectMode = false)
+        /// <summary>
+        /// Whether there is a component (and in the ObjectInspector a reference) selected to copy from / paste onto.
+        /// </summary>
+        static bool HasCopyPasteTarget(bool objectMode)
+            => _selectedComponent != null && (!objectMode || _selectedReferencePropertyUiEntry != null);
+
+        internal static void OnCopyEdits(bool objectMode = false)
         {
+            if (!HasCopyPasteTarget(objectMode))
+                return;
+
             Dictionary<string, PropertyTrackerData> propEdits;
             object source;
             string sourceName;
             if (!objectMode)
             {
-                var key = new PropertyKey(_selectedObject, _selectedGO, _selectedComponent);
+                var key = SelectedPropertyKey(_selectedComponent);
                 _propertyTracker.TryGetValue(key, out propEdits);
                 source = _selectedComponent;
-                sourceName = $"{_selectedGO.name}.{_selectedComponent.GetType().Name}";
+                sourceName = $"{_selectedComponent.gameObject.name}.{_selectedComponent.GetType().Name}";
             }
             else
             {
-                var refKey = new PropertyReferenceKey(_selectedObject, _selectedGO, _selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
+                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
                 _referencePropertyTracker.TryGetValue(refKey, out propEdits);
                 source = _selectedReferencePropertyUiEntry.Wrapper;
-                sourceName = $"{_selectedGO.name}.{_selectedComponent.GetType().Name}.{_selectedReferencePropertyUiEntry.MemberName}";
+                sourceName = $"{_selectedComponent.gameObject.name}.{_selectedComponent.GetType().Name}.{_selectedReferencePropertyUiEntry.MemberName}";
             }
 
             if (propEdits == null)
             {
-                _logger.LogMessage("No property or field edits to copy");
+                Logger.LogMessage("No property or field edits to copy");
                 return;
             }
 
@@ -334,11 +315,11 @@ namespace RSkoi_ComponentUtil
             ComponentUtilUI._componentPropertyPasteButton.interactable = true;
             ComponentUtilUI._objectPropertyPasteButton.interactable = true;
 
-            _logger.LogMessage($"Copied property and field edits of {sourceName}");
+            Logger.LogMessage($"Copied property and field edits of {sourceName}");
         }
 
-        /// <returns>current values of the tracked members of obj, encoded (see ValueConversion)</returns>
-        Dictionary<string, CopiedEditValueTuple> GetEncodedValuesOfObj(object obj, Dictionary<string, PropertyTrackerData> trackerData)
+        /// <returns>current encoded values of the tracked members of obj</returns>
+        static Dictionary<string, CopiedEditValueTuple> GetEncodedValuesOfObj(object obj, Dictionary<string, PropertyTrackerData> trackerData)
         {
             var values = new Dictionary<string, CopiedEditValueTuple>();
             foreach (var pair in trackerData)
@@ -357,7 +338,7 @@ namespace RSkoi_ComponentUtil
             return values;
         }
 
-        internal void OnPasteEdits(bool objectMode = false)
+        internal static void OnPasteEdits(bool objectMode = false)
         {
             if (_currentCopiedEdits == null)
             {
@@ -365,27 +346,32 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI._objectPropertyPasteButton.interactable = false;
                 return;
             }
+            if (!HasCopyPasteTarget(objectMode))
+                return;
 
             if (objectMode)
             {
-                var referencePropertyName = _selectedReferencePropertyUiEntry.MemberName;
-                PasteEdits(_selectedReferencePropertyUiEntry.Wrapper, (propName, defaultValue, flags)
-                    => AddPropertyToTracker(_selectedObject, _selectedGO, _selectedComponent, referencePropertyName, propName, defaultValue, flags)
-                );
+                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
+                var pastedCount = PasteEdits(_selectedReferencePropertyUiEntry.Wrapper, (propName, defaultValue, flags) => AddPropertyToTracker(refKey, propName, defaultValue, flags));
+                if (pastedCount > 0)
+                    _selectedReferencePropertyUiEntry.SetBgColorEdited();
+                RebuildObjectInspector();
             }
             else
             {
-                var key = new PropertyKey(_selectedObject, _selectedGO, _selectedComponent);
+                var key = SelectedPropertyKey(_selectedComponent);
                 PasteEdits(_selectedComponent, (propName, defaultValue, flags) => AddPropertyToTracker(key, propName, defaultValue, flags));
+                RebuildComponentInspector();
             }
 
-            OnRefreshComponentInspector();
+            ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
         /// <param name="target">the component or referenced object to paste the edits onto</param>
-        /// <param name="addToTracker">action to add an edit to the tracker: member name, encoded default value, flags</param>
-        void PasteEdits(object target, Action<string, object, PropertyTrackerData.PropertyTrackerDataOptions> addToTracker)
+        /// <param name="addToTracker">adds an edit to the tracker: member name, encoded default value, flags</param>
+        static int PasteEdits(object target, Action<string, object, PropertyTrackerData.PropertyTrackerDataOptions> addToTracker)
         {
+            var pastedCount = 0;
             foreach (var pair in _currentCopiedEdits.PropEdits)
             {
                 var flags = pair.Value.OptionFlags;
@@ -395,8 +381,10 @@ namespace RSkoi_ComponentUtil
 
                 // reset button and scene saving expect encoded values
                 addToTracker(pair.Key, ValueConversion.Encode(member.TryGetValue(target), flags), flags);
-                SetValueWithFlags(member, target, pair.Value.Value, flags);
+                ValueConversion.SetValueWithFlags(member, target, pair.Value.Value, flags);
+                pastedCount++;
             }
+            return pastedCount;
         }
 
         internal struct CopiedEditValueTuple(object value, PropertyTrackerData.PropertyTrackerDataOptions flags)

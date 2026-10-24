@@ -1,7 +1,6 @@
 ﻿using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using BepInEx;
-using BepInEx.Logging;
 using KKAPI.Studio.SaveLoad;
 
 using RSkoi_ComponentUtil.UI;
@@ -20,14 +19,9 @@ namespace RSkoi_ComponentUtil
         internal const string PLUGIN_NAME = "RSkoi_ComponentUtil";
         internal const string PLUGIN_VERSION = "1.5.1";
 
-        internal static ComponentUtil _instance;
-        internal static ManualLogSource _logger;
-
         void Awake()
         {
-            _instance = this;
-            _logger = Logger;
-
+            RSkoi_ComponentUtil.Logger.Init(Logger);
             SetupConfig();
         }
 

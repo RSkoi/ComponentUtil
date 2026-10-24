@@ -1,22 +1,24 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Studio;
 
-using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
+using static RSkoi_ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static class ComponentUtilTracker
     {
         /// <summary>
         /// Keeps track of properties and fields and their default values.
         /// </summary>
-        internal static readonly Dictionary<PropertyKey, Dictionary<string, PropertyTrackerData>> _propertyTracker = [];
+        internal static readonly PropertyEditTracker<PropertyKey> _propertyTracker = [];
         /// <summary>
-        /// Keeps track of properties and fields and their default values inside reference types.
+        /// Keeps track of properties and fields inside reference types and their default values.<br/>
+        /// Each tracked reference also has a dummy entry (flag IsReference) in _propertyTracker to mark the reference itself as edited.
         /// </summary>
-        internal static readonly Dictionary<PropertyReferenceKey, Dictionary<string, PropertyTrackerData>> _referencePropertyTracker = [];
+        internal static readonly PropertyEditTracker<PropertyReferenceKey> _referencePropertyTracker = [];
         /// <summary>
         /// Keeps track of which components were added to which objects.
         /// </summary>
@@ -50,11 +52,16 @@ namespace RSkoi_ComponentUtil
             }
         }
 
-        #region internal
+        /// <summary>
+        /// Whether <paramref name="input"/> contains all flags of <paramref name="flagToCheck"/>.
+        /// </summary>
+        internal static bool HasPropertyFlag(PropertyTrackerDataOptions input, PropertyTrackerDataOptions flagToCheck)
+            => (input & flagToCheck) == flagToCheck;
+
         /// <summary>
         /// Clears the tracker of all data.
         /// </summary>
-        internal void ClearTracker()
+        internal static void ClearTracker()
         {
             _propertyTracker.Clear();
             _referencePropertyTracker.Clear();
@@ -65,581 +72,468 @@ namespace RSkoi_ComponentUtil
         /// Deletes entries from the tracker that have been previously freed and are now null.
         /// </summary>
         /// <param name="objCtrlInfoToDelete">pass this obj to delete it from the tracker if present</param>
-        internal void ClearInvalidEntriesFromTracker(ObjectCtrlInfo objCtrlInfoToDelete = null)
+        internal static void ClearInvalidEntriesFromTracker(ObjectCtrlInfo objCtrlInfoToDelete = null)
         {
+            _propertyTracker.RemoveWhere(key => !key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete);
+            _referencePropertyTracker.RemoveWhere(key => !key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete);
             // copy keys into separate list to avoid System.InvalidOperationException: out of sync
-            foreach (var key in new List<PropertyKey>(_propertyTracker.Keys))
-                if (!key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete)
-                    _propertyTracker.Remove(key);
-            foreach (var key in new List<PropertyReferenceKey>(_referencePropertyTracker.Keys))
-                if (!key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete)
-                    _referencePropertyTracker.Remove(key);
             foreach (var key in new List<ComponentAdderKey>(_addedComponentsTracker.Keys))
                 if (!key.IsValid() || key.ObjCtrlInfo == objCtrlInfoToDelete)
                     _addedComponentsTracker.Remove(key);
         }
 
         #region added component tracker
-        internal bool AddComponentToTracker(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            string componentName)
+        internal static bool AddComponentToTracker(ObjectCtrlInfo objCtrlInfo, GameObject go, string componentName)
         {
             var key = new ComponentAdderKey(objCtrlInfo, go);
             return AddComponentToTracker(key, componentName);
         }
 
-        internal bool AddComponentToTracker(ComponentAdderKey key, string componentName)
+        internal static bool AddComponentToTracker(ComponentAdderKey key, string componentName)
         {
-            if (_addedComponentsTracker.ContainsKey(key))
-                if (_addedComponentsTracker[key].Contains(componentName))
-                    return false; // component already added
-                else
-                    _addedComponentsTracker[key].Add(componentName); // at least one other component is tracked
-            else
+            if (!_addedComponentsTracker.TryGetValue(key, out var componentNames))
+            {
                 _addedComponentsTracker.Add(key, [componentName]); // new component
-
-            return true;
+                return true;
+            }
+            // false if already added
+            return componentNames.Add(componentName);
         }
 
-        internal bool RemoveComponentFromTracker(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component)
+        internal static bool RemoveComponentFromTracker(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
         {
             var key = new ComponentAdderKey(objCtrlInfo, go);
             return RemoveComponentFromTracker(key, component);
         }
 
-        internal bool RemoveComponentFromTracker(ComponentAdderKey key, Component component)
+        internal static bool RemoveComponentFromTracker(ComponentAdderKey key, Component component)
         {
             var componentName = component.GetType().FullName;
-            if (!ComponentIsTracked(key, componentName))
+            if (!_addedComponentsTracker.TryGetValue(key, out var componentNames) || !componentNames.Remove(componentName))
                 return false;
-
-            _addedComponentsTracker[key].Remove(componentName);
-            if (_addedComponentsTracker[key].Count == 0)
+            if (componentNames.Count == 0)
                 _addedComponentsTracker.Remove(key);
 
             // untrack all edited properties on component
-            _propertyTracker.Remove(new(key.ObjCtrlInfo, key.Go, component));
+            _propertyTracker.Remove(new PropertyKey(key.ObjCtrlInfo, key.Go, component));
             // untrack all edited reference properties on component
-            foreach (var keyRef in new List<PropertyReferenceKey>(_referencePropertyTracker.Keys))
-                if (keyRef.ObjCtrlInfo == key.ObjCtrlInfo
-                    && keyRef.Go == key.Go
-                    && keyRef.Component == component)
-                    _referencePropertyTracker.Remove(keyRef);
+            _referencePropertyTracker.RemoveWhere(keyRef =>
+                keyRef.ObjCtrlInfo == key.ObjCtrlInfo
+                && keyRef.Go == key.Go
+                && keyRef.Component == component);
 
             return true;
         }
 
-        internal bool ComponentIsTracked(
+        internal static bool ComponentIsTracked(
             ObjectCtrlInfo objCtrlInfo, GameObject go, string componentName)
         {
             var key = new ComponentAdderKey(objCtrlInfo, go);
             return ComponentIsTracked(key, componentName);
         }
 
-        internal bool ComponentIsTracked(ComponentAdderKey key, string componentName)
-        {
-            if (!_addedComponentsTracker.ContainsKey(key))
-                return false;
-            if (!_addedComponentsTracker[key].Contains(componentName))
-                return false;
-            return true;
-        }
+        internal static bool ComponentIsTracked(ComponentAdderKey key, string componentName)
+            => _addedComponentsTracker.TryGetValue(key, out var componentNames) && componentNames.Contains(componentName);
         #endregion added component tracker
 
         #region property tracker
-        internal bool AddPropertyToTracker(
+        internal static bool AddPropertyToTracker(
             ObjectCtrlInfo objCtrlInfo,
             GameObject go,
             Component component,
             string propertyName,
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
-        {
-            var key = new PropertyKey(objCtrlInfo, go, component);
-            return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
-        }
+            => _propertyTracker.Add(new PropertyKey(objCtrlInfo, go, component), propertyName, defaultValue, optionFlags);
 
-        internal bool AddPropertyToTracker(
-            PropertyKey key,
-            string propertyName,
-            object defaultValue,
-            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
-        {
-            var data = new PropertyTrackerData(propertyName, optionFlags, defaultValue);
+        internal static bool AddPropertyToTracker(PropertyKey key, string propertyName, object defaultValue, PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
+            => _propertyTracker.Add(key, propertyName, defaultValue, optionFlags);
 
-            if (_propertyTracker.ContainsKey(key))
-                if (_propertyTracker[key].ContainsKey(propertyName))
-                    return false; // property already tracked
-                else
-                    _propertyTracker[key].Add(propertyName, data); // at least one other property is tracked
-            else
-                _propertyTracker.Add(key, new() { { propertyName, data } }); // new property
+        internal static bool RemovePropertyFromTracker(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string propertyName)
+            => _propertyTracker.Remove(new PropertyKey(objCtrlInfo, go, component), propertyName);
 
-            return true;
-        }
+        internal static bool RemovePropertyFromTracker(PropertyKey key, string propertyName) => _propertyTracker.Remove(key, propertyName);
 
-        internal bool RemovePropertyFromTracker(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string propertyName)
-        {
-            var key = new PropertyKey(objCtrlInfo, go, component);
-            return RemovePropertyFromTracker(key, propertyName);
-        }
+        internal static bool PropertyIsTracked(PropertyKey key, string propertyName) => _propertyTracker.IsTracked(key, propertyName);
 
-        internal bool RemovePropertyFromTracker(PropertyKey key, string propertyName)
-        {
-            if (!PropertyIsTracked(key, propertyName))
-                return false;
-
-            _propertyTracker[key].Remove(propertyName);
-            if (_propertyTracker[key].Count == 0)
-                _propertyTracker.Remove(key);
-
-            return true;
-        }
-
-        internal bool PropertyIsTracked(
-            ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string propertyName)
-        {
-            var key = new PropertyKey(objCtrlInfo, go, component);
-            return PropertyIsTracked(key, propertyName);
-        }
-
-        internal bool PropertyIsTracked(PropertyKey key, string propertyName)
-        {
-            if (!_propertyTracker.ContainsKey(key))
-                return false;
-            if (!_propertyTracker[key].ContainsKey(propertyName))
-                return false;
-            return true;
-        }
-
-        internal bool TransformObjectAndComponentIsTracked(
-            ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
-        {
-            var key = new PropertyKey(objCtrlInfo, go, component);
-            return TransformObjectAndComponentIsTracked(key);
-        }
-
-        internal bool TransformObjectAndComponentIsTracked(PropertyKey key) => _propertyTracker.ContainsKey(key);
-
-        internal object GetTrackedDefaultValue(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string propertyName)
-        {
-            var key = new PropertyKey(objCtrlInfo, go, component);
-            return GetTrackedDefaultValue(key, propertyName);
-        }
-
-        internal object GetTrackedDefaultValue(PropertyKey key, string propertyName)
-        {
-            if (_propertyTracker.ContainsKey(key))
-                return _propertyTracker[key][propertyName].DefaultValue;
-            // assumes null as magic value, this could cause problems
-            return null;
-        }
-
-        internal object GetTrackedDefaultValue(
-            PropertyKey key,
-            string propertyName,
-            out object defaultValue)
-        {
-            defaultValue = GetTrackedDefaultValue(key, propertyName);
-            return defaultValue;
-        }
+        /// <returns>encoded default value (see ValueConversion), or null if untracked</returns>
+        internal static object GetTrackedDefaultValue(PropertyKey key, string propertyName) => _propertyTracker.GetDefaultValue(key, propertyName);
         #endregion property tracker
 
         #region reference property tracker
-        internal bool AddPropertyToTracker(
+        internal static bool AddPropertyToTracker(
             ObjectCtrlInfo objCtrlInfo,
             GameObject go,
             Component component,
             string referencePropertyName,
+            string propertyName,
+            object defaultValue,
+            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
+        {
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
+            return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
+        }
+
+        internal static bool AddPropertyToTracker(
+            PropertyReferenceKey key,
             string propertyName,
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
             // add dummy tracker to reference type
-            AddPropertyToTracker(objCtrlInfo, go, component, referencePropertyName, defaultValue: 0, PropertyTrackerDataOptions.IsReference);
-            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
-            return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
+            AddPropertyToTracker(key.ObjCtrlInfo, key.Go, key.Component, key.ReferencePropertyName, defaultValue: 0, PropertyTrackerDataOptions.IsReference);
+            return _referencePropertyTracker.Add(key, propertyName, defaultValue, optionFlags);
         }
 
-        internal bool AddPropertyToTracker(
-            PropertyReferenceKey key,
-            string propertyName,
-            object defaultValue,
-            PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
-        {
-            var data = new PropertyTrackerData(propertyName, optionFlags, defaultValue);
-
-            if (_referencePropertyTracker.ContainsKey(key))
-                if (_referencePropertyTracker[key].ContainsKey(propertyName))
-                    return false; // property already tracked
-                else
-                    _referencePropertyTracker[key].Add(propertyName, data); // at least one other property is tracked
-            else
-                _referencePropertyTracker.Add(key, new() { { propertyName, data } }); // new property
-
-            return true;
-        }
-
-        internal bool RemovePropertyFromTracker(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string referencePropertyName,
-            string propertyName,
-            out bool removedKey)
-        {
-            RemovePropertyFromTracker(objCtrlInfo, go, component, referencePropertyName);
-            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
-            var ret = RemovePropertyFromTracker(key, propertyName, out var removedK);
-            removedKey = removedK;
-            return ret;
-        }
-
-        internal bool RemovePropertyFromTracker(
+        /// <param name="removedKey">true if this was the last edit inside the reference</param>
+        internal static bool RemovePropertyFromTracker(
             PropertyReferenceKey key,
             string propertyName,
             out bool removedKey)
         {
             removedKey = false;
-            if (!PropertyIsTracked(key, propertyName))
+            if (!_referencePropertyTracker.Remove(key, propertyName, out var keyRemoved))
                 return false;
 
-            _referencePropertyTracker[key].Remove(propertyName);
-            if (_referencePropertyTracker[key].Count == 0)
-            {
-                _referencePropertyTracker.Remove(key);
+            // last edit inside the reference removed -> remove the dummy reference tracker
+            if (keyRemoved)
                 removedKey = RemovePropertyFromTracker(key.ObjCtrlInfo, key.Go, key.Component, key.ReferencePropertyName);
+
+            return true;
+        }
+
+        internal static bool PropertyIsTracked(PropertyReferenceKey key, string propertyName)
+            => _referencePropertyTracker.IsTracked(key, propertyName);
+
+        /// <returns>the encoded default value (see ValueConversion), or null if not tracked</returns>
+        internal static object GetTrackedDefaultValue(PropertyReferenceKey key, string propertyName)
+            => _referencePropertyTracker.GetDefaultValue(key, propertyName);
+        #endregion reference property tracker
+
+        /// <summary>
+        /// Edited properties / fields and their default values, grouped by key (a component, or a reference inside a component).
+        /// </summary>
+        internal class PropertyEditTracker<TKey> : IEnumerable<KeyValuePair<TKey, Dictionary<string, PropertyTrackerData>>>
+        {
+            readonly Dictionary<TKey, Dictionary<string, PropertyTrackerData>> _edits = [];
+
+            public ICollection<TKey> Keys => _edits.Keys;
+
+            /// <summary>
+            /// Tracks an edit. If the property is already tracked, its first default value is kept.
+            /// </summary>
+            /// <param name="defaultValue">encoded value before the first edit (see ValueConversion)</param>
+            /// <returns>false if the property was already tracked</returns>
+            public bool Add(TKey key, string propertyName, object defaultValue, PropertyTrackerDataOptions flags)
+            {
+                if (!_edits.TryGetValue(key, out var properties))
+                {
+                    properties = [];
+                    _edits.Add(key, properties);
+                }
+                else if (properties.ContainsKey(propertyName))
+                    return false;
+
+                properties.Add(propertyName, new(propertyName, flags, defaultValue));
+                return true;
             }
 
-            return true;
-        }
+            /// <returns>false if the property was not tracked</returns>
+            public bool Remove(TKey key, string propertyName) => Remove(key, propertyName, out _);
 
-        internal bool PropertyIsTracked(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string referencePropertyName,
-            string propertyName)
-        {
-            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
-            return PropertyIsTracked(key, propertyName)
-                && PropertyIsTracked(objCtrlInfo, go, component, referencePropertyName);
-        }
+            /// <param name="keyRemoved">true if this was the last tracked property of key, so key was removed too</param>
+            /// <returns>false if the property was not tracked</returns>
+            public bool Remove(TKey key, string propertyName, out bool keyRemoved)
+            {
+                keyRemoved = false;
+                if (!_edits.TryGetValue(key, out var properties) || !properties.Remove(propertyName))
+                    return false;
 
-        internal bool PropertyIsTracked(PropertyReferenceKey key, string propertyName)
-        {
-            if (!_referencePropertyTracker.ContainsKey(key))
-                return false;
-            if (!_referencePropertyTracker[key].ContainsKey(propertyName))
-                return false;
-            return true;
-        }
+                if (properties.Count == 0)
+                {
+                    _edits.Remove(key);
+                    keyRemoved = true;
+                }
+                return true;
+            }
 
-        internal bool TransformObjectAndComponentIsTracked(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string referencePropertyName)
-        {
-            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
-            return TransformObjectAndComponentIsTracked(key)
-                && TransformObjectAndComponentIsTracked(objCtrlInfo, go, component);
-        }
+            public bool Remove(TKey key) => _edits.Remove(key);
 
-        internal bool TransformObjectAndComponentIsTracked(PropertyReferenceKey key)
-        {
-            if (!_referencePropertyTracker.ContainsKey(key))
-                return false;
-            return true;
-        }
+            public void RemoveWhere(Func<TKey, bool> predicate)
+            {
+                // copy keys into separate list to avoid System.InvalidOperationException: out of sync
+                foreach (var key in new List<TKey>(_edits.Keys))
+                    if (predicate(key))
+                        _edits.Remove(key);
+            }
 
-        internal object GetTrackedDefaultValue(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string referencePropertyName,
-            string propertyName)
-        {
-            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
-            return GetTrackedDefaultValue(key, propertyName);
-        }
+            public bool IsTracked(TKey key, string propertyName)
+                => _edits.TryGetValue(key, out var properties) && properties.ContainsKey(propertyName);
 
-        internal object GetTrackedDefaultValue(PropertyReferenceKey key, string propertyName)
-        {
-            if (_referencePropertyTracker.ContainsKey(key))
-                return _referencePropertyTracker[key][propertyName].DefaultValue;
-            // assumes null as magic value, this could cause problems
-            return null;
-        }
+            /// <returns>the encoded default value (see ValueConversion), or null if not tracked</returns>
+            public object GetDefaultValue(TKey key, string propertyName)
+            {
+                if (_edits.TryGetValue(key, out var properties) && properties.TryGetValue(propertyName, out var data))
+                    return data.DefaultValue;
+                return null;
+            }
 
-        internal object GetTrackedDefaultValue(
-            PropertyReferenceKey key,
-            string propertyName,
-            out object defaultValue)
-        {
-            defaultValue = GetTrackedDefaultValue(key, propertyName);
-            return defaultValue;
+            public bool TryGetValue(TKey key, out Dictionary<string, PropertyTrackerData> properties)
+                => _edits.TryGetValue(key, out properties);
+
+            public void Clear() => _edits.Clear();
+
+            public IEnumerator<KeyValuePair<TKey, Dictionary<string, PropertyTrackerData>>> GetEnumerator()
+                => _edits.GetEnumerator();
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
-        #endregion reference property tracker
-        #endregion internal
 
         #region private helpers
-        void PrintTracker()
+        static void PrintTracker()
         {
             var i = 0;
-            _logger.LogInfo($"+++++++++++++++++ Properties:");
+            Logger.LogInfo($"+++++++++++++++++ Properties:");
             foreach (var entry in _propertyTracker)
             {
-                _logger.LogInfo($"++++++++ Entry {i}:");
-                _logger.LogInfo(entry.Key.ToString());
+                Logger.LogInfo($"++++++++ Entry {i}:");
+                Logger.LogInfo(entry.Key.ToString());
                 foreach (var propEntry in entry.Value)
-                    _logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
-                _logger.LogInfo("++++++++");
+                    Logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
+                Logger.LogInfo("++++++++");
                 i++;
             }
 
-            _logger.LogInfo($"+++++++++++++++++ Reference Properties:");
+            Logger.LogInfo($"+++++++++++++++++ Reference Properties:");
             foreach (var entry in _referencePropertyTracker)
             {
-                _logger.LogInfo($"++++++++ Entry {i}:");
-                _logger.LogInfo(entry.Key.ToString());
+                Logger.LogInfo($"++++++++ Entry {i}:");
+                Logger.LogInfo(entry.Key.ToString());
                 foreach (var propEntry in entry.Value)
-                    _logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
-                _logger.LogInfo("++++++++");
+                    Logger.LogInfo($"    {propEntry.Key} {propEntry.Value}");
+                Logger.LogInfo("++++++++");
                 i++;
             }
 
-            _logger.LogInfo($"+++++++++++++++++ Components:");
+            Logger.LogInfo($"+++++++++++++++++ Components:");
             foreach (var entry in _addedComponentsTracker)
             {
-                _logger.LogInfo($"++++++++ Entry {i}:");
-                _logger.LogInfo(entry.Key.ToString());
+                Logger.LogInfo($"++++++++ Entry {i}:");
+                Logger.LogInfo(entry.Key.ToString());
                 foreach (var cEntry in entry.Value)
-                    _logger.LogInfo($"    {cEntry}");
-                _logger.LogInfo("++++++++");
+                    Logger.LogInfo($"    {cEntry}");
+                Logger.LogInfo("++++++++");
                 i++;
             }
         }
         #endregion private helpers
-
-        #region property classes
-        /// <summary>
-        /// Keep this one public, see comment in ComponentUtilSerializableObjects class.
-        /// </summary>
-        public class PropertyTrackerData(
-            string propertyName,
-            PropertyTrackerDataOptions optionFlags,
-            object defaultValue)
-        {
-            public string PropertyName = propertyName;
-            public PropertyTrackerDataOptions OptionFlags = optionFlags;
-            /// <summary>
-            /// The default/original value of the property.
-            /// </summary>
-            public object DefaultValue = defaultValue;
-
-            public override string ToString()
-                => $"PropertyTrackerData [ PropertyName: {PropertyName}, Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
-
-            /// <summary>
-            /// These are flags, use power of two for values.
-            /// </summary>
-            [Flags]
-            public enum PropertyTrackerDataOptions
-            {
-                None = 0,
-                /// <summary>
-                /// Whether tracked item is a property (true) or a field (false).
-                /// </summary>
-                IsProperty = 1,
-                /// <summary>
-                /// Whether value of tracked item should be treated as an integer (convenient for enums).
-                /// </summary>
-                IsInt = 2,
-                /// <summary>
-                /// Whether value of tracked item is an encoded vector, exclusive with IsInt.
-                /// </summary>
-                IsVector = 4,
-                /// <summary>
-                /// Whether value of tracked item is invalid as it's only used to keep track of edited states of reference types.
-                /// </summary>
-                IsReference = 8,
-                /// <summary>
-                /// Whether value of tracked item is a UnityEngine.Color.
-                /// </summary>
-                IsColor = 16,
-                /// <summary>
-                /// Whether value of tracked item is a boolean.
-                /// </summary>
-                IsBool = 32,
-                /// <summary>
-                /// Whether value of tracked item is of generic input type. This could indicate a string or float, for example.
-                /// </summary>
-                IsInput = 64,
-            }
-        }
-
-        internal class PropertyKey(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component)
-            : IEquatable<PropertyKey>
-        {
-            /// <summary>
-            /// The overarching item / ObjectCtrl (root).
-            /// </summary>
-            public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
-            /// <summary>
-            /// The GameObject the component resides in.
-            /// You can also get this with Component.gameObject.
-            /// Transform is Go.transform.
-            /// </summary>
-            public GameObject Go = go;
-            /// <summary>
-            /// The component the property resides in.
-            /// </summary>
-            public Component Component = component;
-
-            public override int GetHashCode()
-            {
-                // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-                unchecked
-                {
-                    var hash = 17;
-                    hash = hash * 31 + ObjCtrlInfo.GetHashCode();
-                    hash = hash * 31 + Go.GetHashCode();
-                    hash = hash * 31 + Component.GetHashCode();
-                    return hash;
-                }
-            }
-
-            public override bool Equals(object obj) => Equals(obj as PropertyKey);
-
-            public bool Equals(PropertyKey other)
-            {
-                return other != null
-                   && ObjCtrlInfo   == other.ObjCtrlInfo
-                   && Go            == other.Go
-                   && Component     == other.Component;
-            }
-
-            public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
-
-            public override string ToString()
-                => $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, Component: {Component} ]";
-        }
-
-        internal class PropertyReferenceKey(
-            ObjectCtrlInfo objCtrlInfo,
-            GameObject go,
-            Component component,
-            string referencePropertyName)
-            : IEquatable<PropertyReferenceKey>
-        {
-            /// <summary>
-            /// The overarching item / ObjectCtrl (root).
-            /// </summary>
-            public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
-            /// <summary>
-            /// The GameObject the component resides in.
-            /// You can also get this with Component.gameObject.
-            /// Transform is Go.transform.
-            /// </summary>
-            public GameObject Go = go;
-            /// <summary>
-            /// The component the property resides in.
-            /// </summary>
-            public Component Component = component;
-            /// <summary>
-            /// The name of the reference type property.
-            /// </summary>
-            public string ReferencePropertyName = referencePropertyName;
-
-            public override int GetHashCode()
-            {
-                // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-                unchecked
-                {
-                    var hash = 17;
-                    hash = hash * 31 + ObjCtrlInfo.GetHashCode();
-                    hash = hash * 31 + Go.GetHashCode();
-                    hash = hash * 31 + Component.GetHashCode();
-                    hash = hash * 31 + ReferencePropertyName.GetHashCode();
-                    return hash;
-                }
-            }
-
-            public override bool Equals(object obj) => Equals(obj as PropertyReferenceKey);
-
-            public bool Equals(PropertyReferenceKey other)
-            {
-                return other != null
-                   && ObjCtrlInfo           == other.ObjCtrlInfo
-                   && Go                    == other.Go
-                   && Component             == other.Component
-                   && ReferencePropertyName == other.ReferencePropertyName;
-            }
-
-            public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
-
-            public override string ToString()
-                => $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, " +
-                    $"Component: {Component}, ReferencePropertyName: {ReferencePropertyName} ]";
-        }
-        #endregion property classes
-
-        #region component classes
-        internal class ComponentAdderKey(ObjectCtrlInfo objCtrlInfo, GameObject go)
-            : IEquatable<ComponentAdderKey>
-        {
-            /// <summary>
-            /// The overarching item / ObjectCtrl (root).
-            /// </summary>
-            public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
-            /// <summary>
-            /// The GameObject the component resides in.
-            /// Transform is Go.transform.
-            /// </summary>
-            public GameObject Go = go;
-
-            public override int GetHashCode()
-            {
-                // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-                unchecked
-                {
-                    var hash = 17;
-                    hash = hash * 31 + ObjCtrlInfo.GetHashCode();
-                    hash = hash * 31 + Go.GetHashCode();
-                    return hash;
-                }
-            }
-
-            public override bool Equals(object obj) => Equals(obj as ComponentAdderKey);
-
-            public bool Equals(ComponentAdderKey other)
-            {
-                return other != null
-                   && ObjCtrlInfo   == other.ObjCtrlInfo
-                   && Go            == other.Go;
-            }
-
-            public bool IsValid() => ObjCtrlInfo != null && Go != null;
-
-            public override string ToString()
-                => $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go} ]";
-        }
-        #endregion component classes
     }
+
+    #region property classes
+    /// <summary>
+    /// Keep this one public, see comment in ComponentUtilSerializableObjects class.
+    /// </summary>
+    public class PropertyTrackerData(
+        string propertyName,
+        PropertyTrackerDataOptions optionFlags,
+        object defaultValue)
+    {
+        public string PropertyName = propertyName;
+        public PropertyTrackerDataOptions OptionFlags = optionFlags;
+        /// <summary>
+        /// The default/original value of the property.
+        /// </summary>
+        public object DefaultValue = defaultValue;
+
+        public override string ToString()
+            => $"PropertyTrackerData [ PropertyName: {PropertyName}, Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
+
+        /// <summary>
+        /// These are flags, use power of two for values.
+        /// </summary>
+        [Flags]
+        public enum PropertyTrackerDataOptions
+        {
+            None = 0,
+            /// <summary>
+            /// Whether tracked item is a property (true) or a field (false).
+            /// </summary>
+            IsProperty = 1,
+            /// <summary>
+            /// Whether value of tracked item should be treated as an integer (convenient for enums).
+            /// </summary>
+            IsInt = 2,
+            /// <summary>
+            /// Whether value of tracked item is an encoded vector, exclusive with IsInt.
+            /// </summary>
+            IsVector = 4,
+            /// <summary>
+            /// Whether value of tracked item is invalid as it's only used to keep track of edited states of reference types.
+            /// </summary>
+            IsReference = 8,
+            /// <summary>
+            /// Whether value of tracked item is a UnityEngine.Color.
+            /// </summary>
+            IsColor = 16,
+            /// <summary>
+            /// Whether value of tracked item is a boolean.
+            /// </summary>
+            IsBool = 32,
+            /// <summary>
+            /// Whether value of tracked item is of generic input type. This could indicate a string or float, for example.
+            /// </summary>
+            IsInput = 64,
+        }
+    }
+
+    internal class PropertyKey(
+        ObjectCtrlInfo objCtrlInfo,
+        GameObject go,
+        Component component)
+        : IEquatable<PropertyKey>
+    {
+        /// <summary>
+        /// The overarching item / ObjectCtrl (root).
+        /// </summary>
+        public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+        /// <summary>
+        /// The GameObject the component resides in.
+        /// You can also get this with Component.gameObject.
+        /// Transform is Go.transform.
+        /// </summary>
+        public GameObject Go = go;
+        /// <summary>
+        /// The component the property resides in.
+        /// </summary>
+        public Component Component = component;
+
+        public override int GetHashCode()
+        {
+            // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
+            unchecked
+            {
+                var hash = 17;
+                hash = hash * 31 + ObjCtrlInfo.GetHashCode();
+                hash = hash * 31 + Go.GetHashCode();
+                hash = hash * 31 + Component.GetHashCode();
+                return hash;
+            }
+        }
+
+        public override bool Equals(object obj) => Equals(obj as PropertyKey);
+
+        public bool Equals(PropertyKey other)
+        {
+            return other != null
+               && ObjCtrlInfo   == other.ObjCtrlInfo
+               && Go            == other.Go
+               && Component     == other.Component;
+        }
+
+        public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
+
+        public override string ToString()
+            => $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, Component: {Component} ]";
+    }
+
+    internal class PropertyReferenceKey(
+        ObjectCtrlInfo objCtrlInfo,
+        GameObject go,
+        Component component,
+        string referencePropertyName)
+        : IEquatable<PropertyReferenceKey>
+    {
+        /// <summary>
+        /// The overarching item / ObjectCtrl (root).
+        /// </summary>
+        public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+        /// <summary>
+        /// The GameObject the component resides in.
+        /// You can also get this with Component.gameObject.
+        /// Transform is Go.transform.
+        /// </summary>
+        public GameObject Go = go;
+        /// <summary>
+        /// The component the property resides in.
+        /// </summary>
+        public Component Component = component;
+        /// <summary>
+        /// The name of the reference type property.
+        /// </summary>
+        public string ReferencePropertyName = referencePropertyName;
+
+        public override int GetHashCode()
+        {
+            // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
+            unchecked
+            {
+                var hash = 17;
+                hash = hash * 31 + ObjCtrlInfo.GetHashCode();
+                hash = hash * 31 + Go.GetHashCode();
+                hash = hash * 31 + Component.GetHashCode();
+                hash = hash * 31 + ReferencePropertyName.GetHashCode();
+                return hash;
+            }
+        }
+
+        public override bool Equals(object obj) => Equals(obj as PropertyReferenceKey);
+
+        public bool Equals(PropertyReferenceKey other)
+        {
+            return other != null
+               && ObjCtrlInfo           == other.ObjCtrlInfo
+               && Go                    == other.Go
+               && Component             == other.Component
+               && ReferencePropertyName == other.ReferencePropertyName;
+        }
+
+        public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
+
+        public override string ToString()
+            => $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, " +
+                $"Component: {Component}, ReferencePropertyName: {ReferencePropertyName} ]";
+    }
+    #endregion property classes
+
+    #region component classes
+    internal class ComponentAdderKey(ObjectCtrlInfo objCtrlInfo, GameObject go)
+        : IEquatable<ComponentAdderKey>
+    {
+        /// <summary>
+        /// The overarching item / ObjectCtrl (root).
+        /// </summary>
+        public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+        /// <summary>
+        /// The GameObject the component resides in.
+        /// Transform is Go.transform.
+        /// </summary>
+        public GameObject Go = go;
+
+        public override int GetHashCode()
+        {
+            // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
+            unchecked
+            {
+                var hash = 17;
+                hash = hash * 31 + ObjCtrlInfo.GetHashCode();
+                hash = hash * 31 + Go.GetHashCode();
+                return hash;
+            }
+        }
+
+        public override bool Equals(object obj) => Equals(obj as ComponentAdderKey);
+
+        public bool Equals(ComponentAdderKey other)
+        {
+            return other != null
+               && ObjCtrlInfo   == other.ObjCtrlInfo
+               && Go            == other.Go;
+        }
+
+        public bool IsValid() => ObjCtrlInfo != null && Go != null;
+
+        public override string ToString()
+            => $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go} ]";
+    }
+    #endregion component classes
 }

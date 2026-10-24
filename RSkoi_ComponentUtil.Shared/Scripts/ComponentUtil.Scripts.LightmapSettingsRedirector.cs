@@ -24,7 +24,7 @@ namespace RSkoi_ComponentUtil.Scripts
 
         public void Start()
         {
-            ComponentUtil._logger.LogInfo("LightmapSettingsRedirector started");
+            Logger.LogInfo("LightmapSettingsRedirector started");
         }
     }
 }

@@ -1,29 +1,30 @@
-﻿using System.Linq;
-using System.Reflection;
+﻿using Studio;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Studio;
 
 namespace RSkoi_ComponentUtil.UI
 {
     /// <summary>
-    /// class is split into multiple files:<br />
-    /// - generic stuff (this file)<br />
-    /// - ui windows<br />
+    /// Class is split into multiple files:<br/>
+    /// - generic stuff (this file)<br/>
+    /// - ui windows<br/>
     /// - ui entries (for ComponentInspector)
     /// </summary>
     internal static partial class ComponentUtilUI
     {
         // overarching canvas prefab
-        static GameObject _canvasPrefab;
+        static GameObject               _canvasPrefab;
 
         #region canvas and containers
-        internal static GameObject _canvasContainer;
-        internal static Canvas _canvas;
-        internal static CanvasScaler _canvasScaler;
+        internal static GameObject      _canvasContainer;
+        internal static Canvas          _canvas;
+        internal static CanvasScaler    _canvasScaler;
         /// <summary>
-        /// Use this to determine whether the UI is visible
+        /// Use this to determine whether the UI is visible.
         /// </summary>
         public static bool CanvasIsActive
         {
@@ -38,14 +39,14 @@ namespace RSkoi_ComponentUtil.UI
 
         #region entry bg colors
         static readonly Color ENTRY_BG_COLOR_DEFAULT = Color.white;
-        static readonly Color ENTRY_BG_COLOR_EDITED = Color.green;
+        static readonly Color ENTRY_BG_COLOR_EDITED  = Color.green;
         #endregion entry bg colors
 
         // this will be overwritten in InstantiateUI()
         static float _baseCanvasReferenceResolutionY = 600f;
 
         /// <summary>
-        /// Initializes the UI, call only once
+        /// Initializes the UI, call only once.
         /// </summary>
         public static void Init()
         {
@@ -54,7 +55,7 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// Toggles the UI, uses first selected object in workspace as input for entry point
+        /// Toggles the UI, uses first selected object in workspace as input for entry point.
         /// </summary>
         public static void ToggleWindow()
         {
@@ -65,14 +66,14 @@ namespace RSkoi_ComponentUtil.UI
                 var selected = KKAPI.Studio.StudioAPI.GetSelectedObjects();
                 if (IsValidSelection(selected))
                 {
-                    ComponentUtil._instance.Entry(selected.First());
+                    ComponentUtilEditor.Entry(selected.First());
                     ShowWindow();
                 }
             }
         }
 
         /// <summary>
-        /// Shows the ui, sets referenceResolution of CanvasScaler, sets sizeDelta of windows
+        /// Shows the ui, sets referenceResolution of CanvasScaler, sets sizeDelta of windows.
         /// </summary>
         public static void ShowWindow()
         {
@@ -90,12 +91,12 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         /// <summary>
-        /// Hides the ui
+        /// Hides the ui.
         /// </summary>
         public static void HideWindow() => _canvas.enabled = false;
 
         /// <summary>
-        /// Checks whether ComponentUtil UI window can be opened
+        /// Checks whether ComponentUtil UI window can be opened.
         /// </summary>
         /// <param name="objectCtrlInfo">currently selected objects within the workspace</param>
         /// <returns>true if window can be opened, else false</returns>
@@ -109,26 +110,26 @@ namespace RSkoi_ComponentUtil.UI
              * It's not pretty, but it works
              * 
              * Maximum amount of entries to iterate through is ComponentUtil.ItemsPerPageValue (bepin config) * 2
-             * n = ComponentUtil.ItemsPerPageValue, m = ComponentUtil._tracker.Keys.Count
+             * n = ComponentUtil.ItemsPerPageValue, m = ComponentUtilTracker._propertyTracker.Keys.Count
              * 2*O(m) + 2*O(n) == O(m) + O(n), right? could be worse...
              * 
              * => realistically, there are always more entries in the pool than in the tracker => O(n) wins
              * => the more entries in the tracker and the bigger the pool, the worse this gets
              */
 
-            var trackedTransforms = ComponentUtil.TrackedTransforms;
-            var trackedComponents = ComponentUtil.TrackedComponents;
+            var trackedTransforms = ComponentUtilTracker.TrackedTransforms;
+            var trackedComponents = ComponentUtilTracker.TrackedComponents;
 
             foreach (var entry in TransformListEntries)
             {
                 if (!entry.UiGO.activeSelf)
                     continue;
 
-                bool defaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
-                bool tracked = trackedTransforms.Contains((Transform)entry.UiTarget);
-                if (defaultColor && tracked)
+                bool isDefaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
+                bool isTracked = trackedTransforms.Contains((Transform)entry.UiTarget);
+                if (isDefaultColor && isTracked)
                     entry.SetBgColorEdited();
-                else if (!defaultColor && !tracked)
+                else if (!isDefaultColor && !isTracked)
                     entry.SetBgColorDefault();
             }
 
@@ -137,11 +138,11 @@ namespace RSkoi_ComponentUtil.UI
                 if (!entry.UiGO.activeSelf)
                     continue;
 
-                bool defaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
-                bool tracked = trackedComponents.Contains((Component)entry.UiTarget);
-                if (defaultColor && tracked)
+                bool isDefaultColor = entry.BgImage.color != ENTRY_BG_COLOR_EDITED;
+                bool isTracked = trackedComponents.Contains((Component)entry.UiTarget);
+                if (isDefaultColor && isTracked)
                     entry.SetBgColorEdited();
-                else if (!defaultColor && !tracked)
+                else if (!isDefaultColor && !isTracked)
                     entry.SetBgColorDefault();
             }
         }
@@ -161,20 +162,21 @@ namespace RSkoi_ComponentUtil.UI
         }
 
         internal static void SetRectTransformSizeDelta(RectTransform rect, Vector2 originalSize, Vector2 mulSize)
-        {
-            rect.sizeDelta = new(originalSize.x * mulSize.x, originalSize.y * mulSize.y);
-        }
+            => rect.sizeDelta = new(originalSize.x * mulSize.x, originalSize.y * mulSize.y);
         #endregion internal
 
         #region private - loading and instantiating
         static void LoadUIResources()
         {
             var assembly = Assembly.GetExecutingAssembly();
-            var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.componentutil.unity3d");
-            var buffer = new byte[stream.Length];
-            stream.Read(buffer, offset: 0, buffer.Length);
+            byte[] buffer;
+            using (var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.componentutil.unity3d"))
+            {
+                buffer = new byte[stream.Length];
+                stream.Read(buffer, offset: 0, buffer.Length);
+            }
 
-            var ab                          = AssetBundle.LoadFromMemory(buffer);
+            var ab                                  = AssetBundle.LoadFromMemory(buffer);
             _canvasPrefab                           = ab.LoadAsset<GameObject>("ComponentUtilCanvas");
             _genericListEntryPrefab                 = ab.LoadAsset<GameObject>("ListEntry");
             _componentPropertyDecimalEntryPrefab    = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Decimal");
@@ -185,7 +187,7 @@ namespace RSkoi_ComponentUtil.UI
             _componentPropertyColorEntryPrefab      = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Color");
             _componentPropertyNullEntryPrefab       = ab.LoadAsset<GameObject>("ComponentPropertyEntry_Null");
 
-            stream.Close();
+            ab.Unload(unloadAllLoadedObjects: false);
         }
 
         static void InstantiateUI()
@@ -245,57 +247,57 @@ namespace RSkoi_ComponentUtil.UI
             // page buttons
             var page = _transformWindow.Find("TransformList/PageContainer");
             _pageSearchTransformListInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchTransformListInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterTransform());
+            _pageSearchTransformListInput.onValueChanged.AddListener((s) => ComponentUtilEditor.OnFilterTransform());
             _currentPageTransformListText = page.Find("PageCurrentLabel").GetComponent<Text>();
             ResetPageNumberTransformList();
             _pageLastTransformListButton = page.Find("PageLast").GetComponent<Button>();
-            _pageLastTransformListButton.onClick.AddListener(ComponentUtil._instance.OnLastTransformPage);
+            _pageLastTransformListButton.onClick.AddListener(ComponentUtilEditor.OnLastTransformPage);
             _pageNextTransformListButton = page.Find("PageNext").GetComponent<Button>();
-            _pageNextTransformListButton.onClick.AddListener(ComponentUtil._instance.OnNextTransformPage);
+            _pageNextTransformListButton.onClick.AddListener(ComponentUtilEditor.OnNextTransformPage);
 
             page = _componentWindow.Find("ComponentList/PageContainer");
             _pageSearchComponentListInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchComponentListInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponent());
+            _pageSearchComponentListInput.onValueChanged.AddListener((s) => ComponentUtilEditor.OnFilterComponent());
             _currentPageComponentListText = page.Find("PageCurrentLabel").GetComponent<Text>();
             ResetPageNumberComponentList();
             _pageLastComponentListButton = page.Find("PageLast").GetComponent<Button>();
-            _pageLastComponentListButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentPage);
+            _pageLastComponentListButton.onClick.AddListener(ComponentUtilEditor.OnLastComponentPage);
             _pageNextComponentListButton = page.Find("PageNext").GetComponent<Button>();
-            _pageNextComponentListButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentPage);
+            _pageNextComponentListButton.onClick.AddListener(ComponentUtilEditor.OnNextComponentPage);
 
             page = _componentAdderWindow.Find("ComponentAddList/PageContainer");
             _pageSearchComponentAdderInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchComponentAdderInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponentAdder());
+            _pageSearchComponentAdderInput.onValueChanged.AddListener((s) => ComponentUtilEditor.OnFilterComponentAdder());
             _currentPageComponentAdderText = page.Find("PageCurrentLabel").GetComponent<Text>();
             ResetPageNumberComponentAdder();
             _pageLastComponentAdderButton = page.Find("PageLast").GetComponent<Button>();
-            _pageLastComponentAdderButton.onClick.AddListener(ComponentUtil._instance.OnLastComponentAdderPage);
+            _pageLastComponentAdderButton.onClick.AddListener(ComponentUtilEditor.OnLastComponentAdderPage);
             _pageNextComponentAdderButton = page.Find("PageNext").GetComponent<Button>();
-            _pageNextComponentAdderButton.onClick.AddListener(ComponentUtil._instance.OnNextComponentAdderPage);
+            _pageNextComponentAdderButton.onClick.AddListener(ComponentUtilEditor.OnNextComponentAdderPage);
 
             page = _inspectorWindow.Find("ComponentPropertyList/PageContainer");
             _pageSearchComponentInspectorInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchComponentInspectorInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterComponentInspector());
+            _pageSearchComponentInspectorInput.onValueChanged.AddListener((s) => ComponentUtilEditor.OnFilterComponentInspector());
             _refreshComponentInspectorButton = page.Find("RefreshButton").GetComponent<Button>();
-            _refreshComponentInspectorButton.onClick.AddListener(ComponentUtil._instance.OnRefreshComponentInspector);
+            _refreshComponentInspectorButton.onClick.AddListener(ComponentUtilEditor.OnRefreshComponentInspector);
 
             page = _objectInspectorWindow.Find("ObjectPropertyList/PageContainer");
             _pageSearchObjectInspectorInput = page.Find("SearchInput").GetComponent<InputField>();
-            _pageSearchObjectInspectorInput.onValueChanged.AddListener((s) => ComponentUtil._instance.OnFilterObjectInspector());
+            _pageSearchObjectInspectorInput.onValueChanged.AddListener((s) => ComponentUtilEditor.OnFilterObjectInspector());
             _refreshObjectInspectorButton = page.Find("RefreshButton").GetComponent<Button>();
-            _refreshObjectInspectorButton.onClick.AddListener(ComponentUtil._instance.OnRefreshObjectInspector);
+            _refreshObjectInspectorButton.onClick.AddListener(ComponentUtilEditor.OnRefreshObjectInspector);
 
             // copy paste buttons
             _componentPropertyCopyButton = _inspectorWindow.Find("ComponentPropertyList/CopyEditsButton").GetComponent<Button>();
-            _componentPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(objectMode: false));
+            _componentPropertyCopyButton.onClick.AddListener(() => ComponentUtilEditor.OnCopyEdits(objectMode: false));
             _componentPropertyPasteButton = _inspectorWindow.Find("ComponentPropertyList/PasteEditsButton").GetComponent<Button>();
-            _componentPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(objectMode: false));
+            _componentPropertyPasteButton.onClick.AddListener(() => ComponentUtilEditor.OnPasteEdits(objectMode: false));
             _componentPropertyPasteButton.interactable = false;
 
             _objectPropertyCopyButton = _objectInspectorWindow.Find("ObjectPropertyList/CopyEditsButton").GetComponent<Button>();
-            _objectPropertyCopyButton.onClick.AddListener(() => ComponentUtil._instance.OnCopyEdits(objectMode: true));
+            _objectPropertyCopyButton.onClick.AddListener(() => ComponentUtilEditor.OnCopyEdits(objectMode: true));
             _objectPropertyPasteButton = _objectInspectorWindow.Find("ObjectPropertyList/PasteEditsButton").GetComponent<Button>();
-            _objectPropertyPasteButton.onClick.AddListener(() => ComponentUtil._instance.OnPasteEdits(objectMode: true));
+            _objectPropertyPasteButton.onClick.AddListener(() => ComponentUtilEditor.OnPasteEdits(objectMode: true));
             _objectPropertyPasteButton.interactable = false;
 
             // prepare pools
@@ -329,8 +331,13 @@ namespace RSkoi_ComponentUtil.UI
                 b.onClick.AddListener(() => ToggleSubWindow(windowContainer));
         }
 
-        static void ToggleSubWindow(Transform container)
-            => container.gameObject.SetActive(!container.gameObject.activeSelf);
+        static void ToggleSubWindow(Transform container) => container.gameObject.SetActive(!container.gameObject.activeSelf);
+
+        class ComponentUtilDraggable : MonoBehaviour, IDragHandler
+        {
+            public RectTransform target;
+            public void OnDrag(PointerEventData eventData) => target.position += new Vector3(eventData.delta.x, eventData.delta.y);
+        }
         #endregion private - loading and instantiating
     }
 }

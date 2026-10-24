@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using Studio;
 
 using RSkoi_ComponentUtil.UI;
@@ -7,32 +6,33 @@ using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static partial class ComponentUtilEditor
     {
         internal static int _currentPageTransformList = 0;
 
         /// <summary>
-        /// Name of a transform in the TransformList, used for display and search
+        /// Name of a transform in the TransformList, used for display and search.
         /// </summary>
         static string TransformListName(Transform t) => t.name;
 
         /// <summary>
-        /// Flattens transform hierarchy of input to list entries, selects first list entry
+        /// Flattens transform hierarchy of input to list entries, selects first list entry.
         /// </summary>
         /// <param name="inputCtrl">selected item/object to traverse</param>
-        /// <param name="setsSelected">whether _selectedGO and _selectedTransformUIEntry should be set to first item in flattened transform hiararchy<br/>
-        /// also whether to reset current component page number</param>
-        internal void FlattenTransformHierarchy(ObjectCtrlInfo inputCtrl, bool setsSelected = true)
+        /// <param name="setsSelected">whether _selectedGO should be set to the first transform matching the search
+        /// (or the first transform of the hierarchy if none matches); also whether to reset current component page number</param>
+        internal static void FlattenTransformHierarchy(ObjectCtrlInfo inputCtrl, bool setsSelected = true)
         {
             if (inputCtrl == null)
                 return;
 
+            var allTransforms = ComponentUtilCache.GetOrCacheTransforms(inputCtrl);
             var transformList = Paging.GetPage(
-                ComponentUtilCache.GetOrCacheTransforms(inputCtrl),
+                allTransforms,
                 ComponentUtilUI.PageSearchTransformListInputValue,
                 TransformListName,
                 _currentPageTransformList,
-                ItemsPerPageValue);
+                ComponentUtil.ItemsPerPageValue);
 
             ComponentUtilUI.PrepareTransformPool(transformList.Count);
             for (var poolIndex = 0; poolIndex < transformList.Count; poolIndex++)
@@ -43,55 +43,46 @@ namespace RSkoi_ComponentUtil
                 uiEntry.EntryName.text = TransformListName(t);
                 // remove all (non-persistent) listeners
                 uiEntry.SelfButton.onClick.RemoveAllListeners();
-                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedGO(t.gameObject, uiEntry));
-                // transform ui entries have no parent entry
-                uiEntry.ParentUiEntry = null;
+                uiEntry.SelfButton.onClick.AddListener(() => ChangeSelectedGO(t.gameObject));
                 uiEntry.UiTarget = t;
-                uiEntry.ResetBg();
+                uiEntry.SetBgColorDefault();
                 uiEntry.UiGO.SetActive(true);
             }
 
-            SetSelectedTransform(setsSelected, transformList);
+            SetSelectedTransform(setsSelected, allTransforms);
         }
 
-        void ChangeSelectedGO(GameObject target, ComponentUtilUI.GenericUIListEntry uiEntry)
+        static void ChangeSelectedGO(GameObject target)
         {
             _selectedGO = target;
-            _selectedTransformUIEntry = uiEntry;
 
             _currentPageComponentList = 0;
             ComponentUtilUI.ResetPageNumberComponentList();
 
-            GetAllComponents(_selectedGO, _selectedTransformUIEntry);
-            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
-            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+            GetAllComponents(_selectedGO);
+            GetAllComponentsAdder(_selectedGO);
+            GetAllFieldsAndProperties(_selectedComponent);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
         #region filter
-        internal void OnFilterTransform()
+        internal static void OnFilterTransform()
         {
             if (_selectedObject == null)
                 return;
 
-            // essentially does this:
-            //Entry(_selectedObject);
-
             _currentPageTransformList = 0;
             ComponentUtilUI.UpdatePageNumberTransformList(_currentPageTransformList);
 
-            FlattenTransformHierarchy(_selectedObject);
-            GetAllComponents(_selectedGO, _selectedTransformUIEntry);
-            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
-            GetAllFieldsAndProperties(_selectedComponent, _selectedComponentUiEntry);
+            FlattenTransformHierarchy(_selectedObject, setsSelected: false);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion filter
 
         #region pages
-        internal void OnLastTransformPage()
+        internal static void OnLastTransformPage()
         {
             if (_selectedObject == null)
                 return;
@@ -104,7 +95,7 @@ namespace RSkoi_ComponentUtil
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
-        internal void OnNextTransformPage()
+        internal static void OnNextTransformPage()
         {
             if (_selectedObject == null)
                 return;
@@ -113,7 +104,7 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI.PageSearchTransformListInputValue,
                 TransformListName,
                 _currentPageTransformList + 1,
-                ItemsPerPageValue))
+                ComponentUtil.ItemsPerPageValue))
                 return;
 
             _currentPageTransformList++;
@@ -124,21 +115,16 @@ namespace RSkoi_ComponentUtil
         #endregion pages
 
         #region setter, getter
-        void SetSelectedTransform(bool setsSelected, List<Transform> cacheList)
+        static void SetSelectedTransform(bool setsSelected, Transform[] allTransforms)
         {
-            if (!setsSelected)
-                return;
-            if (cacheList == null)
+            if (!setsSelected || allTransforms == null || allTransforms.Length == 0)
                 return;
 
             _currentPageComponentList = 0;
             ComponentUtilUI.ResetPageNumberComponentList();
 
-            if (cacheList.Count == 0)
-                return;
-
-            _selectedGO = cacheList[0].gameObject;
-            _selectedTransformUIEntry = ComponentUtilUI.TransformListEntries[0];
+            var first = Paging.FirstMatchOrFirst(allTransforms, ComponentUtilUI.PageSearchTransformListInputValue, TransformListName);
+            _selectedGO = first == null ? null : first.gameObject;
         }
         #endregion setter, getter
     }

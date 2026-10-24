@@ -12,22 +12,16 @@ namespace RSkoi_ComponentUtil
         #region bepinex config
         #region Config
         const bool DEFAULT_SAVE_SCENE_DATA = true;
-        internal static ConfigEntry<bool> SaveSceneData { get; private set; }
+        internal static ConfigEntry<bool> SaveSceneData                 { get; private set; }
         const bool DEFAULT_LOAD_SCENE_DATA = true;
-        internal static ConfigEntry<bool> LoadSceneData { get; private set; }
+        internal static ConfigEntry<bool> LoadSceneData                 { get; private set; }
 
         #region WaitTimeLoadScene
         const float DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 2f;
         internal static ConfigEntry<float> WaitTimeLoadScene { get; private set; }
         internal static float WaitTimeLoadSceneValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    WaitTimeLoadScene,
-                    val => val > 0,
-                    DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS);
-            }
+            get => ValidateConfigValue(WaitTimeLoadScene, DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS, val => val > 0);
         }
         #endregion WaitTimeLoadScene
         #endregion Config
@@ -35,70 +29,50 @@ namespace RSkoi_ComponentUtil
         #region Keyboard Shortcuts
         const KeyCode DEFAULT_TOGGLE_MAIN_KEY = KeyCode.M;
         const KeyCode DEFAULT_TOGGLE_MODIFIER = KeyCode.RightControl;
-        internal static ConfigEntry<KeyboardShortcut> ToggleUI { get; private set; }
+        internal static ConfigEntry<KeyboardShortcut> ToggleUI          { get; private set; }
         #endregion Keyboard Shortcuts
 
         #region Config - UI
         const float DEFAULT_UI_SCALE = 0.7f;
-        internal static ConfigEntry<float> UiScale { get; private set; }
+        internal static ConfigEntry<float> UiScale                      { get; private set; }
 
         #region WindowScale
         static readonly Vector2 DEFAULT_WINDOW_SIZE_FACTOR = Vector2.one;
-        internal static ConfigEntry<Vector2> TransformWindowScale { get; private set; }
-        internal static ConfigEntry<Vector2> ComponentWindowScale { get; private set; }
-        internal static ConfigEntry<Vector2> ComponentAdderWindowScale { get; private set; }
-        internal static ConfigEntry<Vector2> ComponentInspectorScale { get; private set; }
-        internal static ConfigEntry<Vector2> ObjectInspectorScale { get; private set; }
+        internal static ConfigEntry<Vector2> TransformWindowScale       { get; private set; }
+        internal static ConfigEntry<Vector2> ComponentWindowScale       { get; private set; }
+        internal static ConfigEntry<Vector2> ComponentAdderWindowScale  { get; private set; }
+        internal static ConfigEntry<Vector2> ComponentInspectorScale    { get; private set; }
+        internal static ConfigEntry<Vector2> ObjectInspectorScale       { get; private set; }
 
         internal static Vector2 TransformWindowScaleValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    TransformWindowScale,
-                    val => (val.x >= 1 && val.y >= 1),
-                    DEFAULT_WINDOW_SIZE_FACTOR);
-            }
+            get => ValidateConfigValue(TransformWindowScale, DEFAULT_WINDOW_SIZE_FACTOR,
+                val => val.x >= 1 && val.y >= 1
+            );
         }
         internal static Vector2 ComponentWindowScaleValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    ComponentWindowScale,
-                    val => (val.x >= 1 && val.y >= 1),
-                    DEFAULT_WINDOW_SIZE_FACTOR);
-            }
+            get => ValidateConfigValue(ComponentWindowScale, DEFAULT_WINDOW_SIZE_FACTOR,
+                val => val.x >= 1 && val.y >= 1
+            );
         }
         internal static Vector2 ComponentAdderWindowScaleValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    ComponentAdderWindowScale,
-                    val => (val.x >= 1 && val.y >= 1),
-                    DEFAULT_WINDOW_SIZE_FACTOR);
-            }
+            get => ValidateConfigValue(ComponentAdderWindowScale, DEFAULT_WINDOW_SIZE_FACTOR,
+                val => val.x >= 1 && val.y >= 1
+            );
         }
         internal static Vector2 ComponentInspectorScaleValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    ComponentInspectorScale,
-                    val => (val.x >= 1 && val.y >= 1),
-                    DEFAULT_WINDOW_SIZE_FACTOR);
-            }
+            get => ValidateConfigValue(ComponentInspectorScale, DEFAULT_WINDOW_SIZE_FACTOR,
+                val => val.x >= 1 && val.y >= 1
+            );
         }
         internal static Vector2 ObjectInspectorScaleValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    ObjectInspectorScale,
-                    val => (val.x >= 1 && val.y >= 1),
-                    DEFAULT_WINDOW_SIZE_FACTOR);
-            }
+            get => ValidateConfigValue(ObjectInspectorScale, DEFAULT_WINDOW_SIZE_FACTOR,
+                val => val.x >= 1 && val.y >= 1
+            );
         }
         #endregion WindowScale
 
@@ -107,19 +81,13 @@ namespace RSkoi_ComponentUtil
         internal static ConfigEntry<int> ItemsPerPage { get; private set; }
         internal static int ItemsPerPageValue
         {
-            get
-            {
-                return ValidateConfigValue(
-                    ItemsPerPage,
-                    val => val > 0,
-                    DEFAULT_ITEMS_PER_PAGE);
-            }
+            get => ValidateConfigValue(ItemsPerPage, DEFAULT_ITEMS_PER_PAGE, val => val > 0);
         }
         #endregion ItemsPerPage
         #endregion Config - UI
         #endregion bepinex config
 
-        static T ValidateConfigValue<T>(ConfigEntry<T> config, Func<T, bool> validateFunc, T defaultValue)
+        static T ValidateConfigValue<T>(ConfigEntry<T> config, T defaultValue, Func<T, bool> validateFunc)
         {
             var val = config.Value;
             if (!validateFunc(val))

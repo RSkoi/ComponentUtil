@@ -7,15 +7,16 @@ using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
 using RSkoi_ComponentUtil.Timeline;
 
+using static RSkoi_ComponentUtil.ComponentUtilTracker;
+
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static partial class ComponentUtilEditor
     {
         /// <summary>
         /// Everything a property entry in the Component- or ObjectInspector needs to know about the member it edits.
         /// </summary>
-        internal sealed class PropertyEntryContext(
-            ComponentUtilUI.GenericUIListEntry parentUiEntry,
+        internal class PropertyEntryContext(
             ComponentUtilUI.PropertyUIEntry uiEntry,
             object target,
             Member member,
@@ -23,10 +24,6 @@ namespace RSkoi_ComponentUtil
             PropertyTrackerData.PropertyTrackerDataOptions flags,
             bool objectMode)
         {
-            /// <summary>
-            /// The selected component entry.
-            /// </summary>
-            public readonly ComponentUtilUI.GenericUIListEntry ParentUiEntry = parentUiEntry;
             /// <summary>
             /// The property / field entry.
             /// </summary>
@@ -60,25 +57,25 @@ namespace RSkoi_ComponentUtil
         /// Adds the edit to the tracker (keeping the first default value), sets the new value, marks the entry as edited.
         /// </summary>
         /// <param name="newValue">the new value, either of the member type or encoded (see ValueConversion)</param>
-        void ApplyEdit(PropertyEntryContext ctx, object newValue)
+        static void ApplyEdit(PropertyEntryContext ctx, object newValue)
         {
             var defaultValue = ValueConversion.Encode(ctx.Member.TryGetValue(ctx.Target), ctx.Flags);
             if (ctx.ObjectMode)
             {
-                AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent,
-                    _selectedReferencePropertyUiEntry.MemberName, ctx.Member.Name, defaultValue, ctx.Flags);
+                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
+                AddPropertyToTracker(refKey, ctx.Member.Name, defaultValue, ctx.Flags);
                 _selectedReferencePropertyUiEntry.SetBgColorEdited();
             }
             else
-                AddPropertyToTracker(_selectedObject, _selectedComponent.gameObject, _selectedComponent, ctx.Member.Name, defaultValue, ctx.Flags);
+                AddPropertyToTracker(SelectedPropertyKey(_selectedComponent), ctx.Member.Name, defaultValue, ctx.Flags);
 
-            SetValueWithFlags(ctx.Member, ctx.Target, newValue, ctx.Flags);
+            ValueConversion.SetValueWithFlags(ctx.Member, ctx.Target, newValue, ctx.Flags);
 
             ctx.UiEntry.SetBgColorEdited();
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
-        void ConfigReference(PropertyEntryContext ctx)
+        static void ConfigReference(PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
@@ -88,10 +85,11 @@ namespace RSkoi_ComponentUtil
 
             // whether the member has a setter is irrelevant here because values inside the reference will be set with reflection
             button.interactable = true;
-            button.onClick.AddListener(() => OpenObjectInspector(ctx.Member, ctx.Value, uiEntry, ctx.ParentUiEntry));
+            button.onClick.AddListener(() => OnReferenceClicked(ctx.Member, ctx.Value, uiEntry));
 
             uiEntry.UiComponentSetValueResetDelegate = null;
-            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
+
+            _shownReferenceEntries[ctx.Member.Name] = uiEntry;
 
             // resetting or animating a reference as a whole is not supported, only the values inside it
             uiEntry.ResetButton.interactable = false;
@@ -101,13 +99,23 @@ namespace RSkoi_ComponentUtil
                 uiEntry.TimelineButton.gameObject.SetActive(false);
         }
 
-        void ConfigDropdown(PropertyEntryContext ctx)
+        static void ConfigDropdown(PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
                 uiEntry.UiSelectable = ctx.EntryGO.GetComponentInChildren<Dropdown>();
             var dropdownField = (Dropdown)uiEntry.UiSelectable;
             dropdownField.onValueChanged.RemoveAllListeners();
+            dropdownField.interactable = ctx.Interactable;
+
+            if (uiEntry.KeepOpen != null)
+                uiEntry.KeepOpen.OnOptionClicked = null;
+
+            if (FlagsEnum.IsFlagsEnum(ctx.Member.MemberType))
+            {
+                ConfigFlagsDropdown(ctx, dropdownField);
+                return;
+            }
 
             // configure options
             // dropdown works with option indices, which are not the same as enum values
@@ -134,7 +142,6 @@ namespace RSkoi_ComponentUtil
             }
             dropdownField.ClearOptions();
             dropdownField.AddOptions(options);
-            dropdownField.interactable = ctx.Interactable;
 
             // select current option
             dropdownField.value = selectedOption;
@@ -154,10 +161,9 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return enumValue;
             };
-            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
-        void ConfigToggle(PropertyEntryContext ctx)
+        static void ConfigToggle(PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
@@ -181,10 +187,9 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return toggleField.isOn;
             };
-            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
-        void ConfigInput(PropertyEntryContext ctx, InputField.ContentType contentType)
+        static void ConfigInput(PropertyEntryContext ctx, InputField.ContentType contentType)
         {
             var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
@@ -209,11 +214,10 @@ namespace RSkoi_ComponentUtil
                 registerMyEvents();
                 return inputField.text;
             };
-            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
         #region reset button
-        void ConfigReset(PropertyKey key, PropertyEntryContext ctx)
+        static void ConfigReset(PropertyKey key, PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
             var propName = ctx.Member.Name;
@@ -225,7 +229,7 @@ namespace RSkoi_ComponentUtil
                     return;
 
                 var defaultValue = GetTrackedDefaultValue(key, propName);
-                SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
+                ValueConversion.SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
 
                 RemovePropertyFromTracker(key, propName);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
@@ -234,7 +238,7 @@ namespace RSkoi_ComponentUtil
             });
         }
 
-        void ConfigResetReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
+        static void ConfigResetReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
             var propName = ctx.Member.Name;
@@ -246,7 +250,7 @@ namespace RSkoi_ComponentUtil
                     return;
 
                 var defaultValue = GetTrackedDefaultValue(key, propName);
-                SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
+                ValueConversion.SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
 
                 RemovePropertyFromTracker(key, propName, out bool removedKey);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
@@ -259,7 +263,7 @@ namespace RSkoi_ComponentUtil
         #endregion reset button
 
         #region timeline button
-        void ConfigTimeline(PropertyKey key, PropertyEntryContext ctx)
+        static void ConfigTimeline(PropertyKey key, PropertyEntryContext ctx)
         {
             if (!ConfigTimelineButton(ctx))
                 return;
@@ -267,7 +271,7 @@ namespace RSkoi_ComponentUtil
                 () => ComponentUtilTimeline.SelectTimelineModelTarget(key, ctx.Member, ctx.Flags));
         }
 
-        void ConfigTimelineReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
+        static void ConfigTimelineReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
         {
             if (!ConfigTimelineButton(ctx))
                 return;
@@ -276,7 +280,7 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <returns>false if Timeline is not available and the button was hidden</returns>
-        bool ConfigTimelineButton(PropertyEntryContext ctx)
+        static bool ConfigTimelineButton(PropertyEntryContext ctx)
         {
             var button = ctx.UiEntry.TimelineButton;
             if (!ComponentUtilTimeline.IsTimelineAvailable())

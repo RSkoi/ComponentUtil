@@ -7,9 +7,9 @@ using RSkoi_ComponentUtil.Core;
 
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static partial class ComponentUtilEditor
     {
-        void ConfigColor(PropertyEntryContext ctx)
+        static void ConfigColor(PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
             if (uiEntry.UiSelectable == null)
@@ -45,10 +45,9 @@ namespace RSkoi_ComponentUtil
                 SetButtonColor(colorButton, valColor);
                 return valColor;
             };
-            uiEntry.ParentUiEntry = ctx.ParentUiEntry;
         }
 
-        void SetButtonColor(Button button, Color color)
+        static void SetButtonColor(Button button, Color color)
         {
             // clamp alpha, otherwise button will not be visible at all
             if (color.a < 0.1f)
@@ -61,46 +60,46 @@ namespace RSkoi_ComponentUtil
             buttonColors.disabledColor = new(color.r, color.g, color.b, a: 0.5f);
             button.colors = buttonColors;
         }
+    }
 
+    /// <summary>
+    /// Provides methods to parse colors to ComponentUtil encoded format and back
+    /// </summary>
+    public static class ColorConversion
+    {
         /// <summary>
-        /// Provides methods to parse colors to ComponentUtil encoded format and back
+        /// Converts a color string value to color<br/>
+        /// Parsing to float can throw exceptions, exception handling is the responsibility of the user
         /// </summary>
-        public static class ColorConversion
+        /// <param name="value">color string value with # as separator</param>
+        /// <returns>values parsed to color</returns>
+        public static Color StringToColor(string value)
         {
-            /// <summary>
-            /// Converts a color string value to color<br />
-            /// Parsing to float can throw exceptions, exception handling is the responsibility of the user
-            /// </summary>
-            /// <param name="value">color string value with # as separator</param>
-            /// <returns>values parsed to color</returns>
-            public static Color StringToColor(string value)
+            var colorValue = Color.white;
+
+            var split = value.Split('#');
+            var count = split.Where(s => !string.IsNullOrEmpty(s)).Count();
+            if (count != 4)
             {
-                var colorValue = Color.white;
-
-                var split = value.Split('#');
-                var count = split.Where(s => !s.IsNullOrEmpty()).Count();
-                if (count != 4)
-                {
-                    _logger.LogError("ColorConversion.StringToColor() was provided incomplete color string, returning default");
-                    return colorValue;
-                }
-
-                var i = 0;
-                foreach (var s in split)
-                {
-                    if (s.IsNullOrEmpty())
-                        continue;
-
-                    // exceptions should be caught by user
-                    colorValue[i] = InvariantConversion.ParseFloat(s);
-                    i++;
-                }
-
+                Logger.LogError("ColorConversion.StringToColor() was provided incomplete color string, returning default");
                 return colorValue;
             }
 
-            public static string ColorToString(Color c)
-                => string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", c.r, c.g, c.b, c.a);
+            var i = 0;
+            foreach (var s in split)
+            {
+                if (string.IsNullOrEmpty(s))
+                    continue;
+
+                // exceptions should be caught by user
+                colorValue[i] = InvariantConversion.ParseFloat(s);
+                i++;
+            }
+
+            return colorValue;
         }
+
+        public static string ColorToString(Color c)
+            => string.Format(CultureInfo.InvariantCulture, "{0}#{1}#{2}#{3}", c.r, c.g, c.b, c.a);
     }
 }

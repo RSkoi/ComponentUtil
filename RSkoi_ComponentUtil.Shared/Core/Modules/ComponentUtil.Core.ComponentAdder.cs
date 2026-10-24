@@ -4,25 +4,26 @@ using UnityEngine;
 using RSkoi_ComponentUtil.UI;
 using RSkoi_ComponentUtil.Core;
 
+using static RSkoi_ComponentUtil.ComponentUtilTracker;
+
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static partial class ComponentUtilEditor
     {
         internal static int _currentPageComponentAdderList = 0;
 
         /// <summary>
-        /// Name of an addable component type the adder search matches against
+        /// Name of an addable component type the adder search matches against.
         /// </summary>
         static string ComponentAdderSearchName(Type t) => t.FullName;
 
         /// <summary>
-        /// Gets all components you could theoretically add to selected GameObject
+        /// Gets all components you could theoretically add to selected GameObject.
         /// </summary>
         /// <param name="input">selected object to add components on</param>
-        /// <param name="inputUi">selected transform ui entry</param>
-        internal void GetAllComponentsAdder(GameObject input, ComponentUtilUI.GenericUIListEntry inputUi)
+        internal static void GetAllComponentsAdder(GameObject input)
         {
-            if (input == null || inputUi == null)
+            if (input == null)
                 return;
 
             ComponentUtilUI.UpdateUISelectedText(ComponentUtilUI._componentAdderListSelectedGOText, input.name);
@@ -32,7 +33,7 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI.PageSearchComponentAdderInputValue,
                 ComponentAdderSearchName,
                 _currentPageComponentAdderList,
-                ItemsPerPageValue);
+                ComponentUtil.ItemsPerPageValue);
 
             ComponentUtilUI.PrepareComponentAdderPool(componentList.Count);
             for (var poolIndex = 0; poolIndex < componentList.Count; poolIndex++)
@@ -47,7 +48,7 @@ namespace RSkoi_ComponentUtil
                 {
                     if (input.GetComponent(t) != null)
                     {
-                        _logger.LogWarning($"Cannot add component {t.Name} to {input.name} because instance already exists");
+                        Logger.LogWarning($"Cannot add component {t.Name} to {input.name} because instance already exists");
                         return;
                     }
 
@@ -56,18 +57,18 @@ namespace RSkoi_ComponentUtil
 
                     // force refresh the component list cache
                     ComponentUtilCache.GetOrCacheComponents(input, forceRefresh: true);
-                    GetAllComponents(_selectedGO, _selectedTransformUIEntry, setsSelected: false);
+                    GetAllComponents(_selectedGO, setsSelected: false);
 
                     ComponentUtilUI.TraverseAndSetEditedParents();
                 });
                 uiEntry.UiTarget = t;
-                uiEntry.ResetBg();
+                uiEntry.SetBgColorDefault();
                 uiEntry.UiGO.SetActive(true);
             }
         }
 
         #region filter
-        internal void OnFilterComponentAdder()
+        internal static void OnFilterComponentAdder()
         {
             if (_selectedGO == null)
                 return;
@@ -75,14 +76,14 @@ namespace RSkoi_ComponentUtil
             _currentPageComponentAdderList = 0;
             ComponentUtilUI.ResetPageNumberComponentAdder();
 
-            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
+            GetAllComponentsAdder(_selectedGO);
 
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion filter
 
         #region pages
-        internal void OnLastComponentAdderPage()
+        internal static void OnLastComponentAdderPage()
         {
             if (_selectedGO == null)
                 return;
@@ -91,11 +92,11 @@ namespace RSkoi_ComponentUtil
 
             _currentPageComponentAdderList--;
             ComponentUtilUI.UpdatePageNumberComponentAdder(_currentPageComponentAdderList);
-            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
+            GetAllComponentsAdder(_selectedGO);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
 
-        internal void OnNextComponentAdderPage()
+        internal static void OnNextComponentAdderPage()
         {
             if (_selectedGO == null)
                 return;
@@ -105,12 +106,12 @@ namespace RSkoi_ComponentUtil
                 ComponentUtilUI.PageSearchComponentAdderInputValue,
                 ComponentAdderSearchName,
                 _currentPageComponentAdderList + 1,
-                ItemsPerPageValue))
+                ComponentUtil.ItemsPerPageValue))
                 return;
 
             _currentPageComponentAdderList++;
             ComponentUtilUI.UpdatePageNumberComponentAdder(_currentPageComponentAdderList);
-            GetAllComponentsAdder(_selectedGO, _selectedTransformUIEntry);
+            GetAllComponentsAdder(_selectedGO);
             ComponentUtilUI.TraverseAndSetEditedParents();
         }
         #endregion pages

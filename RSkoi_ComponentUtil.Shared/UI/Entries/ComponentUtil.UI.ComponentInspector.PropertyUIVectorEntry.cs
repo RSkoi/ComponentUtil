@@ -7,41 +7,26 @@ namespace RSkoi_ComponentUtil.UI
     {
         internal class PropertyUIVectorEntry(PropertyUIEntry entry)
         {
-            PropertyUIEntry _wrappedEntry = entry;
             readonly InputField _input4 = entry.UiGO.transform.Find("Input4").GetComponent<InputField>(); // rightmost
             readonly InputField _input3 = entry.UiGO.transform.Find("Input3").GetComponent<InputField>();
             readonly InputField _input2 = entry.UiGO.transform.Find("Input2").GetComponent<InputField>();
             readonly InputField _input1 = entry.UiGO.transform.Find("Input1").GetComponent<InputField>(); // leftmost
 
             /// <summary>
-            /// event that fires when one input of the vector entry changes
+            /// Event that fires when one input of the vector entry changes.
             /// </summary>
             public Action<string> OnValueChanged;
 
             /// <summary>
-            /// returns all four ui elements of this vector
+            /// Returns all four ui elements of this vector.
             /// </summary>
             public InputField[] Inputs4
             {
                 get => [_input1, _input2, _input3, _input4];
             }
-            /// <summary>
-            /// returns three out of four ui elements of this vector
-            /// </summary>
-            public InputField[] Inputs3
-            {
-                get => [_input2, _input3, _input4];
-            }
-            /// <summary>
-            /// returns two out of four ui elements of this vector
-            /// </summary>
-            public InputField[] Inputs2
-            {
-                get => [_input3, _input4];
-            }
 
             /// <summary>
-            /// returns encoded value string of all input fields
+            /// Returns encoded value string of all input fields.
             /// </summary>
             /// <returns>values of input fields combined into string with # as separator</returns>
             public string GetUIVectorValuesAsString()
@@ -54,7 +39,7 @@ namespace RSkoi_ComponentUtil.UI
             }
 
             /// <summary>
-            /// sets the values for valid input fields, configures visibility of input fields
+            /// Sets the values for valid input fields, configures visibility of input fields.
             /// </summary>
             /// <param name="encValue"></param>
             public void SetUIVectorValues(string encValue)
@@ -64,7 +49,7 @@ namespace RSkoi_ComponentUtil.UI
                 for (var i = 0; i < split.Length; i++)
                 {
                     var s = split[i];
-                    if (string.IsNullOrEmpty(s))
+                    if (s == "")
                     {
                         inputs[i].gameObject.SetActive(false);
                         continue;
@@ -78,7 +63,7 @@ namespace RSkoi_ComponentUtil.UI
             }
 
             /// <summary>
-            /// sets the interactable property on each input field of vector ui entry
+            /// Sets the interactable property on each input field of vector ui entry.
             /// </summary>
             /// <param name="b"></param>
             public void SetInteractable(bool b)
@@ -88,17 +73,7 @@ namespace RSkoi_ComponentUtil.UI
             }
 
             /// <summary>
-            /// sets the content type property on each input field of vector ui entry
-            /// </summary>
-            /// <param name="ct"></param>
-            public void SetContentType(InputField.ContentType ct)
-            {
-                foreach (var i in Inputs4)
-                    i.contentType = ct;
-            }
-
-            /// <summary>
-            /// wires InputField.onValueChanged to PropertyUIVectorEntry.OnValueChanged
+            /// Wires InputField.onValueChanged to PropertyUIVectorEntry.OnValueChanged.
             /// </summary>
             public void RegisterInputEvents()
             {

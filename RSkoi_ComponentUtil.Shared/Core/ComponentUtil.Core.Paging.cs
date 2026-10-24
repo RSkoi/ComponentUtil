@@ -22,5 +22,17 @@ namespace RSkoi_ComponentUtil.Core
 
         internal static bool PageExists<T>(IEnumerable<T> items, string filter, Func<T, string> getName, int page, int itemsPerPage)
             => page * itemsPerPage < Filter(items, filter, getName).Count;
+
+        internal static T FirstMatchOrFirst<T>(IList<T> items, string filter, Func<T, string> getName)
+        {
+            if (items.Count == 0)
+                return default;
+
+            filter = filter.ToLower();
+            foreach (var item in items)
+                if (getName(item).ToLower().Contains(filter))
+                    return item;
+            return items[0];
+        }
     }
 }

@@ -13,6 +13,9 @@ using RSkoi_ComponentUtil.Core;
 using RSkoi_ComponentUtil.Timeline;
 using static RSkoi_ComponentUtil.ComponentUtil;
 using static RSkoi_ComponentUtil.Scene.ComponentUtilSerializableObjects;
+using static RSkoi_ComponentUtil.ComponentUtilEditor;
+using static RSkoi_ComponentUtil.ComponentUtilTracker;
+using static RSkoi_ComponentUtil.ComponentUtilRedirectors;
 
 namespace RSkoi_ComponentUtil.Scene
 {
@@ -25,7 +28,7 @@ namespace RSkoi_ComponentUtil.Scene
             ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
         {
             if (operation == SceneOperationKind.Clear || operation == SceneOperationKind.Load)
-                _instance.ResetState();
+                ResetState();
 
             var data = GetExtendedData();
             if (data == null || operation == SceneOperationKind.Clear)
@@ -42,8 +45,8 @@ namespace RSkoi_ComponentUtil.Scene
                 
                 //PrintCompSavedDict(deserializedTrackerDataDict);
 
+                // add components with no wait
                 OnSceneLoadAddComponents(deserializedTrackerDataDict, loadedItems);
-                //StartCoroutine(OnSceneLoadAddComponentsRoutine(deserializedTrackerDataDict, loadedItems));
             }
             #endregion add all components
 
@@ -81,27 +84,21 @@ namespace RSkoi_ComponentUtil.Scene
         {
             foreach (var entry in deserializedTrackerDataDict)
             {
-                var loadedItem = loadedItems[entry.Key];
-                var loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                if (!TryGetLoadedItem(loadedItems, entry.Key, out var loadedItem))
+                    continue;
 
                 foreach (var componentEntry in entry.Value)
                 {
-                    // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
-                    var loadedItemEditTransform = string.IsNullOrEmpty(componentEntry.parentPath)
-                        ? loadedItemTransformTarget
-                        : loadedItemTransformTarget.Find(componentEntry.parentPath);
+                    var loadedItemEditTransform = FindSavedTransform(loadedItem, componentEntry.parentPath);
                     if (loadedItemEditTransform == null)
-                    {
-                        _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{componentEntry.parentPath}");
                         continue;
-                    }
 
                     foreach (var componentAddEntry in componentEntry.addedComponents)
                     {
                         // _componentAdderSearchCache is populated once on plugin init (ComponentUtil.LoadedEvent)
                         if (!ComponentUtilCache._componentAdderSearchCache.TryGetValue(componentAddEntry.componentName, out var type))
                         {
-                            _logger.LogError($"Component {componentAddEntry.componentName} was not present in cache, cannot add it");
+                            Logger.LogError($"Component {componentAddEntry.componentName} was not present in cache, cannot add it");
                             continue;
                         }
 
@@ -109,22 +106,13 @@ namespace RSkoi_ComponentUtil.Scene
 
                         // adding to tracker must not be done by Setter methods such as SetPropertyValue
                         // on loading scene as we need to track loadedItem, not _selectedObject
-                        _instance.AddComponentToTracker(
+                        AddComponentToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,
                             componentAddEntry.componentName);
                     }
                 }
             }
-        }
-
-        IEnumerator OnSceneLoadAddComponentsRoutine(
-            SortedDictionary<int, List<TrackerComponentDataSO>> deserializedTrackerDataDict,
-            ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems)
-        {
-            yield return new WaitForSeconds(WaitTimeLoadSceneValue);
-
-            OnSceneLoadAddComponents(deserializedTrackerDataDict, loadedItems);
         }
 
         IEnumerator OnSceneLoadEditPropsRoutine(
@@ -136,27 +124,14 @@ namespace RSkoi_ComponentUtil.Scene
             // this is beyond horrid
             foreach (var entry in deserializedTrackerDataDict)
             {
-                var loadedItem = loadedItems[entry.Key];
-                var loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                if (!TryGetLoadedItem(loadedItems, entry.Key, out var loadedItem))
+                    continue;
 
                 foreach (var propEntry in entry.Value)
                 {
-                    // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
-                    var loadedItemEditTransform = string.IsNullOrEmpty(propEntry.parentPath)
-                        ? loadedItemTransformTarget
-                        : loadedItemTransformTarget.Find(propEntry.parentPath);
-                    if (loadedItemEditTransform == null)
-                    {
-                        _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
-                        continue;
-                    }
-
-                    var component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    var component = FindSavedComponent(loadedItem, propEntry.parentPath, propEntry.componentName, out var loadedItemEditTransform);
                     if (component == null)
-                    {
-                        _logger.LogError($"Could not get component with name {propEntry.componentName} on {loadedItemTransformTarget.name}");
                         continue;
-                    }
                     var componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
@@ -175,14 +150,14 @@ namespace RSkoi_ComponentUtil.Scene
                         var value = member?.TryGetValue(component);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Could not find non-null {memberDescription}, ignoring");
+                            Logger.LogWarning($"Could not find non-null {memberDescription}, ignoring");
                             continue;
                         }
 
                         var encodedValue = ValueConversion.Encode(value, flags);
                         if (encodedValue == null)
                         {
-                            _logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
+                            Logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
                             continue;
                         }
 
@@ -192,9 +167,9 @@ namespace RSkoi_ComponentUtil.Scene
                         if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(encodedValue) == savedValueString)
                             continue;
 
-                        // adding to tracker must not be done by ApplyEdit
-                        // on loading scene as we need to track loadedItem, not _selectedObject
-                        _instance.AddPropertyToTracker(
+                        /* adding to tracker must not be done by ComponentUtilEditor.ApplyEdit()
+                           on loading scene as we need to track loadedItem, not _selectedObject */
+                        AddPropertyToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,
                             component,
@@ -206,7 +181,7 @@ namespace RSkoi_ComponentUtil.Scene
                         if (isReference)
                             continue;
 
-                        SetValueWithFlags(member, component, savedValueString, flags);
+                        ValueConversion.SetValueWithFlags(member, component, savedValueString, flags);
                     }
                 }
             }
@@ -221,34 +196,21 @@ namespace RSkoi_ComponentUtil.Scene
             // this is beyond horrid
             foreach (var entry in deserializedTrackerDataDict)
             {
-                var loadedItem = loadedItems[entry.Key];
-                var loadedItemTransformTarget = loadedItem.guideObject.transformTarget;
+                if (!TryGetLoadedItem(loadedItems, entry.Key, out var loadedItem))
+                    continue;
 
                 foreach (var propEntry in entry.Value)
                 {
-                    // TODO: multiple transforms with the same name as siblings? use propEntry.sublingIndex?
-                    var loadedItemEditTransform = string.IsNullOrEmpty(propEntry.parentPath)
-                        ? loadedItemTransformTarget
-                        : loadedItemTransformTarget.Find(propEntry.parentPath);
-                    if (loadedItemEditTransform == null)
-                    {
-                        _logger.LogError($"Could not find transform with path {loadedItemTransformTarget.name}/{propEntry.parentPath}");
-                        continue;
-                    }
-
-                    var component = loadedItemEditTransform.GetComponent(propEntry.componentName);
+                    var component = FindSavedComponent(loadedItem, propEntry.parentPath, propEntry.componentName, out var loadedItemEditTransform);
                     if (component == null)
-                    {
-                        _logger.LogError($"Could not get component with name {propEntry.componentName} on {loadedItemTransformTarget.name}");
                         continue;
-                    }
                     var componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
                     var referenceObject = Member.FindAny(componentType, propEntry.referencePropertyName)?.TryGetValue(component);
                     if (referenceObject == null)
                     {
-                        _logger.LogWarning($"Could not find non-null reference on {loadedItemEditTransform.name}" +
+                        Logger.LogWarning($"Could not find non-null reference on {loadedItemEditTransform.name}" +
                             $".{componentType.Name} with name {propEntry.referencePropertyName}, ignoring");
                         continue;
                     }
@@ -269,14 +231,14 @@ namespace RSkoi_ComponentUtil.Scene
                         var value = member?.TryGetValue(referenceObject);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Could not find non-null reference {memberDescription}, ignoring");
+                            Logger.LogWarning($"Could not find non-null reference {memberDescription}, ignoring");
                             continue;
                         }
 
                         var encodedValue = ValueConversion.Encode(value, flags);
                         if (encodedValue == null)
                         {
-                            _logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
+                            Logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
                             continue;
                         }
 
@@ -286,9 +248,9 @@ namespace RSkoi_ComponentUtil.Scene
                         if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(encodedValue) == savedValueString)
                             continue;
 
-                        // adding to tracker must not be done by ApplyEdit
-                        // on loading scene as we need to track loadedItem, not _selectedObject
-                        _instance.AddPropertyToTracker(
+                        /* adding to tracker must not be done by ComponentUtilEditor.ApplyEdit()
+                           on loading scene as we need to track loadedItem, not _selectedObject */
+                        AddPropertyToTracker(
                             loadedItem,
                             loadedItemEditTransform.gameObject,
                             component,
@@ -297,7 +259,7 @@ namespace RSkoi_ComponentUtil.Scene
                             encodedValue,
                             flags);
 
-                        SetValueWithFlags(member, referenceObject, savedValueString, flags);
+                        ValueConversion.SetValueWithFlags(member, referenceObject, savedValueString, flags);
                     }
                 }
             }
@@ -316,7 +278,7 @@ namespace RSkoi_ComponentUtil.Scene
                 return;
             }
 
-            _instance.ClearInvalidEntriesFromTracker();
+            ClearInvalidEntriesFromTracker();
 
             var propertySavedDict = new SortedDictionary<int, List<TrackerDataSO>>();
             foreach (var entry in _propertyTracker)
@@ -332,12 +294,12 @@ namespace RSkoi_ComponentUtil.Scene
                     object value = 0;
                     if (!HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                     {
-                        var isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
+                        bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
                         var member = Member.Find(componentType, propEntry.Key, isProperty);
                         value = ValueConversion.Encode(member?.TryGetValue(entry.Key.Component), flags);
                         if (value == null)
                         {
-                            _logger.LogWarning($"Tried to save null value for {(isProperty ? "property" : "field")} {entry.Key.Component.name}.{propEntry.Key}, ignoring");
+                            Logger.LogWarning($"Tried to save null value for {(isProperty ? "property" : "field")} {entry.Key.Component.name}.{propEntry.Key}, ignoring");
                             continue;
                         }
                     }
@@ -367,7 +329,7 @@ namespace RSkoi_ComponentUtil.Scene
                 var referenceObject = Member.FindAny(componentType, entry.Key.ReferencePropertyName)?.TryGetValue(entry.Key.Component);
                 if (referenceObject == null)
                 {
-                    _logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.ReferencePropertyName}, ignoring");
+                    Logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.ReferencePropertyName}, ignoring");
                     continue;
                 }
 
@@ -386,7 +348,7 @@ namespace RSkoi_ComponentUtil.Scene
                     var value = ValueConversion.Encode(member?.TryGetValue(referenceObject), flags);
                     if (value == null)
                     {
-                        _logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {entry.Key.Go.name}.{componentType.Name}" +
+                        Logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {entry.Key.Go.name}.{componentType.Name}" +
                             $".{entry.Key.ReferencePropertyName} with name {propEntry.Key}, ignoring");
                         continue;
                     }
@@ -451,14 +413,14 @@ namespace RSkoi_ComponentUtil.Scene
                 return;
 
             if (ComponentUtilUI.CanvasIsActive)
-                _instance.Entry(objectCtrlInfo[0]);
+                Entry(objectCtrlInfo[0]);
 
             base.OnObjectsSelected(objectCtrlInfo);
         }
 
         protected override void OnObjectDeleted(ObjectCtrlInfo objectCtrlInfo)
         {
-            _instance.ClearInvalidEntriesFromTracker(objectCtrlInfo);
+            ClearInvalidEntriesFromTracker(objectCtrlInfo);
 
             if (ComponentUtilUI.CanvasIsActive && _selectedObject == objectCtrlInfo)
             {
@@ -508,7 +470,9 @@ namespace RSkoi_ComponentUtil.Scene
         {
             // notice that transform.Find already accounts for the root
             // -> do not include it in the path
-            if (transform == root) return "";
+
+            if (transform == root)
+                return "";
 
             var path = transform.name;
             while (transform.parent != null && transform.parent != root)
@@ -521,6 +485,37 @@ namespace RSkoi_ComponentUtil.Scene
         #endregion internal helpers
 
         #region private helpers
+        static bool TryGetLoadedItem(ReadOnlyDictionary<int, ObjectCtrlInfo> loadedItems, int itemKey, out ObjectCtrlInfo loadedItem)
+        {
+            if (loadedItems.TryGetValue(itemKey, out loadedItem) && loadedItem != null)
+                return true;
+
+            Logger.LogError($"Could not find loaded item with key {itemKey}, skipping");
+            return false;
+        }
+
+        static Transform FindSavedTransform(ObjectCtrlInfo loadedItem, string parentPath)
+        {
+            var root = loadedItem.guideObject.transformTarget;
+            // TODO: multiple transforms with the same name as siblings? use the saved siblingIndex?
+            var transform = parentPath == "" ? root : root.Find(parentPath);
+            if (transform == null)
+                Logger.LogError($"Could not find transform with path {root.name}/{parentPath}");
+            return transform;
+        }
+
+        static Component FindSavedComponent(ObjectCtrlInfo loadedItem, string parentPath, string componentName, out Transform transform)
+        {
+            transform = FindSavedTransform(loadedItem, parentPath);
+            if (transform == null)
+                return null;
+
+            var component = transform.GetComponent(componentName);
+            if (component == null)
+                Logger.LogError($"Could not get component with name {componentName} on {loadedItem.guideObject.transformTarget.name}");
+            return component;
+        }
+
         bool TypeIsSupportedRedirector(Type type) => redirectorTypes.ContainsValue(type);
 
         void PrintPropSavedDict(SortedDictionary<int, List<TrackerDataSO>> savedDict)
@@ -528,15 +523,15 @@ namespace RSkoi_ComponentUtil.Scene
             var i = 0;
             foreach (var entry in savedDict)
             {
-                _logger.LogInfo($"-------------- Entry {i}:");
-                _logger.LogInfo($"Key: {entry.Key}");
+                Logger.LogInfo($"-------------- Entry {i}:");
+                Logger.LogInfo($"Key: {entry.Key}");
                 foreach (var propEntry in entry.Value)
                 {
-                    _logger.LogInfo(propEntry.ToString());
+                    Logger.LogInfo(propEntry.ToString());
                     foreach (var propInner in propEntry.properties)
-                        _logger.LogInfo($"     {propInner}");
+                        Logger.LogInfo($"     {propInner}");
                 }
-                _logger.LogInfo("--------------");
+                Logger.LogInfo("--------------");
                 i++;
             }
         }
@@ -546,15 +541,15 @@ namespace RSkoi_ComponentUtil.Scene
             var i = 0;
             foreach (var entry in savedDict)
             {
-                _logger.LogInfo($"-------------- Entry {i}:");
-                _logger.LogInfo($"Key: {entry.Key}");
+                Logger.LogInfo($"-------------- Entry {i}:");
+                Logger.LogInfo($"Key: {entry.Key}");
                 foreach (var propEntry in entry.Value)
                 {
-                    _logger.LogInfo(propEntry.ToString());
+                    Logger.LogInfo(propEntry.ToString());
                     foreach (var propInner in propEntry.properties)
-                        _logger.LogInfo($"     {propInner}");
+                        Logger.LogInfo($"     {propInner}");
                 }
-                _logger.LogInfo("--------------");
+                Logger.LogInfo("--------------");
                 i++;
             }
         }
@@ -564,15 +559,15 @@ namespace RSkoi_ComponentUtil.Scene
             var i = 0;
             foreach (var entry in savedDict)
             {
-                _logger.LogInfo($"-------------- Entry {i}:");
-                _logger.LogInfo($"Key: {entry.Key}");
+                Logger.LogInfo($"-------------- Entry {i}:");
+                Logger.LogInfo($"Key: {entry.Key}");
                 foreach (var cEntry in entry.Value)
                 {
-                    _logger.LogInfo(cEntry.ToString());
+                    Logger.LogInfo(cEntry.ToString());
                     foreach (var cInner in cEntry.addedComponents)
-                        _logger.LogInfo($"     {cInner}");
+                        Logger.LogInfo($"     {cInner}");
                 }
-                _logger.LogInfo("--------------");
+                Logger.LogInfo("--------------");
                 i++;
             }
         }

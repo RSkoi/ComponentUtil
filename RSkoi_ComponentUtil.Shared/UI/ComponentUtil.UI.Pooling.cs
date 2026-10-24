@@ -48,7 +48,7 @@ namespace RSkoi_ComponentUtil.UI
 
             var entryGO = GameObject.Instantiate(entryPrefab, container);
             entryGO.SetActive(false);
-            var uiEntry = PreConfigureNewUiEntry(entryGO, entryPrefab);
+            var uiEntry = PreConfigureNewUiEntry(entryGO);
             bucket.Add(uiEntry);
 
             return uiEntry;
@@ -65,11 +65,10 @@ namespace RSkoi_ComponentUtil.UI
 
                     // events will be reset on configuring specific entry type
 
-                    entry.ParentUiEntry = null;
                     entry.UiComponentSetValueResetDelegate = null;
                     entry.Wrapper = null;
 
-                    entry.ResetBg();
+                    entry.SetBgColorDefault();
                 }
         }
         #endregion property pool
@@ -93,7 +92,7 @@ namespace RSkoi_ComponentUtil.UI
             foreach (var entry in TransformListEntries)
             {
                 entry.UiGO.SetActive(false);
-                entry.ResetBg();
+                entry.SetBgColorDefault();
             }
         }
         #endregion transform pool
@@ -117,7 +116,7 @@ namespace RSkoi_ComponentUtil.UI
             foreach (var entry in ComponentListEntries)
             {
                 entry.UiGO.SetActive(false);
-                entry.ResetBg();
+                entry.SetBgColorDefault();
             }
         }
         #endregion component pool
@@ -141,7 +140,7 @@ namespace RSkoi_ComponentUtil.UI
             foreach (var entry in ComponentAdderListEntries)
             {
                 entry.UiGO.SetActive(false);
-                entry.ResetBg();
+                entry.SetBgColorDefault();
             }
         }
         #endregion component adder pool
@@ -157,8 +156,6 @@ namespace RSkoi_ComponentUtil.UI
             {
                 var entryGO = GameObject.Instantiate(prefab, contentContainer);
                 entryGO.SetActive(false);
-                // order of disabled pool entries shouldn't matter
-                //entryGO.transform.SetAsLastSibling();
                 var uiEntry = PreConfigureNewGenericUIListEntry(entryGO);
                 pool.Add(uiEntry);
             }

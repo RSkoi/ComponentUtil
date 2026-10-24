@@ -15,7 +15,7 @@ namespace RSkoi_ComponentUtil.Core
             => int.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// This is a Convert.ChangeType with invariant culture
+        /// This is a Convert.ChangeType with invariant culture.
         /// </summary>
         internal static object ChangeType(object value, Type type)
         {

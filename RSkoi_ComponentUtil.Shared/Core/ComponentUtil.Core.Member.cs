@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection;
 
-using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
+using static RSkoi_ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil.Core
 {
@@ -12,14 +12,14 @@ namespace RSkoi_ComponentUtil.Core
         internal readonly PropertyInfo Property;
         internal readonly FieldInfo Field;
 
-        internal bool IsProperty => Property != null;
-        internal string Name => IsProperty ? Property.Name : Field.Name;
-        internal Type MemberType => IsProperty ? Property.PropertyType : Field.FieldType;
-        internal bool HasPublicSetter => !IsProperty || Property.GetSetMethod() != null;
-        internal PropertyTrackerDataOptions MemberFlag => IsProperty ? PropertyTrackerDataOptions.IsProperty : PropertyTrackerDataOptions.None;
+        internal bool IsProperty                        => Property != null;
+        internal string Name                            => IsProperty ? Property.Name : Field.Name;
+        internal Type MemberType                        => IsProperty ? Property.PropertyType : Field.FieldType;
+        internal bool HasPublicSetter                   => !IsProperty || Property.GetSetMethod() != null;
+        internal PropertyTrackerDataOptions MemberFlag  => IsProperty ? PropertyTrackerDataOptions.IsProperty : PropertyTrackerDataOptions.None;
 
-        internal string KindName => IsProperty ? "property" : "field";
-        internal string Label => IsProperty ? $"[Property] {Name}" : $"[Field] {Name}";
+        internal string KindName    => IsProperty ? "property" : "field";
+        internal string Label       => IsProperty ? $"[Property] {Name}" : $"[Field] {Name}";
 
         Member(PropertyInfo property, FieldInfo field)
         {
@@ -27,8 +27,8 @@ namespace RSkoi_ComponentUtil.Core
             Field = field;
         }
 
-        internal static Member Of(PropertyInfo property) => new (property, null);
-        internal static Member Of(FieldInfo field) => new (null, field);
+        internal static Member Of(PropertyInfo prop)    => new (prop, null);
+        internal static Member Of(FieldInfo field)      => new (null, field);
 
         /// <summary>
         /// Finds an instance property or field by name.
@@ -62,9 +62,27 @@ namespace RSkoi_ComponentUtil.Core
             }
             catch (AmbiguousMatchException)
             {
-                // e.g. a property hidden with 'new', prefer the public one
-                return type.GetProperty(memberName);
+                // e.g. hidden with 'new'
+                Logger.LogWarning("Found multiple properties with identical name, trying to resolve public one");
             }
+
+            try
+            {
+                var publicProperty = type.GetProperty(memberName);
+                if (publicProperty != null)
+                    return publicProperty;
+            }
+            catch (AmbiguousMatchException)
+            {
+                Logger.LogWarning("Found multiple public properties with identical name, trying to resolve last one in inheritance tree");
+            }
+
+            for (var declaringType = type; declaringType != null; declaringType = declaringType.BaseType)
+                foreach (var property in declaringType.GetProperties(INSTANCE_MEMBERS | BindingFlags.DeclaredOnly))
+                    if (property.Name == memberName && property.GetIndexParameters().Length == 0) // most derived one that's not an indexer
+                        return property;
+
+            return null;
         }
 
         internal object GetValue(object target)
@@ -86,7 +104,7 @@ namespace RSkoi_ComponentUtil.Core
             }
             catch (Exception e)
             {
-                ComponentUtil._logger.LogError($"Could not get value of {KindName} {Name} on {target}: {e}");
+                Logger.LogError($"Could not get value of {KindName} {Name} on {target}: {e}");
                 return null;
             }
         }

@@ -5,7 +5,7 @@ using RSkoi_ComponentUtil.Scripts;
 
 namespace RSkoi_ComponentUtil
 {
-    public partial class ComponentUtil
+    internal static class ComponentUtilRedirectors
     {
         /// <summary>
         /// the redirector types ComponentUtil provides

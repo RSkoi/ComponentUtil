@@ -1,8 +1,8 @@
 ﻿using System;
 using UnityEngine;
 
-using static RSkoi_ComponentUtil.ComponentUtil;
-using static RSkoi_ComponentUtil.ComponentUtil.PropertyTrackerData;
+using static RSkoi_ComponentUtil.PropertyTrackerData;
+using static RSkoi_ComponentUtil.SupportedTypes;
 
 namespace RSkoi_ComponentUtil.Core
 {
@@ -16,20 +16,20 @@ namespace RSkoi_ComponentUtil.Core
         /// </summary>
         Input,
         /// <summary>
-        /// Dropdown, tracked as int
+        /// Dropdown, tracked as int.
         /// </summary>
         Enum,
         Bool,
         /// <summary>
-        /// Vectors and Quaternions, value tracked as encoded string
+        /// Vectors and Quaternions, value tracked as encoded string.
         /// </summary>
         Vector,
         /// <summary>
-        /// Color button with color picker, value tracked as encoded string
+        /// Color button with color picker, value tracked as encoded string.
         /// </summary>
         Color,
         /// <summary>
-        /// Object reference button that opens the ObjectInspector, types rewired as reference, value tracked is a dummy
+        /// Object reference button that opens the ObjectInspector, types rewired as reference, value tracked is a dummy.
         /// </summary> 
         Reference,
     }
