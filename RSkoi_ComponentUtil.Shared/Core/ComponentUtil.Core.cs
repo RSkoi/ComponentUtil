@@ -3,6 +3,7 @@ using RSkoi_ComponentUtil.Timeline;
 using RSkoi_ComponentUtil.UI;
 using System.Collections.Generic;
 using UnityEngine;
+
 using static RSkoi_ComponentUtil.ComponentUtilTracker;
 
 namespace RSkoi_ComponentUtil
@@ -41,7 +42,7 @@ namespace RSkoi_ComponentUtil
         /// <summary>
         /// Currently displayed reference entries in the component inspector.
         /// </summary>
-        static readonly Dictionary<string, ComponentUtilUI.PropertyUIEntry> _shownReferenceEntries = [];
+        static readonly Dictionary<MemberId, ComponentUtilUI.PropertyUIEntry> _shownReferenceEntries = [];
         #endregion currently selected
 
         #region currently copied
@@ -61,8 +62,8 @@ namespace RSkoi_ComponentUtil
         /// <summary>
         /// Tracker key for edits inside a reference type of a component of the selected item.
         /// </summary>
-        internal static PropertyReferenceKey SelectedPropertyReferenceKey(Component component, string referencePropertyName)
-            => new(_selectedObject, component.gameObject, component, referencePropertyName);
+        internal static PropertyReferenceKey SelectedPropertyReferenceKey(Component component, MemberId reference)
+            => new(_selectedObject, component.gameObject, component, reference);
         #endregion keys selected item
 
         /// <summary>

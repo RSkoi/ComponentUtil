@@ -39,11 +39,11 @@ namespace RSkoi_ComponentUtil.Core
         /// Gets and caches all addable Types
         /// </summary>
         /// <param name="forceRefresh">whether to forcefully refresh the cache</param>
-        /// <returns>list of addable Types</returns>
-        internal static List<Type> GetOrCacheComponentAdders(bool forceRefresh = false)
+        /// <returns>all addable Types, don't modify</returns>
+        internal static ICollection<Type> GetOrCacheComponentAdders(bool forceRefresh = false)
         {
             if (!forceRefresh && _componentAdderSearchCache.Count != 0)
-                return [ .._componentAdderSearchCache.Values ];
+                return _componentAdderSearchCache.Values;
             if (forceRefresh)
                 _componentAdderSearchCache.Clear();
 
@@ -67,7 +67,7 @@ namespace RSkoi_ComponentUtil.Core
                 }
             }
 
-            return [ .._componentAdderSearchCache.Values ];
+            return _componentAdderSearchCache.Values;
         }
 
         internal static Transform[] GetOrCacheTransforms(ObjectCtrlInfo inputCtrl, bool forceRefresh = false)

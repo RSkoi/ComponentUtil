@@ -20,7 +20,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Cache.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.EntryKind.cs" />
+	<Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.EnumConversion.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.InvariantConversion.cs" />
+	<Compile Include="$(MSBuildThisFileDirectory)Core\IsExternalInit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Logger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.Member.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Core\ComponentUtil.Core.ValueConversion.cs" />

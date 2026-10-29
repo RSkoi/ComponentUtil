@@ -3,6 +3,8 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine.UI;
 
+using RSkoi_ComponentUtil.Core;
+
 using static RSkoi_ComponentUtil.UI.ComponentUtilUI;
 
 namespace RSkoi_ComponentUtil
@@ -48,7 +50,7 @@ namespace RSkoi_ComponentUtil
                 _dropdown.onValueChanged.AddListener(OnOptionClicked);
                 _ctx.UiEntry.UiComponentSetValueResetDelegate = ResetTo;
 
-                Show(Convert.ToInt32(_ctx.Value));
+                Show(EnumConversion.ToBits(_ctx.Value));
             }
 
             void OnOptionClicked(int optionIndex)
@@ -56,24 +58,30 @@ namespace RSkoi_ComponentUtil
                 if (optionIndex == CURRENT_VALUE_OPTION)
                     return;
 
-                var currentValue = Convert.ToInt32(_ctx.Member.GetValue(_ctx.Target));
+                var currentEnumValue = _ctx.Member.TryGetValue(_ctx.Target);
+                if (currentEnumValue == null)
+                {
+                    _dropdown.value = CURRENT_VALUE_OPTION;
+                    return;
+                }
+                var currentValue = EnumConversion.ToBits(currentEnumValue);
                 var newValue = FlagsEnum.ToggleFlag(currentValue, _flagsEnum.Values[NameIndexOf(optionIndex)]);
-                ApplyEdit(_ctx, newValue);
+                ApplyEdit(_ctx, _flagsEnum.ToEnum(newValue));
                 Show(newValue);
             }
 
-            /// <param name="value">the tracked default enum value</param>
+            /// <param name="value">the tracked default enum value, encoded</param>
             object ResetTo(object value)
             {
-                var enumValue = Convert.ToInt32(value);
-                Show(enumValue);
+                var enumValue = _flagsEnum.ToEnum(EnumConversion.ToBits(value));
+                Show(EnumConversion.ToBits(enumValue));
                 return enumValue;
             }
 
             /// <summary>
             /// Updates option texts and selects first option.
             /// </summary>
-            void Show(int value)
+            void Show(ulong value)
             {
                 _dropdown.options[CURRENT_VALUE_OPTION].text = _flagsEnum.Describe(value);
                 for (var optionIndex = FIRST_NAME_OPTION; optionIndex < _dropdown.options.Count; optionIndex++)
@@ -91,30 +99,32 @@ namespace RSkoi_ComponentUtil
         {
             internal readonly Type EnumType;
             internal readonly string[] Names;
-            internal readonly int[] Values;
+            internal readonly ulong[] Values;
 
             internal FlagsEnum(Type enumType)
             {
                 EnumType = enumType;
                 Names = Enum.GetNames(enumType);
                 // get values based on names due to potentially shared values between enum options
-                Values = [.. Names.Select(name => Convert.ToInt32(Enum.Parse(enumType, name)))];
+                Values = [.. Names.Select(name => EnumConversion.ToBits(Enum.Parse(enumType, name)))];
             }
 
             internal static bool IsFlagsEnum(Type type)
                 => type.IsEnum && type.IsDefined(typeof(FlagsAttribute), inherit: false);
 
-            internal static bool FlagIsSet(int value, int flag) => flag == 0
+            internal static bool FlagIsSet(ulong value, ulong flag) => flag == 0
                 ? value == 0
                 : (value & flag) == flag;
 
-            internal static int ToggleFlag(int value, int flag) => flag == 0 ? 0
+            internal static ulong ToggleFlag(ulong value, ulong flag) => flag == 0 ? 0
                 : FlagIsSet(value, flag)
                     ? value & ~flag
                     : value | flag;
 
-            internal string Describe(int value) => Enum.ToObject(EnumType, value).ToString().Replace(", ", " | ");
-            internal string DescribeName(int nameIndex, int value) => $"{(FlagIsSet(value, Values[nameIndex]) ? "[x]" : "[ ]")} {Names[nameIndex]}";
+            internal object ToEnum(ulong value) => EnumConversion.ToEnum(EnumType, value);
+
+            internal string Describe(ulong value) => ToEnum(value).ToString().Replace(", ", " | ");
+            internal string DescribeName(int nameIndex, ulong value) => $"{(FlagIsSet(value, Values[nameIndex]) ? "[x]" : "[ ]")} {Names[nameIndex]}";
         }
     }
 }

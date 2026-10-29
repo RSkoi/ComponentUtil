@@ -62,12 +62,12 @@ namespace RSkoi_ComponentUtil
             var defaultValue = ValueConversion.Encode(ctx.Member.TryGetValue(ctx.Target), ctx.Flags);
             if (ctx.ObjectMode)
             {
-                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
-                AddPropertyToTracker(refKey, ctx.Member.Name, defaultValue, ctx.Flags);
+                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferenceMember.Id);
+                AddPropertyToTracker(refKey, ctx.Member.Id, defaultValue, ctx.Flags);
                 _selectedReferencePropertyUiEntry.SetBgColorEdited();
             }
             else
-                AddPropertyToTracker(SelectedPropertyKey(_selectedComponent), ctx.Member.Name, defaultValue, ctx.Flags);
+                AddPropertyToTracker(SelectedPropertyKey(_selectedComponent), ctx.Member.Id, defaultValue, ctx.Flags);
 
             ValueConversion.SetValueWithFlags(ctx.Member, ctx.Target, newValue, ctx.Flags);
 
@@ -89,7 +89,7 @@ namespace RSkoi_ComponentUtil
 
             uiEntry.UiComponentSetValueResetDelegate = null;
 
-            _shownReferenceEntries[ctx.Member.Name] = uiEntry;
+            _shownReferenceEntries[ctx.Member.Id] = uiEntry;
 
             // resetting or animating a reference as a whole is not supported, only the values inside it
             uiEntry.ResetButton.interactable = false;
@@ -122,29 +122,20 @@ namespace RSkoi_ComponentUtil
             // (e.g. flag enums 0, 1, 2, 4 or enums containing negative values) -> map between them
             var enumValues = Enum.GetValues(ctx.Member.MemberType);
             var options = new List<Dropdown.OptionData>();
-            var selectedOption = 0;
-            for (var i = 0; i < enumValues.Length; i++)
-            {
-                var enumValue = enumValues.GetValue(i);
+            foreach (var enumValue in enumValues)
                 options.Add(new() { text = enumValue.ToString() });
 
-                // option that's currently selected
-                if (enumValue.Equals(ctx.Value))
-                    selectedOption = i;
-            }
-            int EnumValueOfOption(int optionIndex) => Convert.ToInt32(enumValues.GetValue(optionIndex));
-            int OptionOfEnumValue(int enumValue)
+            object EnumValueOfOption(int optionIndex) => enumValues.GetValue(optionIndex);
+            int OptionOfEnumValue(object enumValue) // first option with the value
             {
-                for (var i = 0; i < enumValues.Length; i++)
-                    if (Convert.ToInt32(enumValues.GetValue(i)) == enumValue)
-                        return i;
-                return 0; // fallback to first option
+                var optionIndex = Array.IndexOf(enumValues, enumValue);
+                return optionIndex < 0 ? 0 : optionIndex; // fallback to first option
             }
             dropdownField.ClearOptions();
             dropdownField.AddOptions(options);
 
             // select current option
-            dropdownField.value = selectedOption;
+            dropdownField.value = OptionOfEnumValue(ctx.Value);
 
             void registerMyEvents()
                 => dropdownField.onValueChanged.AddListener(optionIndex => ApplyEdit(ctx, EnumValueOfOption(optionIndex)));
@@ -155,8 +146,8 @@ namespace RSkoi_ComponentUtil
                 // suspending all (non-persistent) listeners because dropdownField.value
                 // will trigger onValueChanged, which would add to tracker
                 dropdownField.onValueChanged.RemoveAllListeners();
-                // value is the tracked default, i.e. an enum value, not an option index
-                var enumValue = Convert.ToInt32(value);
+                // value is the tracked default, i.e. an encoded enum value, not an option index
+                var enumValue = EnumConversion.ToEnum(ctx.Member.MemberType, value);
                 dropdownField.value = OptionOfEnumValue(enumValue);
                 registerMyEvents();
                 return enumValue;
@@ -220,18 +211,18 @@ namespace RSkoi_ComponentUtil
         static void ConfigReset(PropertyKey key, PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
-            var propName = ctx.Member.Name;
+            var memberId = ctx.Member.Id;
             uiEntry.ResetButton.interactable = ctx.Interactable;
             uiEntry.ResetButton.onClick.RemoveAllListeners();
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
-                if (!PropertyIsTracked(key, propName))
+                if (!PropertyIsTracked(key, memberId))
                     return;
 
-                var defaultValue = GetTrackedDefaultValue(key, propName);
+                var defaultValue = GetTrackedDefaultValue(key, memberId);
                 ValueConversion.SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
 
-                RemovePropertyFromTracker(key, propName);
+                RemovePropertyFromTracker(key, memberId);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
                 uiEntry.SetBgColorDefault();
                 ComponentUtilUI.TraverseAndSetEditedParents();
@@ -241,18 +232,18 @@ namespace RSkoi_ComponentUtil
         static void ConfigResetReferenceProperty(PropertyReferenceKey key, PropertyEntryContext ctx)
         {
             var uiEntry = ctx.UiEntry;
-            var propName = ctx.Member.Name;
+            var memberId = ctx.Member.Id;
             uiEntry.ResetButton.interactable = ctx.Interactable;
             uiEntry.ResetButton.onClick.RemoveAllListeners();
             uiEntry.ResetButton.onClick.AddListener(() =>
             {
-                if (!PropertyIsTracked(key, propName))
+                if (!PropertyIsTracked(key, memberId))
                     return;
 
-                var defaultValue = GetTrackedDefaultValue(key, propName);
+                var defaultValue = GetTrackedDefaultValue(key, memberId);
                 ValueConversion.SetValueWithFlags(ctx.Member, ctx.Target, defaultValue, ctx.Flags);
 
-                RemovePropertyFromTracker(key, propName, out bool removedKey);
+                RemovePropertyFromTracker(key, memberId, out bool removedKey);
                 uiEntry.SetUiComponentTargetValue(defaultValue);
                 uiEntry.SetBgColorDefault();
                 if (removedKey)

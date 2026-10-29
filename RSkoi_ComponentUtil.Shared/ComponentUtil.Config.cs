@@ -18,7 +18,7 @@ namespace RSkoi_ComponentUtil
 
         #region WaitTimeLoadScene
         const float DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS = 2f;
-        internal static ConfigEntry<float> WaitTimeLoadScene { get; private set; }
+        internal static ConfigEntry<float> WaitTimeLoadScene            { get; private set; }
         internal static float WaitTimeLoadSceneValue
         {
             get => ValidateConfigValue(WaitTimeLoadScene, DEFAULT_WAIT_TIME_AFTER_LOADING_SCENE_SECONDS, val => val > 0);

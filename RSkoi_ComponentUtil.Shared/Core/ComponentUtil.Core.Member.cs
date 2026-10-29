@@ -14,11 +14,12 @@ namespace RSkoi_ComponentUtil.Core
 
         internal bool IsProperty                        => Property != null;
         internal string Name                            => IsProperty ? Property.Name : Field.Name;
+        internal MemberId Id                            => new(Name, IsProperty);
         internal Type MemberType                        => IsProperty ? Property.PropertyType : Field.FieldType;
         internal bool HasPublicSetter                   => !IsProperty || Property.GetSetMethod() != null;
-        internal PropertyTrackerDataOptions MemberFlag  => IsProperty ? PropertyTrackerDataOptions.IsProperty : PropertyTrackerDataOptions.None;
+        internal PropertyTrackerDataOptions MemberFlag  => Id.MemberFlag;
 
-        internal string KindName    => IsProperty ? "property" : "field";
+        internal string KindName    => Id.KindName;
         internal string Label       => IsProperty ? $"[Property] {Name}" : $"[Field] {Name}";
 
         Member(PropertyInfo property, FieldInfo field)
@@ -104,8 +105,25 @@ namespace RSkoi_ComponentUtil.Core
             }
             catch (Exception e)
             {
-                Logger.LogError($"Could not get value of {KindName} {Name} on {target}: {e}");
+                Logger.LogError($"Could not get value of {Id} on {target}: {e}");
                 return null;
+            }
+        }
+
+        public override string ToString() => Id.ToString();
+    }
+
+    internal readonly record struct MemberId(string Name, bool IsProperty)
+    {
+        public PropertyTrackerDataOptions MemberFlag    => IsProperty ? PropertyTrackerDataOptions.IsProperty : PropertyTrackerDataOptions.None;
+        public string KindName                          => IsProperty ? "property" : "field";
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (Name?.GetHashCode() ?? 0) * 31
+                    + IsProperty.GetHashCode();
             }
         }
 

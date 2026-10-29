@@ -69,10 +69,6 @@ namespace RSkoi_ComponentUtil.UI
             public Button TimelineButton = timelineButton;
             public Button ResetButton = resetButton;
             public Text PropertyName = propertyName;
-            /// <summary>
-            /// Name of the property / field this entry shows.
-            /// </summary>
-            public string MemberName;
             public Image BgImage = bgImage;
             public GameObject UiGO = instantiatedUiGo;
             /// <summary>

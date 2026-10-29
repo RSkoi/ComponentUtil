@@ -1,9 +1,10 @@
-﻿using System;
+﻿using Studio;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Studio;
 
+using RSkoi_ComponentUtil.Core;
 using static RSkoi_ComponentUtil.PropertyTrackerData;
 
 namespace RSkoi_ComponentUtil
@@ -16,7 +17,7 @@ namespace RSkoi_ComponentUtil
         internal static readonly PropertyEditTracker<PropertyKey> _propertyTracker = [];
         /// <summary>
         /// Keeps track of properties and fields inside reference types and their default values.<br/>
-        /// Each tracked reference also has a dummy entry (flag IsReference) in _propertyTracker to mark the reference itself as edited.
+        /// Each tracked reference also has a dummy entry (flag IsReference, plus IsProperty if prop) in _propertyTracker to mark the reference itself as edited.
         /// </summary>
         internal static readonly PropertyEditTracker<PropertyReferenceKey> _referencePropertyTracker = [];
         /// <summary>
@@ -141,23 +142,23 @@ namespace RSkoi_ComponentUtil
             ObjectCtrlInfo objCtrlInfo,
             GameObject go,
             Component component,
-            string propertyName,
+            MemberId member,
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
-            => _propertyTracker.Add(new PropertyKey(objCtrlInfo, go, component), propertyName, defaultValue, optionFlags);
+            => _propertyTracker.Add(new PropertyKey(objCtrlInfo, go, component), member, defaultValue, optionFlags);
 
-        internal static bool AddPropertyToTracker(PropertyKey key, string propertyName, object defaultValue, PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
-            => _propertyTracker.Add(key, propertyName, defaultValue, optionFlags);
+        internal static bool AddPropertyToTracker(PropertyKey key, MemberId member, object defaultValue, PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
+            => _propertyTracker.Add(key, member, defaultValue, optionFlags);
 
-        internal static bool RemovePropertyFromTracker(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, string propertyName)
-            => _propertyTracker.Remove(new PropertyKey(objCtrlInfo, go, component), propertyName);
+        internal static bool RemovePropertyFromTracker(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, MemberId member)
+            => _propertyTracker.Remove(new PropertyKey(objCtrlInfo, go, component), member);
 
-        internal static bool RemovePropertyFromTracker(PropertyKey key, string propertyName) => _propertyTracker.Remove(key, propertyName);
+        internal static bool RemovePropertyFromTracker(PropertyKey key, MemberId member) => _propertyTracker.Remove(key, member);
 
-        internal static bool PropertyIsTracked(PropertyKey key, string propertyName) => _propertyTracker.IsTracked(key, propertyName);
+        internal static bool PropertyIsTracked(PropertyKey key, MemberId member) => _propertyTracker.IsTracked(key, member);
 
         /// <returns>encoded default value (see ValueConversion), or null if untracked</returns>
-        internal static object GetTrackedDefaultValue(PropertyKey key, string propertyName) => _propertyTracker.GetDefaultValue(key, propertyName);
+        internal static object GetTrackedDefaultValue(PropertyKey key, MemberId member) => _propertyTracker.GetDefaultValue(key, member);
         #endregion property tracker
 
         #region reference property tracker
@@ -165,57 +166,58 @@ namespace RSkoi_ComponentUtil
             ObjectCtrlInfo objCtrlInfo,
             GameObject go,
             Component component,
-            string referencePropertyName,
-            string propertyName,
+            MemberId reference,
+            MemberId member,
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
-            var key = new PropertyReferenceKey(objCtrlInfo, go, component, referencePropertyName);
-            return AddPropertyToTracker(key, propertyName, defaultValue, optionFlags);
+            var key = new PropertyReferenceKey(objCtrlInfo, go, component, reference);
+            return AddPropertyToTracker(key, member, defaultValue, optionFlags);
         }
 
         internal static bool AddPropertyToTracker(
             PropertyReferenceKey key,
-            string propertyName,
+            MemberId member,
             object defaultValue,
             PropertyTrackerDataOptions optionFlags = PropertyTrackerDataOptions.None)
         {
             // add dummy tracker to reference type
-            AddPropertyToTracker(key.ObjCtrlInfo, key.Go, key.Component, key.ReferencePropertyName, defaultValue: 0, PropertyTrackerDataOptions.IsReference);
-            return _referencePropertyTracker.Add(key, propertyName, defaultValue, optionFlags);
+            AddPropertyToTracker(key.ObjCtrlInfo, key.Go, key.Component, key.Reference, defaultValue: 0,
+                PropertyTrackerDataOptions.IsReference | key.Reference.MemberFlag);
+            return _referencePropertyTracker.Add(key, member, defaultValue, optionFlags);
         }
 
         /// <param name="removedKey">true if this was the last edit inside the reference</param>
         internal static bool RemovePropertyFromTracker(
             PropertyReferenceKey key,
-            string propertyName,
+            MemberId member,
             out bool removedKey)
         {
             removedKey = false;
-            if (!_referencePropertyTracker.Remove(key, propertyName, out var keyRemoved))
+            if (!_referencePropertyTracker.Remove(key, member, out var keyRemoved))
                 return false;
 
             // last edit inside the reference removed -> remove the dummy reference tracker
             if (keyRemoved)
-                removedKey = RemovePropertyFromTracker(key.ObjCtrlInfo, key.Go, key.Component, key.ReferencePropertyName);
+                removedKey = RemovePropertyFromTracker(key.ObjCtrlInfo, key.Go, key.Component, key.Reference);
 
             return true;
         }
 
-        internal static bool PropertyIsTracked(PropertyReferenceKey key, string propertyName)
-            => _referencePropertyTracker.IsTracked(key, propertyName);
+        internal static bool PropertyIsTracked(PropertyReferenceKey key, MemberId member)
+            => _referencePropertyTracker.IsTracked(key, member);
 
         /// <returns>the encoded default value (see ValueConversion), or null if not tracked</returns>
-        internal static object GetTrackedDefaultValue(PropertyReferenceKey key, string propertyName)
-            => _referencePropertyTracker.GetDefaultValue(key, propertyName);
+        internal static object GetTrackedDefaultValue(PropertyReferenceKey key, MemberId member)
+            => _referencePropertyTracker.GetDefaultValue(key, member);
         #endregion reference property tracker
 
         /// <summary>
         /// Edited properties / fields and their default values, grouped by key (a component, or a reference inside a component).
         /// </summary>
-        internal class PropertyEditTracker<TKey> : IEnumerable<KeyValuePair<TKey, Dictionary<string, PropertyTrackerData>>>
+        internal class PropertyEditTracker<TKey> : IEnumerable<KeyValuePair<TKey, Dictionary<MemberId, PropertyTrackerData>>>
         {
-            readonly Dictionary<TKey, Dictionary<string, PropertyTrackerData>> _edits = [];
+            readonly Dictionary<TKey, Dictionary<MemberId, PropertyTrackerData>> _edits = [];
 
             public ICollection<TKey> Keys => _edits.Keys;
 
@@ -224,29 +226,29 @@ namespace RSkoi_ComponentUtil
             /// </summary>
             /// <param name="defaultValue">encoded value before the first edit (see ValueConversion)</param>
             /// <returns>false if the property was already tracked</returns>
-            public bool Add(TKey key, string propertyName, object defaultValue, PropertyTrackerDataOptions flags)
+            public bool Add(TKey key, MemberId member, object defaultValue, PropertyTrackerDataOptions flags)
             {
                 if (!_edits.TryGetValue(key, out var properties))
                 {
                     properties = [];
                     _edits.Add(key, properties);
                 }
-                else if (properties.ContainsKey(propertyName))
+                else if (properties.ContainsKey(member))
                     return false;
 
-                properties.Add(propertyName, new(propertyName, flags, defaultValue));
+                properties.Add(member, new(flags, defaultValue));
                 return true;
             }
 
             /// <returns>false if the property was not tracked</returns>
-            public bool Remove(TKey key, string propertyName) => Remove(key, propertyName, out _);
+            public bool Remove(TKey key, MemberId member) => Remove(key, member, out _);
 
             /// <param name="keyRemoved">true if this was the last tracked property of key, so key was removed too</param>
             /// <returns>false if the property was not tracked</returns>
-            public bool Remove(TKey key, string propertyName, out bool keyRemoved)
+            public bool Remove(TKey key, MemberId member, out bool keyRemoved)
             {
                 keyRemoved = false;
-                if (!_edits.TryGetValue(key, out var properties) || !properties.Remove(propertyName))
+                if (!_edits.TryGetValue(key, out var properties) || !properties.Remove(member))
                     return false;
 
                 if (properties.Count == 0)
@@ -267,23 +269,23 @@ namespace RSkoi_ComponentUtil
                         _edits.Remove(key);
             }
 
-            public bool IsTracked(TKey key, string propertyName)
-                => _edits.TryGetValue(key, out var properties) && properties.ContainsKey(propertyName);
+            public bool IsTracked(TKey key, MemberId member)
+                => _edits.TryGetValue(key, out var properties) && properties.ContainsKey(member);
 
             /// <returns>the encoded default value (see ValueConversion), or null if not tracked</returns>
-            public object GetDefaultValue(TKey key, string propertyName)
+            public object GetDefaultValue(TKey key, MemberId member)
             {
-                if (_edits.TryGetValue(key, out var properties) && properties.TryGetValue(propertyName, out var data))
+                if (_edits.TryGetValue(key, out var properties) && properties.TryGetValue(member, out var data))
                     return data.DefaultValue;
                 return null;
             }
 
-            public bool TryGetValue(TKey key, out Dictionary<string, PropertyTrackerData> properties)
+            public bool TryGetValue(TKey key, out Dictionary<MemberId, PropertyTrackerData> properties)
                 => _edits.TryGetValue(key, out properties);
 
             public void Clear() => _edits.Clear();
 
-            public IEnumerator<KeyValuePair<TKey, Dictionary<string, PropertyTrackerData>>> GetEnumerator()
+            public IEnumerator<KeyValuePair<TKey, Dictionary<MemberId, PropertyTrackerData>>> GetEnumerator()
                 => _edits.GetEnumerator();
 
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -333,12 +335,8 @@ namespace RSkoi_ComponentUtil
     /// <summary>
     /// Keep this one public, see comment in ComponentUtilSerializableObjects class.
     /// </summary>
-    public class PropertyTrackerData(
-        string propertyName,
-        PropertyTrackerDataOptions optionFlags,
-        object defaultValue)
+    public class PropertyTrackerData(PropertyTrackerDataOptions optionFlags, object defaultValue)
     {
-        public string PropertyName = propertyName;
         public PropertyTrackerDataOptions OptionFlags = optionFlags;
         /// <summary>
         /// The default/original value of the property.
@@ -346,7 +344,7 @@ namespace RSkoi_ComponentUtil
         public object DefaultValue = defaultValue;
 
         public override string ToString()
-            => $"PropertyTrackerData [ PropertyName: {PropertyName}, Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
+            => $"PropertyTrackerData [ Options: {OptionFlags}, DefaultValue: {DefaultValue} ]";
 
         /// <summary>
         /// These are flags, use power of two for values.
@@ -386,112 +384,80 @@ namespace RSkoi_ComponentUtil
         }
     }
 
-    internal class PropertyKey(
-        ObjectCtrlInfo objCtrlInfo,
-        GameObject go,
-        Component component)
+    internal class PropertyKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component)
         : IEquatable<PropertyKey>
     {
         /// <summary>
         /// The overarching item / ObjectCtrl (root).
         /// </summary>
-        public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+        public readonly ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
         /// <summary>
         /// The GameObject the component resides in.
         /// You can also get this with Component.gameObject.
         /// Transform is Go.transform.
         /// </summary>
-        public GameObject Go = go;
+        public readonly GameObject Go = go;
         /// <summary>
         /// The component the property resides in.
         /// </summary>
-        public Component Component = component;
+        public readonly Component Component = component;
 
         public override int GetHashCode()
-        {
-            // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-            unchecked
-            {
-                var hash = 17;
-                hash = hash * 31 + ObjCtrlInfo.GetHashCode();
-                hash = hash * 31 + Go.GetHashCode();
-                hash = hash * 31 + Component.GetHashCode();
-                return hash;
-            }
-        }
+            => TrackerKeys.Hash(TrackerKeys.Hash(TrackerKeys.Hash(17, ObjCtrlInfo), Go), Component);
 
         public override bool Equals(object obj) => Equals(obj as PropertyKey);
 
-        public bool Equals(PropertyKey other)
-        {
-            return other != null
-               && ObjCtrlInfo   == other.ObjCtrlInfo
-               && Go            == other.Go
-               && Component     == other.Component;
-        }
+        public bool Equals(PropertyKey other) =>
+            other           != null
+            && ObjCtrlInfo  == other.ObjCtrlInfo
+            && Go           == other.Go
+            && Component    == other.Component;
 
         public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
 
         public override string ToString()
-            => $"PropertyKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, Component: {Component} ]";
+            => $"PropertyKey [ ObjCtrlInfo: {TrackerKeys.Describe(ObjCtrlInfo)}, GameObject: {Go}, Component: {Component} ]";
     }
 
-    internal class PropertyReferenceKey(
-        ObjectCtrlInfo objCtrlInfo,
-        GameObject go,
-        Component component,
-        string referencePropertyName)
+    internal class PropertyReferenceKey(ObjectCtrlInfo objCtrlInfo, GameObject go, Component component, MemberId reference)
         : IEquatable<PropertyReferenceKey>
     {
         /// <summary>
         /// The overarching item / ObjectCtrl (root).
         /// </summary>
-        public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+        public readonly ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
         /// <summary>
         /// The GameObject the component resides in.
         /// You can also get this with Component.gameObject.
         /// Transform is Go.transform.
         /// </summary>
-        public GameObject Go = go;
+        public readonly GameObject Go = go;
         /// <summary>
-        /// The component the property resides in.
+        /// The component the reference resides in.
         /// </summary>
-        public Component Component = component;
+        public readonly Component Component = component;
         /// <summary>
-        /// The name of the reference type property.
+        /// The reference type property / field.
         /// </summary>
-        public string ReferencePropertyName = referencePropertyName;
+        public readonly MemberId Reference = reference;
 
         public override int GetHashCode()
-        {
-            // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-            unchecked
-            {
-                var hash = 17;
-                hash = hash * 31 + ObjCtrlInfo.GetHashCode();
-                hash = hash * 31 + Go.GetHashCode();
-                hash = hash * 31 + Component.GetHashCode();
-                hash = hash * 31 + ReferencePropertyName.GetHashCode();
-                return hash;
-            }
-        }
+            => TrackerKeys.Hash(TrackerKeys.Hash(TrackerKeys.Hash(TrackerKeys.Hash(17, ObjCtrlInfo), Go), Component), Reference);
 
         public override bool Equals(object obj) => Equals(obj as PropertyReferenceKey);
 
         public bool Equals(PropertyReferenceKey other)
-        {
-            return other != null
-               && ObjCtrlInfo           == other.ObjCtrlInfo
-               && Go                    == other.Go
-               && Component             == other.Component
-               && ReferencePropertyName == other.ReferencePropertyName;
-        }
+            => other        != null
+            && ObjCtrlInfo  == other.ObjCtrlInfo
+            && Go           == other.Go
+            && Component    == other.Component
+            && Reference    == other.Reference;
 
         public bool IsValid() => ObjCtrlInfo != null && Go != null && Component != null;
 
         public override string ToString()
-            => $"PropertyReferenceKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go}, " +
-                $"Component: {Component}, ReferencePropertyName: {ReferencePropertyName} ]";
+            => $"PropertyReferenceKey [ ObjCtrlInfo: {TrackerKeys.Describe(ObjCtrlInfo)}, GameObject: {Go}, " +
+                $"Component: {Component}, Reference: {Reference} ]";
     }
     #endregion property classes
 
@@ -502,38 +468,42 @@ namespace RSkoi_ComponentUtil
         /// <summary>
         /// The overarching item / ObjectCtrl (root).
         /// </summary>
-        public ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
+        public readonly ObjectCtrlInfo ObjCtrlInfo = objCtrlInfo;
         /// <summary>
         /// The GameObject the component resides in.
         /// Transform is Go.transform.
         /// </summary>
-        public GameObject Go = go;
+        public readonly GameObject Go = go;
 
-        public override int GetHashCode()
-        {
-            // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
-            unchecked
-            {
-                var hash = 17;
-                hash = hash * 31 + ObjCtrlInfo.GetHashCode();
-                hash = hash * 31 + Go.GetHashCode();
-                return hash;
-            }
-        }
+        public override int GetHashCode() => TrackerKeys.Hash(TrackerKeys.Hash(17, ObjCtrlInfo), Go);
 
         public override bool Equals(object obj) => Equals(obj as ComponentAdderKey);
 
         public bool Equals(ComponentAdderKey other)
-        {
-            return other != null
-               && ObjCtrlInfo   == other.ObjCtrlInfo
-               && Go            == other.Go;
-        }
+            => other        != null
+            && ObjCtrlInfo  == other.ObjCtrlInfo
+            && Go           == other.Go;
 
         public bool IsValid() => ObjCtrlInfo != null && Go != null;
 
         public override string ToString()
-            => $"ComponentKey [ ObjCtrlInfo: {ObjCtrlInfo.treeNodeObject.textName}, GameObject: {Go} ]";
+            => $"ComponentKey [ ObjCtrlInfo: {TrackerKeys.Describe(ObjCtrlInfo)}, GameObject: {Go} ]";
     }
     #endregion component classes
+
+    static class TrackerKeys
+    {
+        // https://stackoverflow.com/questions/1646807/quick-and-simple-hash-code-combinations
+        internal static int Hash(int hash, object value) => unchecked(hash * 31 + (value?.GetHashCode() ?? 0));
+
+        internal static string Describe(ObjectCtrlInfo objCtrlInfo)
+        {
+            if (objCtrlInfo == null)
+                return "<null>";
+            // Unity null check, true for destroyed objects
+            if (objCtrlInfo.treeNodeObject == null)
+                return "<deleted>";
+            return objCtrlInfo.treeNodeObject.textName;
+        }
+    }
 }

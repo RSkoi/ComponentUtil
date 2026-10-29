@@ -81,11 +81,13 @@ namespace RSkoi_ComponentUtil.Scene
             public string referencePropertyName = referencePropertyName;
             [Key("properties")]
             public TrackerDataPropertySO[] properties = properties;
+            [Key("referenceIsProperty")]
+            public bool? referenceIsProperty;
 
             public override string ToString()
                 => $"TrackerReferenceDataSO [ parentItemKey: {parentItemKey}, parentPath: {parentPath}, objectName: {objectName}, " +
                     $"siblingIndex: {siblingIndex}, componentName: {componentName}, referencePropertyName: {referencePropertyName}, " +
-                    $"properties.Length: {properties.Length} ]";
+                    $"referenceIsProperty: {referenceIsProperty}, properties.Length: {properties.Length} ]";
         }
 
         [Serializable]

@@ -96,12 +96,12 @@ namespace RSkoi_ComponentUtil.Timeline
                 key.Component,
                 target,
                 member,
-                key.ReferencePropertyName,
+                key.Reference,
                 member.Name,
                 options | PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
             RefreshInterpolablesList();
 
-            Logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.ReferencePropertyName}.{member.Name} to Timeline");
+            Logger.LogMessage($"Sent {key.Go.name}.{key.Component.GetType().Name}.{key.Reference.Name}.{member.Name} to Timeline");
         }
         #endregion selection
 
@@ -226,7 +226,7 @@ namespace RSkoi_ComponentUtil.Timeline
                 selected.Component,
                 selected.Target,
                 selected.Member,
-                selected.ReferenceName,
+                selected.Reference,
                 selected.PropertyName,
                 selected.Options);
             _paramCache.Add(selected, param);
@@ -242,9 +242,11 @@ namespace RSkoi_ComponentUtil.Timeline
         {
             writer.WriteAttributeString("goPath", ComponentUtilSceneBehaviour.GetGameObjectPathToRoot(param.Go.transform, oci.guideObject.transformTarget));
             writer.WriteAttributeString("componentName", param.Component.GetType().Name);
-            bool isInsideReference = HasPropertyFlag(param.Options, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-            if (isInsideReference)
-                writer.WriteAttributeString("referenceName", param.ReferenceName);
+            if (param.Reference is MemberId reference)
+            {
+                writer.WriteAttributeString("referenceName", reference.Name);
+                writer.WriteAttributeString("referenceIsProperty", reference.IsProperty.ToString());
+            }
             writer.WriteAttributeString("propertyName", param.PropertyName);
             writer.WriteAttributeString("options", param.Options.ToString());
         }
@@ -258,24 +260,38 @@ namespace RSkoi_ComponentUtil.Timeline
                 node.Attributes["options"].Value);
             bool isProperty = HasPropertyFlag(options, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
             bool isInsideReference = HasPropertyFlag(options, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-            var referenceName = isInsideReference ? node.Attributes["referenceName"].Value : null;
             var propertyName = node.Attributes["propertyName"].Value;
 
             var providedGameObjectTarget = oci.guideObject.transformTarget;
-            var go = string.IsNullOrEmpty(goPath)
-                ? providedGameObjectTarget.gameObject
-                : providedGameObjectTarget.Find(goPath).gameObject;
+            var goTransform = string.IsNullOrEmpty(goPath) ? providedGameObjectTarget : providedGameObjectTarget.Find(goPath);
+            if (goTransform == null)
+                throw new InvalidOperationException($"ReadPropertyParamXml: could not find GameObject {goPath}");
+            var go = goTransform.gameObject;
 
             var component = go.GetComponentByName(componentName);
+            if (component == null)
+                throw new InvalidOperationException($"ReadPropertyParamXml: could not find component {componentName} on {go.name}");
             var componentType = component.GetType();
             object target = component;
 
+            MemberId? referenceId = null;
             if (isInsideReference)
             {
-                target = Member.FindAny(componentType, referenceName).TryGetValue(component);   // this can return null
-                componentType = target.GetType();                                               // this can produce a null ref
+                var referenceName = node.Attributes["referenceName"].Value;
+                var referenceIsProperty = node.Attributes["referenceIsProperty"]; // null on older scenes
+                var reference = (referenceIsProperty == null
+                    ? Member.FindAny(componentType, referenceName)
+                    : Member.Find(componentType, referenceName, bool.Parse(referenceIsProperty.Value)))
+                    ?? throw new InvalidOperationException($"ReadPropertyParamXml: could not find reference type {componentName}.{referenceName}");
+
+                referenceId = reference.Id;
+                target = reference.TryGetValue(component)
+                    ?? throw new InvalidOperationException($"ReadPropertyParamXml: could not find reference value of {componentName}.{referenceName}");
+
+                componentType = target.GetType();
             }
-            var member = Member.Find(componentType, propertyName, isProperty);
+            var member = Member.Find(componentType, propertyName, isProperty)
+                ?? throw new InvalidOperationException($"ReadPropertyParamXml: could not find {new MemberId(propertyName, isProperty)} on {componentType.Name}");
 
             var param = new TimelinePropertyParameter(
                 oci,
@@ -283,7 +299,7 @@ namespace RSkoi_ComponentUtil.Timeline
                 component,
                 target,
                 member,
-                referenceName,
+                referenceId,
                 propertyName,
                 options);
             return param;
@@ -311,7 +327,7 @@ namespace RSkoi_ComponentUtil.Timeline
             Component component,
             object target,
             Member member,
-            string referenceName,
+            MemberId? reference,
             string propertyName,
             PropertyTrackerData.PropertyTrackerDataOptions options)
         {
@@ -321,7 +337,7 @@ namespace RSkoi_ComponentUtil.Timeline
             public object Target = target;
             public Member Member = member;
             public Type Type = member.MemberType;
-            public string ReferenceName = referenceName;
+            public MemberId? Reference = reference;
             public string PropertyName = propertyName;
             public PropertyTrackerData.PropertyTrackerDataOptions Options = options;
 
@@ -338,7 +354,7 @@ namespace RSkoi_ComponentUtil.Timeline
             Component component,
             object target,
             Member member,
-            string referenceName,
+            MemberId? reference,
             string propertyName,
             PropertyTrackerData.PropertyTrackerDataOptions options)
             : IEquatable<SelectedTimelineModelTarget>
@@ -348,7 +364,7 @@ namespace RSkoi_ComponentUtil.Timeline
             public Component Component = component;
             public object Target = target;
             public Member Member = member;
-            public string ReferenceName = referenceName;
+            public MemberId? Reference = reference;
             public string PropertyName = propertyName;
             public PropertyTrackerData.PropertyTrackerDataOptions Options = options;
 
@@ -358,10 +374,11 @@ namespace RSkoi_ComponentUtil.Timeline
                 unchecked
                 {
                     var hash = 17;
-                    hash = hash * 31 + Oci.GetHashCode();
-                    hash = hash * 31 + Go.GetHashCode();
-                    hash = hash * 31 + Target.GetHashCode();
-                    hash = hash * 31 + PropertyName.GetHashCode();
+                    hash = hash * 31 + (Oci?.GetHashCode() ?? 0);
+                    hash = hash * 31 + (Go != null ? Go.GetHashCode() : 0);
+                    hash = hash * 31 + (Target?.GetHashCode() ?? 0);
+                    hash = hash * 31 + (PropertyName?.GetHashCode() ?? 0);
+                    hash = hash * 31 + (Member?.Id.GetHashCode() ?? 0);
                     return hash;
                 }
             }
@@ -378,7 +395,8 @@ namespace RSkoi_ComponentUtil.Timeline
                     && Go           == other.Go
                     && Component    == other.Component
                     && Target       == other.Target
-                    && PropertyName == other.PropertyName;
+                    && PropertyName == other.PropertyName
+                    && Equals(Member?.Id, other.Member?.Id);
             }
 
             public override string ToString()

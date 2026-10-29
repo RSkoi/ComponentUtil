@@ -138,33 +138,15 @@ namespace RSkoi_ComponentUtil.Scene
                     foreach (var propEdit in propEntry.properties)
                     {
                         var flags = propEdit.propertyFlags;
-                        bool isReference = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference);
-                        bool isProperty  = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-
-                        // dummy reference entries can be a property or a field
-                        var member = isReference
-                            ? Member.FindAny(componentType, propEdit.propertyName)
-                            : Member.Find(componentType, propEdit.propertyName, isProperty);
-                        var memberDescription = $"{(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}.{componentType.Name} with name {propEdit.propertyName}";
-
-                        var value = member?.TryGetValue(component);
-                        if (value == null)
-                        {
-                            Logger.LogWarning($"Could not find non-null {memberDescription}, ignoring");
+                        // dummy reference entries are added with the edits
+                        if (HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                             continue;
-                        }
 
-                        var encodedValue = ValueConversion.Encode(value, flags);
-                        if (encodedValue == null)
-                        {
-                            Logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
-                            continue;
-                        }
+                        var memberId = SavedMemberId(propEdit);
+                        var member = Member.Find(componentType, memberId.Name, memberId.IsProperty);
+                        var memberDescription = $"{memberId} on {loadedItemEditTransform.name}.{componentType.Name}";
 
-                        var savedValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
-                        // a default value was saved -> can be discarded
-                        // redirector values are always set
-                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(encodedValue) == savedValueString)
+                        if (!TryReadSavedEdit(propEdit, member, component, componentTypeIsRedirector, memberDescription, out var savedValue, out var encodedValue))
                             continue;
 
                         /* adding to tracker must not be done by ComponentUtilEditor.ApplyEdit()
@@ -173,15 +155,11 @@ namespace RSkoi_ComponentUtil.Scene
                             loadedItem,
                             loadedItemEditTransform.gameObject,
                             component,
-                            propEdit.propertyName,
+                            member.Id,
                             encodedValue,
                             flags);
 
-                        // dummy properties for reference types don't have a valid value to be set
-                        if (isReference)
-                            continue;
-
-                        ValueConversion.SetValueWithFlags(member, component, savedValueString, flags);
+                        ValueConversion.SetDecodedValue(member, component, savedValue);
                     }
                 }
             }
@@ -207,7 +185,10 @@ namespace RSkoi_ComponentUtil.Scene
                     var componentType = component.GetType();
                     bool componentTypeIsRedirector = TypeIsSupportedRedirector(componentType);
 
-                    var referenceObject = Member.FindAny(componentType, propEntry.referencePropertyName)?.TryGetValue(component);
+                    var reference = propEntry.referenceIsProperty is bool referenceIsProperty
+                        ? Member.Find(componentType, propEntry.referencePropertyName, referenceIsProperty)
+                        : Member.FindAny(componentType, propEntry.referencePropertyName);
+                    var referenceObject = reference?.TryGetValue(component);
                     if (referenceObject == null)
                     {
                         Logger.LogWarning($"Could not find non-null reference on {loadedItemEditTransform.name}" +
@@ -223,29 +204,11 @@ namespace RSkoi_ComponentUtil.Scene
                         if (HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                             continue;
 
-                        bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                        var member = Member.Find(referenceObjectType, propEdit.propertyName, isProperty);
-                        var memberDescription = $"{(isProperty ? "property" : "field")} on {loadedItemEditTransform.name}" +
-                            $".{componentType.Name}.{propEntry.referencePropertyName} with name {propEdit.propertyName}";
+                        var memberId = SavedMemberId(propEdit);
+                        var member = Member.Find(referenceObjectType, memberId.Name, memberId.IsProperty);
+                        var memberDescription = $"{memberId} on {loadedItemEditTransform.name}.{componentType.Name}.{propEntry.referencePropertyName}";
 
-                        var value = member?.TryGetValue(referenceObject);
-                        if (value == null)
-                        {
-                            Logger.LogWarning($"Could not find non-null reference {memberDescription}, ignoring");
-                            continue;
-                        }
-
-                        var encodedValue = ValueConversion.Encode(value, flags);
-                        if (encodedValue == null)
-                        {
-                            Logger.LogError($"Failed to convert vector {memberDescription}, ignoring");
-                            continue;
-                        }
-
-                        var savedValueString = InvariantConversion.ToInvariantString(propEdit.propertyValue);
-                        // a default value was saved -> can be discarded
-                        // redirector values are always set
-                        if (!componentTypeIsRedirector && InvariantConversion.ToInvariantString(encodedValue) == savedValueString)
+                        if (!TryReadSavedEdit(propEdit, member, referenceObject, componentTypeIsRedirector, memberDescription, out var savedValue, out var encodedValue))
                             continue;
 
                         /* adding to tracker must not be done by ComponentUtilEditor.ApplyEdit()
@@ -254,15 +217,69 @@ namespace RSkoi_ComponentUtil.Scene
                             loadedItem,
                             loadedItemEditTransform.gameObject,
                             component,
-                            propEntry.referencePropertyName,
-                            propEdit.propertyName,
+                            reference.Id,
+                            member.Id,
                             encodedValue,
                             flags);
 
-                        ValueConversion.SetValueWithFlags(member, referenceObject, savedValueString, flags);
+                        ValueConversion.SetDecodedValue(member, referenceObject, savedValue);
                     }
                 }
             }
+        }
+
+        static MemberId SavedMemberId(TrackerDataPropertySO propEdit)
+            => new(propEdit.propertyName, HasPropertyFlag(propEdit.propertyFlags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty));
+
+        /// <param name="alwaysApply">apply even if the saved value equals current value (e.g. redirectors)</param>
+        /// <param name="savedValue">decoded saved value to be set</param>
+        /// <param name="encodedCurrentValue">encoded current value, default value for the tracker</param>
+        /// <returns>whether edit should be applied</returns>
+        static bool TryReadSavedEdit(
+            TrackerDataPropertySO propEdit,
+            Member member,
+            object target,
+            bool alwaysApply,
+            string memberDescription,
+            out object savedValue,
+            out object encodedCurrentValue)
+        {
+            savedValue = null;
+            encodedCurrentValue = null;
+            var flags = propEdit.propertyFlags;
+
+            var currentValue = member?.TryGetValue(target);
+            if (currentValue == null)
+            {
+                Logger.LogWarning($"Could not find non-null {memberDescription}, ignoring");
+                return false;
+            }
+
+            encodedCurrentValue = ValueConversion.Encode(currentValue, flags);
+            if (encodedCurrentValue == null)
+            {
+                Logger.LogError($"Failed to encode current value of {memberDescription}, ignoring");
+                return false;
+            }
+
+            try
+            {
+                if (propEdit.propertyValue != null)
+                    savedValue = ValueConversion.Decode(propEdit.propertyValue, member.MemberType, flags);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"Could not read saved value '{propEdit.propertyValue}' of {memberDescription}, ignoring: {e.Message}");
+                return false;
+            }
+            if (savedValue == null)
+            {
+                Logger.LogWarning($"Saved value of {memberDescription} is null or of an unsupported type, ignoring");
+                return false;
+            }
+
+            // a default value was saved -> can be discarded
+            return alwaysApply || ValueConversion.EncodeToString(savedValue, flags) != InvariantConversion.ToInvariantString(encodedCurrentValue);
         }
         #endregion load
 
@@ -294,17 +311,16 @@ namespace RSkoi_ComponentUtil.Scene
                     object value = 0;
                     if (!HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                     {
-                        bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                        var member = Member.Find(componentType, propEntry.Key, isProperty);
+                        var member = Member.Find(componentType, propEntry.Key.Name, propEntry.Key.IsProperty);
                         value = ValueConversion.Encode(member?.TryGetValue(entry.Key.Component), flags);
                         if (value == null)
                         {
-                            Logger.LogWarning($"Tried to save null value for {(isProperty ? "property" : "field")} {entry.Key.Component.name}.{propEntry.Key}, ignoring");
+                            Logger.LogWarning($"Tried to save null value for {propEntry.Key} on {entry.Key.Component.name}, ignoring");
                             continue;
                         }
                     }
 
-                    properties.Add(new TrackerDataPropertySO(propEntry.Key, value, flags));
+                    properties.Add(new TrackerDataPropertySO(propEntry.Key.Name, value, flags));
                 }
 
                 var container = new TrackerDataSO(
@@ -326,10 +342,11 @@ namespace RSkoi_ComponentUtil.Scene
             {
                 var key = entry.Key.ObjCtrlInfo.objectInfo.dicKey;
                 var componentType = entry.Key.Component.GetType();
-                var referenceObject = Member.FindAny(componentType, entry.Key.ReferencePropertyName)?.TryGetValue(entry.Key.Component);
+                var reference = entry.Key.Reference;
+                var referenceObject = Member.Find(componentType, reference.Name, reference.IsProperty)?.TryGetValue(entry.Key.Component);
                 if (referenceObject == null)
                 {
-                    Logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.ReferencePropertyName}, ignoring");
+                    Logger.LogWarning($"Tried to save null value dummy reference {entry.Key.Component}.{entry.Key.Reference.Name}, ignoring");
                     continue;
                 }
 
@@ -343,17 +360,15 @@ namespace RSkoi_ComponentUtil.Scene
                     if (HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                         continue;
 
-                    bool isProperty = HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty);
-                    var member = Member.Find(referenceObjectType, propEntry.Key, isProperty);
+                    var member = Member.Find(referenceObjectType, propEntry.Key.Name, propEntry.Key.IsProperty);
                     var value = ValueConversion.Encode(member?.TryGetValue(referenceObject), flags);
                     if (value == null)
                     {
-                        Logger.LogWarning($"Could not find non-null {(isProperty ? "property" : "field")} on {entry.Key.Go.name}.{componentType.Name}" +
-                            $".{entry.Key.ReferencePropertyName} with name {propEntry.Key}, ignoring");
+                        Logger.LogWarning($"Could not find non-null {propEntry.Key} on {entry.Key.Go.name}.{componentType.Name}.{reference.Name}, ignoring");
                         continue;
                     }
 
-                    properties.Add(new TrackerDataPropertySO(propEntry.Key, value, flags));
+                    properties.Add(new TrackerDataPropertySO(propEntry.Key.Name, value, flags));
                 }
 
                 var container = new TrackerReferenceDataSO(
@@ -362,8 +377,11 @@ namespace RSkoi_ComponentUtil.Scene
                     entry.Key.Go.transform.name,
                     entry.Key.Go.transform.GetSiblingIndex(),
                     componentType.Name,
-                    entry.Key.ReferencePropertyName,
-                    [.. properties]);
+                    reference.Name,
+                    [.. properties])
+                {
+                    referenceIsProperty = reference.IsProperty,
+                };
 
                 if (referencePropertySavedDict.ContainsKey(key))
                     referencePropertySavedDict[key].Add(container);
@@ -452,7 +470,7 @@ namespace RSkoi_ComponentUtil.Scene
                 // if original object (get with id) is tracked by properties
                 //      for new PropertyKey we need: ObjectCtrlInfo, GameObject, Component
                 //      mirror new path to GameObject and Component
-                //      then clone Dictionary<string, PropertyTrackerData>, i.e. property / field data
+                //      then clone Dictionary<MemberId, PropertyTrackerData>, i.e. property / field data
                 //      remember that the PropertyTrackerData objects probably need to be cloned too
                 //      then add to property tracker
                 //      THEN apply property / field changes

@@ -11,9 +11,6 @@ namespace RSkoi_ComponentUtil.Core
         internal static float ParseFloat(string s)
             => float.Parse(NormalizeDecimalSeparator(s), NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        internal static int ParseInt(string s)
-            => int.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
-
         /// <summary>
         /// This is a Convert.ChangeType with invariant culture.
         /// </summary>

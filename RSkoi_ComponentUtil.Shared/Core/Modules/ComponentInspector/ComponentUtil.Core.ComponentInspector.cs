@@ -139,7 +139,6 @@ namespace RSkoi_ComponentUtil
 
             var uiEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(ComponentUtilUI.MapEntryKindToPrefab(kind), objectMode);
             uiEntry.PropertyName.text = member.Label;
-            uiEntry.MemberName = member.Name;
 
             var ctx = new PropertyEntryContext(uiEntry, input, member, value, kind.ToTrackerFlag() | member.MemberFlag, objectMode);
             switch (kind)
@@ -174,14 +173,14 @@ namespace RSkoi_ComponentUtil
             {
                 // make green if dummy property entry is tracked
                 var key = SelectedPropertyKey(cInput);
-                if (PropertyIsTracked(key, member.Name))
+                if (PropertyIsTracked(key, member.Id))
                     uiEntry.SetBgColorEdited();
             }
             else if (objectMode) // property inside reference type / the object inspector
             {
-                var key = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
-                if (PropertyIsTracked(key, member.Name))
-                    MarkAsEditedIfChanged(ctx, GetTrackedDefaultValue(key, member.Name));
+                var key = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferenceMember.Id);
+                if (PropertyIsTracked(key, member.Id))
+                    MarkAsEditedIfChanged(ctx, GetTrackedDefaultValue(key, member.Id));
 
                 ConfigResetReferenceProperty(key, ctx);
                 ConfigTimelineReferenceProperty(key, ctx);
@@ -189,8 +188,8 @@ namespace RSkoi_ComponentUtil
             else // property in the component inspector
             {
                 var key = SelectedPropertyKey(cInput);
-                if (PropertyIsTracked(key, member.Name))
-                    MarkAsEditedIfChanged(ctx, GetTrackedDefaultValue(key, member.Name));
+                if (PropertyIsTracked(key, member.Id))
+                    MarkAsEditedIfChanged(ctx, GetTrackedDefaultValue(key, member.Id));
 
                 ConfigReset(key, ctx);
                 ConfigTimeline(key, ctx);
@@ -204,7 +203,6 @@ namespace RSkoi_ComponentUtil
             var uiNullEntry = ComponentUtilUI.GetOrInstantiatePropEntryFromPool(ComponentUtilUI.NullEntryPrefab, objectMode);
 
             uiNullEntry.PropertyName.text = member.Label;
-            uiNullEntry.MemberName = member.Name;
             uiNullEntry.ResetButton.interactable = false;
             uiNullEntry.TimelineButton.interactable = false;
 
@@ -244,7 +242,7 @@ namespace RSkoi_ComponentUtil
 
             if (openReference == null)
                 return;
-            if (_shownReferenceEntries.TryGetValue(openReference.Name, out var referenceEntry))
+            if (_shownReferenceEntries.TryGetValue(openReference.Id, out var referenceEntry))
                 OpenObjectInspector(openReference, openReference.TryGetValue(_selectedComponent), referenceEntry);
         }
 
@@ -286,7 +284,7 @@ namespace RSkoi_ComponentUtil
             if (!HasCopyPasteTarget(objectMode))
                 return;
 
-            Dictionary<string, PropertyTrackerData> propEdits;
+            Dictionary<MemberId, PropertyTrackerData> propEdits;
             object source;
             string sourceName;
             if (!objectMode)
@@ -298,10 +296,10 @@ namespace RSkoi_ComponentUtil
             }
             else
             {
-                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
+                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferenceMember.Id);
                 _referencePropertyTracker.TryGetValue(refKey, out propEdits);
                 source = _selectedReferencePropertyUiEntry.Wrapper;
-                sourceName = $"{_selectedComponent.gameObject.name}.{_selectedComponent.GetType().Name}.{_selectedReferencePropertyUiEntry.MemberName}";
+                sourceName = $"{_selectedComponent.gameObject.name}.{_selectedComponent.GetType().Name}.{_selectedReferenceMember.Name}";
             }
 
             if (propEdits == null)
@@ -319,21 +317,21 @@ namespace RSkoi_ComponentUtil
         }
 
         /// <returns>current encoded values of the tracked members of obj</returns>
-        static Dictionary<string, CopiedEditValueTuple> GetEncodedValuesOfObj(object obj, Dictionary<string, PropertyTrackerData> trackerData)
+        static Dictionary<MemberId, CopiedEditValueTuple> GetEncodedValuesOfObj(object obj, Dictionary<MemberId, PropertyTrackerData> trackerData)
         {
-            var values = new Dictionary<string, CopiedEditValueTuple>();
+            var values = new Dictionary<MemberId, CopiedEditValueTuple>();
             foreach (var pair in trackerData)
             {
                 var flags = pair.Value.OptionFlags;
                 if (HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsReference))
                     continue;
 
-                var member = Member.Find(obj.GetType(), pair.Key, HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty));
+                var member = Member.Find(obj.GetType(), pair.Key.Name, pair.Key.IsProperty);
                 var value = ValueConversion.Encode(member?.TryGetValue(obj), flags);
                 if (value == null)
                     continue;
 
-                values.Add(pair.Key, new(value, flags));
+                values.Add(pair.Key, new(value, flags, member.MemberType));
             }
             return values;
         }
@@ -351,8 +349,8 @@ namespace RSkoi_ComponentUtil
 
             if (objectMode)
             {
-                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferencePropertyUiEntry.MemberName);
-                var pastedCount = PasteEdits(_selectedReferencePropertyUiEntry.Wrapper, (propName, defaultValue, flags) => AddPropertyToTracker(refKey, propName, defaultValue, flags));
+                var refKey = SelectedPropertyReferenceKey(_selectedComponent, _selectedReferenceMember.Id);
+                var pastedCount = PasteEdits(_selectedReferencePropertyUiEntry.Wrapper, (member, defaultValue, flags) => AddPropertyToTracker(refKey, member, defaultValue, flags));
                 if (pastedCount > 0)
                     _selectedReferencePropertyUiEntry.SetBgColorEdited();
                 RebuildObjectInspector();
@@ -360,7 +358,7 @@ namespace RSkoi_ComponentUtil
             else
             {
                 var key = SelectedPropertyKey(_selectedComponent);
-                PasteEdits(_selectedComponent, (propName, defaultValue, flags) => AddPropertyToTracker(key, propName, defaultValue, flags));
+                PasteEdits(_selectedComponent, (member, defaultValue, flags) => AddPropertyToTracker(key, member, defaultValue, flags));
                 RebuildComponentInspector();
             }
 
@@ -369,36 +367,51 @@ namespace RSkoi_ComponentUtil
 
         /// <param name="target">the component or referenced object to paste the edits onto</param>
         /// <param name="addToTracker">adds an edit to the tracker: member name, encoded default value, flags</param>
-        static int PasteEdits(object target, Action<string, object, PropertyTrackerData.PropertyTrackerDataOptions> addToTracker)
+        static int PasteEdits(object target, Action<MemberId, object, PropertyTrackerData.PropertyTrackerDataOptions> addToTracker)
         {
             var pastedCount = 0;
             foreach (var pair in _currentCopiedEdits.PropEdits)
             {
                 var flags = pair.Value.OptionFlags;
-                var member = Member.Find(target.GetType(), pair.Key, HasPropertyFlag(flags, PropertyTrackerData.PropertyTrackerDataOptions.IsProperty));
+                var member = Member.Find(target.GetType(), pair.Key.Name, pair.Key.IsProperty);
                 if (member == null)
                     continue;
 
+                var copiedType = pair.Value.MemberType;
+                if (member.MemberType != copiedType
+                    && !(EntryKinds.Of(member.MemberType) == EntryKind.Input && EntryKinds.Of(copiedType) == EntryKind.Input))
+                {
+                    Logger.LogWarning($"Pasting {member} onto {target}: target is {member.MemberType.Name}, source is {copiedType.Name}");
+                    continue;
+                }
+
+                object value;
+                try
+                {
+                    value = ValueConversion.Decode(pair.Value.Value, member.MemberType, flags)
+                        ?? throw new InvalidCastException("Value conversion returned null");
+                }
+                catch (Exception e)
+                {
+                    Logger.LogWarning($"Pasting {member} onto {target}: could not convert '{pair.Value.Value}' to {member.MemberType.Name}: {e.Message}");
+                    continue;
+                }
+
                 // reset button and scene saving expect encoded values
                 addToTracker(pair.Key, ValueConversion.Encode(member.TryGetValue(target), flags), flags);
-                ValueConversion.SetValueWithFlags(member, target, pair.Value.Value, flags);
+                ValueConversion.SetDecodedValue(member, target, value);
                 pastedCount++;
             }
             return pastedCount;
         }
 
-        internal struct CopiedEditValueTuple(object value, PropertyTrackerData.PropertyTrackerDataOptions flags)
-        {
-            /// <summary>
-            /// Encoded value, see ValueConversion.
-            /// </summary>
-            public object Value = value;
-            public PropertyTrackerData.PropertyTrackerDataOptions OptionFlags = flags;
-        }
+        /// <param name="Value">encoded value, see ValueConversion</param>
+        /// <param name="MemberType">member type the value was copied from</param>
+        internal readonly record struct CopiedEditValueTuple(object Value, PropertyTrackerData.PropertyTrackerDataOptions OptionFlags, Type MemberType);
 
-        internal class CopiedEdits(Dictionary<string, CopiedEditValueTuple> propEdits)
+        internal class CopiedEdits(Dictionary<MemberId, CopiedEditValueTuple> propEdits)
         {
-            public Dictionary<string, CopiedEditValueTuple> PropEdits = propEdits;
+            public readonly Dictionary<MemberId, CopiedEditValueTuple> PropEdits = propEdits;
         }
         #endregion copy / pasting edits
     }

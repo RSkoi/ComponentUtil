@@ -6,14 +6,10 @@ namespace RSkoi_ComponentUtil.Core
 {
     internal static class Paging
     {
-        internal static List<T> Filter<T>(IEnumerable<T> items, string filter, Func<T, string> getName)
-        {
-            if (string.IsNullOrEmpty(filter))
-                return [.. items];
-
-            filter = filter.ToLower();
-            return [.. items.Where(item => getName(item).ToLower().Contains(filter))];
-        }
+        internal static IEnumerable<T> Filter<T>(IEnumerable<T> items, string filter, Func<T, string> getName)
+            => string.IsNullOrEmpty(filter)
+                ? items
+                : items.Where(item => Matches(getName(item), filter));
 
         internal static List<T> GetPage<T>(IEnumerable<T> items, string filter, Func<T, string> getName, int page, int itemsPerPage)
             => [.. Filter(items, filter, getName)
@@ -21,7 +17,7 @@ namespace RSkoi_ComponentUtil.Core
                     .Take(itemsPerPage)];
 
         internal static bool PageExists<T>(IEnumerable<T> items, string filter, Func<T, string> getName, int page, int itemsPerPage)
-            => page * itemsPerPage < Filter(items, filter, getName).Count;
+            => Filter(items, filter, getName).Skip(page * itemsPerPage).Any();
 
         internal static T FirstMatchOrFirst<T>(IList<T> items, string filter, Func<T, string> getName)
         {
@@ -30,9 +26,12 @@ namespace RSkoi_ComponentUtil.Core
 
             filter = filter.ToLower();
             foreach (var item in items)
-                if (getName(item).ToLower().Contains(filter))
+                if (Matches(getName(item), filter))
                     return item;
             return items[0];
         }
+
+        static bool Matches(string name, string filter)
+            => string.IsNullOrEmpty(filter) || name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }
